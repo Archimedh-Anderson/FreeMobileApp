@@ -1,67 +1,46 @@
 # FreeMobilaChat - Production Dependencies
-# Version: 4.2 - Production Ready
-# Python 3.8+
+# Optimized for Streamlit Cloud Deployment
+# Python 3.11+
 # ============================================
 
-# Core Framework
+# Core Streamlit
 streamlit==1.28.1
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
-pydantic==2.4.2
-
-# Data Processing
-pandas==2.1.1
-numpy==1.25.2
-openpyxl==3.1.2
-
-# Machine Learning
-scikit-learn==1.3.1
-transformers==4.34.0
-torch==2.1.0
-sentencepiece==0.1.99
-accelerate==0.20.0
-
-# NLP & Text Processing
-emoji==2.8.0
-nltk==3.8.1
-unidecode==1.3.0
+pandas>=2.2.0
+numpy==1.26.4
 
 # Visualization
 plotly==5.17.0
 
-# LLM Integration
-ollama>=0.6.0
+# Text Processing
+emoji==2.8.0
+unidecode==1.3.0
 
 # API & HTTP
 requests==2.31.0
 httpx==0.25.0
 
-# Database
-sqlalchemy==2.0.22
-alembic==1.12.1
-
-# Authentication & Security
-python-jose[cryptography]==3.3.0
-passlib[bcrypt]==1.7.4
-python-multipart==0.0.6
-bcrypt==4.0.1
-cryptography==41.0.7
+# LLM APIs (without torch/transformers)
+anthropic>=0.8.0
+openai>=1.0.0
 
 # Utilities
 python-dotenv==1.0.0
-pyyaml==6.0.1
-python-dateutil==2.8.2
-pytz==2023.3
-
-# Logging & Monitoring
-loguru==0.7.2
-
-# Performance & Optimization
-aiofiles==23.2.1
-orjson==3.9.10
-joblib==1.3.2
 tqdm==4.65.0
 psutil==5.9.5
+tenacity==8.2.3
+openpyxl==3.1.2
+pydantic==2.4.2
+pydantic-settings==2.0.3
 
-# Note: Les dépendances de développement et tests sont dans requirements.dev.txt
-# Installer avec: pip install -r requirements.txt -r requirements.dev.txt
+# Authentication & Security
+bcrypt==4.0.1
+pyjwt==2.8.0
+
+# Database (lightweight)
+sqlalchemy==2.0.21
+
+# Monitoring & Logging
+loguru==0.7.2
+
+# Note: For local development with full ML capabilities, use requirements-academic.txt
+# Note: For CI/CD testing, use requirements-ci.txt
