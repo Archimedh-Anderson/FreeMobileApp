@@ -5,8 +5,23 @@ Developed as part of a Master's thesis in Data Science
 """
 
 import streamlit as st
-from services.auth_service import AuthService
-from components.auth_forms import render_auth_page
+import sys
+import os
+
+# Add current directory to path for imports
+current_dir = os.path.dirname(os.path.abspath(__file__))
+if current_dir not in sys.path:
+    sys.path.insert(0, current_dir)
+
+# Robust import with error handling
+try:
+    from services.auth_service import AuthService
+    from components.auth_forms import render_auth_page
+except ImportError as e:
+    st.error(f"❌ Critical Import Error: {str(e)}")
+    st.error("Please ensure all dependencies are installed correctly.")
+    st.code("pip install -r requirements-streamlit.txt", language="bash")
+    st.stop()
 
 # Configuration
 st.set_page_config(

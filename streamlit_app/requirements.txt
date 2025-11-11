@@ -1,45 +1,44 @@
-# FreeMobilaChat - Streamlit App Dependencies
-# ============================================
+# ============================================================================
+# Streamlit Cloud Requirements - Optimized for Cloud Deployment
+# ============================================================================
+# This file points to the root requirements-streamlit.txt for cloud deployment
+# For local development with full ML, use requirements-academic.txt
 
 # Core Streamlit
-streamlit>=1.28.0
-pandas>=2.0.0
-numpy>=1.24.0
+streamlit==1.28.1
+pandas==2.1.1
+numpy==1.25.2
 
 # Visualization
-plotly>=5.14.0
-
-# LLM and AI
-ollama>=0.6.0
-transformers>=4.30.0
-torch>=2.0.0
-sentencepiece>=0.1.99
-accelerate>=0.20.0
+plotly==5.17.0
 
 # Text Processing
-emoji>=2.0.0
-unidecode>=1.3.0
-nltk>=3.8.0
+emoji==2.8.0
+unidecode==1.3.0
 
-# Optimization and Parallelization
-joblib>=1.3.0
-scikit-learn>=1.3.0
-tqdm>=4.65.0
+# API & HTTP
+requests==2.31.0
+httpx==0.25.0
+
+# LLM APIs (without torch/transformers)
+anthropic>=0.8.0
+openai>=1.0.0
 
 # Utilities
-python-dotenv>=1.0.0
-requests>=2.31.0
+python-dotenv==1.0.0
+tqdm==4.65.0
+psutil==5.9.5
+tenacity==8.2.3
+openpyxl==3.1.2
+pydantic==2.4.2
+pydantic-settings==2.0.3
 
-# Authentication and Security
-bcrypt>=4.0.0
-cryptography>=41.0.0
+# Authentication & Security
+bcrypt==4.0.1
+pyjwt==2.8.0
 
-# Database
-sqlalchemy>=2.0.0
+# Database (lightweight)
+sqlalchemy==2.0.21
 
-# Export and Reporting
-openpyxl>=3.1.0
-
-# Monitoring and Logging
-psutil>=5.9.0
-loguru>=0.7.0
+# Monitoring & Logging
+loguru==0.7.2
