@@ -443,7 +443,7 @@ class StreamlitDeploymentTester:
         
         config_content = """[server]
 headless = true
-port = 8501
+port = 8502
 enableCORS = false
 enableXsrfProtection = false
 
