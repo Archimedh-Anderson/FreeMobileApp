@@ -1,6 +1,6 @@
 [server]
-port = 8502
 headless = true
+port = 8501
 enableCORS = false
 enableXsrfProtection = false
 maxUploadSize = 200
@@ -8,8 +8,6 @@ enableWebsocketCompression = false
 
 [browser]
 gatherUsageStats = false
-serverAddress = "localhost"
-serverPort = 8502
 
 [runner]
 magicEnabled = true

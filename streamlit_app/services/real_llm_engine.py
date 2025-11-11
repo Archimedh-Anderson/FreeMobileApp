@@ -43,7 +43,7 @@ class RealLLMEngine:
             },
             "local": {
                 "client": None,
-                "base_url": "http://localhost:11434",
+                "base_url": os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
                 "model": "llama2-13b-chat",
                 "temperature": 0.1
             }
@@ -87,7 +87,8 @@ class RealLLMEngine:
         """Vérifie si Ollama local est disponible"""
         try:
             import httpx
-            response = httpx.get("http://localhost:11434/api/tags", timeout=5)
+            ollama_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+            response = httpx.get(f"{ollama_url}/api/tags", timeout=5)
             return response.status_code == 200
         except:
             return False

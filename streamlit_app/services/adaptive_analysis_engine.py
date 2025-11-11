@@ -53,7 +53,7 @@ class AdaptiveAnalysisEngine:
             },
             "local": {
                 "model": "llama2-13b-chat",
-                "base_url": "http://localhost:11434",
+                "base_url": os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
                 "timeout": 120
             }
         }
@@ -80,7 +80,8 @@ class AdaptiveAnalysisEngine:
                 return Anthropic(api_key=api_key)
             
             elif provider == "local":
-                return httpx.AsyncClient(base_url="http://localhost:11434", timeout=120)
+                ollama_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+                return httpx.AsyncClient(base_url=ollama_url, timeout=120)
             
             else:
                 logger.warning(f"Provider {provider} non supporté, utilisation du fallback")

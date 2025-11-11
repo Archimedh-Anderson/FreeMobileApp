@@ -5,13 +5,14 @@ Handles communication with backend API and session management
 
 import streamlit as st
 import requests
+import os
 from typing import Optional, Dict, Any
 import logging
 
 logger = logging.getLogger(__name__)
 
-# Backend API URL
-BACKEND_URL = "http://localhost:8000"
+# Backend API URL - Use environment variable or default to localhost for local development
+BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 
 
 class AuthService:
