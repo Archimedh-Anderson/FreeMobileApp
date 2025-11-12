@@ -513,6 +513,16 @@ def render_kpi_comparison_tab(current_dataframe: pd.DataFrame):
     # En-tête
     render_kpi_comparison_header()
     
+    # DEBUG: Log le dataframe reçu
+    logger.info(f"\n{'='*60}")
+    logger.info("RENDER KPI COMPARISON TAB - DEBUG")
+    logger.info(f"Dataframe shape: {current_dataframe.shape if current_dataframe is not None else 'None'}")
+    if current_dataframe is not None:
+        logger.info(f"Columns: {list(current_dataframe.columns)}")
+        logger.info(f"First 3 rows sample:")
+        logger.info(current_dataframe.head(3).to_string())
+    logger.info(f"{'='*60}\n")
+    
     # Récupérer les KPIs
     training_kpis = get_training_kpis()
     
