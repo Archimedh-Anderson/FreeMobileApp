@@ -1219,6 +1219,9 @@ def _display_business_dashboard(df):
         # Afficher les KPIs enrichis du dataset d'entraînement
         _display_enriched_training_kpis()
         
+        # NOUVEAU: Afficher l'onglet de comparaison KPI
+        _display_kpi_comparison(df)
+        
     except Exception as e:
         logger.warning(f"Business dashboard error: {e}")
 
@@ -1239,6 +1242,20 @@ def _display_enriched_training_kpis():
         
     except Exception as e:
         logger.warning(f"Enriched training KPIs error: {e}")
+
+def _display_kpi_comparison(df):
+    """Affiche l'onglet de comparaison KPI"""
+    try:
+        from components.kpi_comparison import render_kpi_comparison_tab
+        
+        st.markdown("---")
+        st.markdown("## 🔄 Comparaison KPI")
+        st.caption("Comparaison entre la référence historique et l'analyse actuelle")
+        
+        render_kpi_comparison_tab(df)
+        
+    except Exception as e:
+        logger.warning(f"KPI comparison error: {e}")
 
 def _prepare_df_for_business_kpis(df: pd.DataFrame) -> pd.DataFrame:
     """Prépare DataFrame pour KPIs business"""

@@ -1673,6 +1673,9 @@ def _display_business_dashboard_mistral(df, report):
         # Afficher les KPIs enrichis du dataset d'entraînement
         _display_enriched_training_kpis_mistral()
         
+        # NOUVEAU: Afficher l'onglet de comparaison KPI
+        _display_kpi_comparison_mistral(df)
+        
     except Exception as e:
         logger.error(f"Erreur dashboard business: {e}")
         st.warning("Certains KPIs avancés ne sont pas disponibles", icon="⚠️")
@@ -1690,6 +1693,20 @@ def _display_enriched_training_kpis_mistral():
         
     except Exception as e:
         logger.warning(f"Enriched training KPIs error: {e}")
+
+def _display_kpi_comparison_mistral(df):
+    """Affiche l'onglet de comparaison KPI pour Mistral"""
+    try:
+        from components.kpi_comparison import render_kpi_comparison_tab
+        
+        st.markdown("---")
+        st.markdown("## 🔄 Comparaison KPI")
+        st.caption("Comparaison entre la référence historique et l'analyse actuelle")
+        
+        render_kpi_comparison_tab(df)
+        
+    except Exception as e:
+        logger.warning(f"KPI comparison error: {e}")
 
 def _render_export_section(df, report):
     """Section export avec vérification permissions"""
