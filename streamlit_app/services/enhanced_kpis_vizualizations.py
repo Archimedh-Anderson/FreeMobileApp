@@ -90,7 +90,18 @@ def compute_business_kpis(df: pd.DataFrame) -> Dict[str, Any]:
     }
     
     # 2. Thematic Distribution (Distribution thématique) - OPTIMISÉ
-    if 'category' in df.columns:
+    # Prioriser les colonnes enrichies du nouveau dataset
+    if 'Thème principal' in df.columns:
+        theme_dist = df['Thème principal'].value_counts()
+        kpis['thematic_distribution'] = {
+            'categories': theme_dist.to_dict(),
+            'top_category': theme_dist.index[0] if len(theme_dist) > 0 else 'N/A',
+            'count': len(theme_dist)
+        }
+        # Ajouter la confiance moyenne si disponible
+        if 'theme_confidence' in df.columns:
+            kpis['thematic_distribution']['avg_confidence'] = float(df['theme_confidence'].mean())
+    elif 'category' in df.columns:
         theme_dist = df['category'].value_counts()
         kpis['thematic_distribution'] = {
             'categories': theme_dist.to_dict(),
@@ -195,6 +206,46 @@ def compute_business_kpis(df: pd.DataFrame) -> Dict[str, Any]:
             }
         else:
             kpis['confidence_score'] = {'average': 0, 'min': 0, 'max': 0, 'std': 0}
+    
+    # 6. Incident Distribution (Distribution des incidents) - NOUVEAU POUR DATASET ENRICHI
+    if 'Incident principal' in df.columns:
+        incident_dist = df['Incident principal'].value_counts()
+        kpis['incident_distribution'] = {
+            'categories': incident_dist.to_dict(),
+            'top_incident': incident_dist.index[0] if len(incident_dist) > 0 else 'aucun',
+            'top_incident_count': int(incident_dist.iloc[0]) if len(incident_dist) > 0 else 0,
+            'top_incident_pct': (incident_dist.iloc[0] / total_tweets * 100) if len(incident_dist) > 0 else 0.0,
+            'count': len(incident_dist)
+        }
+        # Ajouter la confiance moyenne si disponible
+        if 'incident_confidence' in df.columns:
+            kpis['incident_distribution']['avg_confidence'] = float(df['incident_confidence'].mean())
+        
+        # Ajouter la distribution des responsables si disponible
+        if 'incident_responsable' in df.columns:
+            responsable_dist = df['incident_responsable'].value_counts()
+            kpis['responsable_distribution'] = {
+                'categories': responsable_dist.to_dict(),
+                'top_responsable': responsable_dist.index[0] if len(responsable_dist) > 0 else 'N/A',
+                'count': len(responsable_dist)
+            }
+    
+    # 7. Réclamations améliorées avec confiance - NOUVEAU POUR DATASET ENRICHI
+    if 'réclamations' in df.columns:
+        reclamations_dist = df['réclamations'].value_counts()
+        oui_count = int(reclamations_dist.get('Oui', reclamations_dist.get('oui', 0)))
+        non_count = int(reclamations_dist.get('Non', reclamations_dist.get('non', 0)))
+        
+        kpis['reclamations_enriched'] = {
+            'oui_count': oui_count,
+            'non_count': non_count,
+            'oui_pct': (oui_count / total_tweets * 100) if total_tweets > 0 else 0.0,
+            'non_pct': (non_count / total_tweets * 100) if total_tweets > 0 else 0.0
+        }
+        
+        # Ajouter la confiance moyenne si disponible
+        if 'reclamation_confidence' in df.columns:
+            kpis['reclamations_enriched']['avg_confidence'] = float(df['reclamation_confidence'].mean())
     
     return kpis
 
@@ -649,6 +700,7 @@ def create_activity_heatmap(df: pd.DataFrame, date_col: str = 'date') -> go.Figu
 def create_category_comparison_chart(df: pd.DataFrame, category_col: str = 'category') -> go.Figure:
     """
     Crée un histogramme comparatif par catégorie
+    Supporte les colonnes enrichies du nouveau dataset
     
     Args:
         df: DataFrame avec colonne de catégorie
@@ -657,10 +709,27 @@ def create_category_comparison_chart(df: pd.DataFrame, category_col: str = 'cate
     Returns:
         Figure Plotly
     """
-    if category_col not in df.columns:
+    # Prioriser la colonne enrichie "Thème principal"
+    actual_col = None
+    if 'Thème principal' in df.columns:
+        actual_col = 'Thème principal'
+    elif category_col in df.columns:
+        actual_col = category_col
+    elif 'category' in df.columns:
+        actual_col = 'category'
+    elif 'incident' in df.columns:
+        actual_col = 'incident'
+    elif 'theme' in df.columns:
+        actual_col = 'theme'
+    
+    if actual_col is None:
         return None
     
-    category_counts = df[category_col].value_counts().head(10)
+    category_counts = df[actual_col].value_counts().head(10)
+    
+    # Calculer les pourcentages
+    total_tweets = len(df)
+    percentages = (category_counts / total_tweets * 100).round(2)
     
     fig = go.Figure(data=[
         go.Bar(
@@ -672,20 +741,81 @@ def create_category_comparison_chart(df: pd.DataFrame, category_col: str = 'cate
                 showscale=True,
                 colorbar=dict(title="Nombre")
             ),
-            text=category_counts.values,
+            text=[f"{count}<br>({pct}%)" for count, pct in zip(category_counts.values, percentages)],
             textposition='outside',
-            hovertemplate="<b>%{x}</b><br>Count: %{y}<extra></extra>"
+            hovertemplate="<b>%{x}</b><br>Count: %{y}<br>Percentage: %{customdata:.2f}%<extra></extra>",
+            customdata=percentages
         )
     ])
     
+    title_text = f"<b>Top 10 {actual_col}</b>"
+    
     fig.update_layout(
-        title="<b>Top 10 Catégories</b>",
-        xaxis_title="Catégorie",
+        title=title_text,
+        xaxis_title=actual_col,
         yaxis_title="Nombre de Tweets",
         title_font_size=18,
         height=450,
         template="plotly_white",
         xaxis_tickangle=-45
+    )
+    
+    return fig
+
+
+def create_incident_distribution_chart(df: pd.DataFrame) -> go.Figure:
+    """
+    Crée un graphique de distribution des incidents avec responsables
+    Supporte la colonne enrichie "Incident principal" du nouveau dataset
+    
+    Args:
+        df: DataFrame avec colonne 'Incident principal'
+        
+    Returns:
+        Figure Plotly avec distribution des incidents et pourcentages
+    """
+    if 'Incident principal' not in df.columns:
+        return None
+    
+    incident_counts = df['Incident principal'].value_counts().head(10)
+    
+    # Calculer les pourcentages
+    total_tweets = len(df)
+    percentages = (incident_counts / total_tweets * 100).round(2)
+    
+    # Couleurs basées sur la sévérité
+    color_map = {
+        'aucun': COLORS['success'],
+        'information': COLORS['info'],
+        'incident_technique': COLORS['warning'],
+        'incident_facturation': COLORS['danger'],
+        'dysfonctionnement_service': COLORS['danger'],
+        'probleme_connexion': COLORS['warning']
+    }
+    
+    colors = [color_map.get(str(inc).lower(), COLORS['primary']) for inc in incident_counts.index]
+    
+    fig = go.Figure(data=[
+        go.Bar(
+            x=incident_counts.values,
+            y=incident_counts.index,
+            orientation='h',
+            marker=dict(color=colors),
+            text=[f"{count} ({pct}%)" for count, pct in zip(incident_counts.values, percentages)],
+            textposition='outside',
+            hovertemplate="<b>%{y}</b><br>Count: %{x}<br>Percentage: %{customdata:.2f}%<extra></extra>",
+            customdata=percentages
+        )
+    ])
+    
+    fig.update_layout(
+        title="<b>Distribution des Incidents Principaux</b>",
+        xaxis_title="Nombre de Tweets",
+        yaxis_title="Type d'Incident",
+        title_font_size=18,
+        height=450,
+        template="plotly_white",
+        yaxis={'categoryorder':'total ascending'}
     )
     
     return fig
@@ -833,6 +963,10 @@ def render_enhanced_visualizations(df: pd.DataFrame, kpis: Dict[str, Any]):
     - Evolution temporelle (Line Chart)  
     - Heatmap d'activite (Heatmap)
     
+    NOUVEAU: Support pour les colonnes enrichies du dataset
+    - Thème principal (avec pourcentages)
+    - Incident principal (avec responsables)
+    
     Les visualisations supprimees (Radar, Categories, Urgence) ont ete retirees
     pour une interface plus epuree et professionnelle.
     
@@ -856,7 +990,30 @@ def render_enhanced_visualizations(df: pd.DataFrame, kpis: Dict[str, Any]):
     </div>
     """, unsafe_allow_html=True)
     
-    # Afficher seulement le graphique de sentiment (les graphiques temporels nécessitent une colonne date)
+    # Vérifier si le dataset a les colonnes enrichies
+    has_enriched_data = 'Thème principal' in df.columns or 'Incident principal' in df.columns
+    
+    if has_enriched_data:
+        # Afficher les graphiques enrichis en colonnes
+        col1, col2 = st.columns(2, gap="large")
+        
+        with col1:
+            st.markdown("#### <i class='fas fa-tags'></i> Distribution des Thèmes", unsafe_allow_html=True)
+            fig_theme = create_category_comparison_chart(df, 'Thème principal')
+            if fig_theme:
+                st.plotly_chart(fig_theme, use_container_width=True, key='business_viz_theme_dist')
+            else:
+                st.info("Distribution des thèmes non disponible")
+        
+        with col2:
+            st.markdown("#### <i class='fas fa-exclamation-triangle'></i> Distribution des Incidents", unsafe_allow_html=True)
+            fig_incident = create_incident_distribution_chart(df)
+            if fig_incident:
+                st.plotly_chart(fig_incident, use_container_width=True, key='business_viz_incident_dist')
+            else:
+                st.info("Distribution des incidents non disponible")
+    
+    # Afficher le graphique de sentiment si disponible
     st.markdown("#### <i class='fas fa-chart-pie'></i> Distribution des Sentiments", unsafe_allow_html=True)
     
     # Creation et affichage du graphique de distribution des sentiments
