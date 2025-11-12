@@ -699,15 +699,15 @@ def create_activity_heatmap(df: pd.DataFrame, date_col: str = 'date') -> go.Figu
 
 def create_category_comparison_chart(df: pd.DataFrame, category_col: str = 'category') -> go.Figure:
     """
-    Crée un histogramme horizontal comparatif par catégorie (Top 10)
-    Supporte les colonnes enrichies du nouveau dataset
+    Crée un graphique en barres verticales pour les top 10 thèmes
+    Correspond exactement au screenshot fourni
     
     Args:
         df: DataFrame avec colonne de catégorie
         category_col: Nom de la colonne de catégorie
         
     Returns:
-        Figure Plotly avec distribution des thèmes principaux
+        Figure Plotly avec barres verticales gradientées
     """
     # Prioriser la colonne enrichie "Thème principal"
     actual_col = None
@@ -734,36 +734,68 @@ def create_category_comparison_chart(df: pd.DataFrame, category_col: str = 'cate
     total_tweets = len(df)
     percentages = (category_counts / total_tweets * 100).round(2)
     
-    # Créer une palette de couleurs distinctes (du rouge foncé au beige clair)
+    # Palette de couleurs gradient (rouge foncé -> clair comme le screenshot)
+    # Du plus foncé au plus clair selon la fréquence
     colors = [
-        '#8B0000',  # Dark red
-        '#B22222',  # Firebrick
-        '#DC143C',  # Crimson
-        '#E9967A',  # Dark salmon
-        '#FFA07A',  # Light salmon
+        '#8B0000',  # Dark red (le plus fréquent)
+        '#CD5C5C',  # Indian red
+        '#F08080',  # Light coral
         '#FFB6C1',  # Light pink
+        '#FFC0CB',  # Pink
         '#FFD1DC',  # Pale pink
         '#FFE4E1',  # Misty rose
         '#FFF0F5',  # Lavender blush
-        '#FFF5EE'   # Seashell
+        '#FFF5EE',  # Seashell
+        '#FFFAF0'   # Floral white (le moins fréquent)
     ]
     
     # Utiliser seulement le nombre de couleurs nécessaire
     color_list = colors[:len(category_counts)]
     
+    # Créer les labels avec pourcentages
+    text_labels = [f"{count}<br>({pct}%)" for count, pct in zip(category_counts.values, percentages)]
+    
     fig = go.Figure(data=[
         go.Bar(
-            y=category_counts.index,
-            x=category_counts.values,
-            orientation='h',
-            marker=dict(color=color_list),
-            text=[f"{count}<br>({pct}%)" for count, pct in zip(category_counts.values, percentages)],
+            x=category_counts.index,
+            y=category_counts.values,
+            marker=dict(
+                color=color_list,
+                line=dict(color='white', width=1)
+            ),
+            text=text_labels,
             textposition='outside',
-            textfont=dict(size=12, color='#1a202c', family='Arial'),
-            hovertemplate="<b>%{y}</b><br>Nombre: %{x:,}<br>Pourcentage: %{customdata:.2f}%<extra></extra>",
-            customdata=percentages
+            textfont=dict(size=11, color='#1a202c', family='Arial'),
+            hovertemplate="<b>%{x}</b><br>Nombre: %{y:,}<br>Pourcentage: %{customdata:.2f}%<extra></extra>",
+            customdata=percentages,
+            showlegend=False
         )
     ])
+    
+    # Ajouter une colorbar légende à droite
+    fig.add_trace(go.Scatter(
+        x=[None],
+        y=[None],
+        mode='markers',
+        marker=dict(
+            colorscale=[[0, '#8B0000'], [1, '#FFFAF0']],
+            showscale=True,
+            cmin=0,
+            cmax=category_counts.max(),
+            colorbar=dict(
+                title="Nombre",
+                titleside="right",
+                tickmode="linear",
+                tick0=0,
+                dtick=500,
+                thickness=15,
+                len=0.7,
+                x=1.15
+            )
+        ),
+        hoverinfo='skip',
+        showlegend=False
+    ))
     
     # Titre descriptif
     if actual_col == 'Thème principal':
@@ -774,25 +806,29 @@ def create_category_comparison_chart(df: pd.DataFrame, category_col: str = 'cate
     fig.update_layout(
         title=dict(
             text=title_text,
-            font=dict(size=20, family="Arial, sans-serif", color="#1a202c"),
+            font=dict(size=16, family="Arial, sans-serif", color="#1a202c"),
             x=0,
-            xanchor='left'
+            xanchor='left',
+            y=0.98,
+            yanchor='top'
         ),
         xaxis=dict(
+            title="Thème principal",
+            showgrid=False,
+            titlefont=dict(size=12, color='#4a5568'),
+            tickangle=-45,
+            tickfont=dict(size=10)
+        ),
+        yaxis=dict(
             title="Nombre de Tweets",
             showgrid=True,
             gridcolor='rgba(0,0,0,0.1)',
-            titlefont=dict(size=14, color='#4a5568')
+            titlefont=dict(size=12, color='#4a5568'),
+            range=[0, category_counts.max() * 1.15]  # Extra space for labels
         ),
-        yaxis=dict(
-            title="Thème principal",
-            showgrid=False,
-            categoryorder='total ascending',
-            titlefont=dict(size=14, color='#4a5568')
-        ),
-        height=500,
+        height=450,
         template="plotly_white",
-        margin=dict(l=150, r=100, t=60, b=60),
+        margin=dict(l=60, r=150, t=80, b=100),
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
         hovermode='closest'
@@ -803,14 +839,14 @@ def create_category_comparison_chart(df: pd.DataFrame, category_col: str = 'cate
 
 def create_incident_distribution_chart(df: pd.DataFrame) -> go.Figure:
     """
-    Crée un graphique horizontal de distribution des incidents principaux
-    Supporte la colonne enrichie "Incident principal" du nouveau dataset
+    Crée un graphique horizontal de distribution des incidents
+    Correspond exactement au screenshot avec couleurs sémantiques
     
     Args:
-        df: DataFrame avec colonne 'Incident principal'
+        df: DataFrame avec colonne 'Incident principal' ou 'incident'
         
     Returns:
-        Figure Plotly avec distribution horizontale des incidents et pourcentages
+        Figure Plotly avec barres horizontales colorées par sévérité
     """
     # Vérifier les colonnes disponibles
     incident_col = None
@@ -824,97 +860,99 @@ def create_incident_distribution_chart(df: pd.DataFrame) -> go.Figure:
     if incident_col is None:
         return None
     
-    # Obtenir le top 10 des incidents
-    incident_counts = df[incident_col].value_counts().head(10)
+    # Obtenir tous les incidents (pas de limite)
+    incident_counts = df[incident_col].value_counts()
     
     # Calculer les pourcentages
     total_tweets = len(df)
     percentages = (incident_counts / total_tweets * 100).round(2)
     
-    # Palette de couleurs sémantique basée sur la sévérité
+    # Mapping exact des couleurs selon le screenshot
     color_map = {
-        'aucun': '#28a745',              # Vert (pas de problème)
-        'information': '#17a2b8',         # Cyan (informatif)
-        'technique': '#dc3545',           # Rouge (critique)
-        'incident_technique': '#dc3545', # Rouge
-        'incident_reseau': '#dc3545',    # Rouge
-        'processus_sav': '#dc3545',      # Rouge
-        'facturation': '#e74c3c',        # Rouge-orange
-        'incident_facturation': '#e74c3c',
-        'livraison': '#e74c3c',          # Rouge-orange
-        'dysfonctionnement': '#dc3545', # Rouge
-        'connexion': '#f39c12',          # Orange
-        'probleme_connexion': '#f39c12'
+        'aucun': '#28a745',              # Vert clair (pas d'incident)
+        'information': '#17a2b8',         # Cyan/Turquoise
+        'technique': '#dc3545',           # Rouge
+        'incident_technique': '#dc3545',
+        'incident_reseau': '#dc3545',     # Rouge
+        'incident_réseau': '#dc3545',
+        'processus_sav': '#dc3545',       # Rouge
+        'facturation': '#dc3545',         # Rouge
+        'incident_facturation': '#dc3545',
+        'livraison': '#dc3545',           # Rouge
+        'dysfonctionnement': '#dc3545',
+        'connexion': '#dc3545',
+        'probleme_connexion': '#dc3545'
     }
     
-    # Assigner les couleurs
+    # Assigner couleurs avec fallback
     colors = []
     for inc in incident_counts.index:
-        inc_lower = str(inc).lower()
-        matched_color = COLORS['primary']  # Couleur par défaut
+        inc_lower = str(inc).lower().strip()
+        matched_color = '#6c757d'  # Gris par défaut
         
-        # Chercher une correspondance partielle
-        for key, color in color_map.items():
-            if key in inc_lower:
-                matched_color = color
-                break
+        # Correspondance exacte ou partielle
+        if inc_lower in color_map:
+            matched_color = color_map[inc_lower]
+        else:
+            # Recherche partielle
+            for key, color in color_map.items():
+                if key in inc_lower or inc_lower in key:
+                    matched_color = color
+                    break
         
         colors.append(matched_color)
+    
+    # Créer labels avec nombre et pourcentage
+    text_labels = [f"{count} ({pct}%)" for count, pct in zip(incident_counts.values, percentages)]
     
     fig = go.Figure(data=[
         go.Bar(
             x=incident_counts.values,
             y=incident_counts.index,
             orientation='h',
-            marker=dict(color=colors, line=dict(color='white', width=1)),
-            text=[f"{count} ({pct}%)" for count, pct in zip(incident_counts.values, percentages)],
+            marker=dict(
+                color=colors,
+                line=dict(color='white', width=1)
+            ),
+            text=text_labels,
             textposition='outside',
-            textfont=dict(size=12, color='#1a202c', family='Arial'),
+            textfont=dict(size=11, color='#1a202c', family='Arial'),
             hovertemplate="<b>%{y}</b><br>Nombre: %{x:,}<br>Pourcentage: %{customdata:.2f}%<extra></extra>",
-            customdata=percentages
+            customdata=percentages,
+            showlegend=False
         )
     ])
     
     fig.update_layout(
         title=dict(
             text="<b>Distribution des Incidents Principaux</b>",
-            font=dict(size=20, family="Arial, sans-serif", color="#1a202c"),
+            font=dict(size=16, family="Arial, sans-serif", color="#1a202c"),
             x=0,
-            xanchor='left'
+            xanchor='left',
+            y=0.98,
+            yanchor='top'
         ),
         xaxis=dict(
             title="Nombre de Tweets",
             showgrid=True,
             gridcolor='rgba(0,0,0,0.1)',
-            titlefont=dict(size=14, color='#4a5568')
+            titlefont=dict(size=12, color='#4a5568'),
+            range=[0, incident_counts.max() * 1.2]  # Extra space for labels
         ),
         yaxis=dict(
             title="Type d'Incident",
             showgrid=False,
             categoryorder='total ascending',
-            titlefont=dict(size=14, color='#4a5568')
+            titlefont=dict(size=12, color='#4a5568'),
+            tickfont=dict(size=10)
         ),
-        height=500,
+        height=450,
         template="plotly_white",
-        margin=dict(l=180, r=120, t=60, b=60),
+        margin=dict(l=150, r=120, t=80, b=60),
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
         hovermode='closest',
         showlegend=False
-    )
-    
-    # Ajouter une annotation avec le total
-    fig.add_annotation(
-        text=f"<b>Total incidents analysés: {total_tweets:,}</b>",
-        xref="paper", yref="paper",
-        x=0.5, y=-0.12,
-        xanchor='center', yanchor='top',
-        showarrow=False,
-        font=dict(size=12, color='#4a5568'),
-        bgcolor='rgba(255,255,255,0.8)',
-        bordercolor='#e2e8f0',
-        borderwidth=1,
-        borderpad=8
     )
     
     return fig
