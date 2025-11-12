@@ -1216,46 +1216,13 @@ def _display_business_dashboard(df):
         ekv = kpis_system['ekv']
         ekv.render_enhanced_visualizations(df_business, business_kpis)
         
-        # Afficher les KPIs enrichis du dataset d'entraînement
-        _display_enriched_training_kpis()
-        
-        # NOUVEAU: Afficher l'onglet de comparaison KPI
-        _display_kpi_comparison(df)
+        # KPI sections removed for cleaner UI - keeping only dynamic visualizations
         
     except Exception as e:
         logger.warning(f"Business dashboard error: {e}")
 
-def _display_enriched_training_kpis():
-    """Affiche les KPIs du dataset enrichi d'entraînement"""
-    enriched_kpis_system = _get_enriched_kpis_display()
-    
-    if not enriched_kpis_system.get('available'):
-        return
-    
-    try:
-        st.markdown("---")
-        st.markdown("## 📚 KPIs du Dataset d'Entraînement Enrichi")
-        st.caption("Métriques du dataset utilisé pour l'entraînement des modèles")
-        
-        render_enriched_kpis_summary = enriched_kpis_system['render_enriched_kpis_summary']
-        render_enriched_kpis_summary()
-        
-    except Exception as e:
-        logger.warning(f"Enriched training KPIs error: {e}")
-
-def _display_kpi_comparison(df):
-    """Affiche l'onglet de comparaison KPI"""
-    try:
-        from components.kpi_comparison import render_kpi_comparison_tab
-        
-        st.markdown("---")
-        st.markdown("## 🔄 Comparaison KPI")
-        st.caption("Comparaison entre la référence historique et l'analyse actuelle")
-        
-        render_kpi_comparison_tab(df)
-        
-    except Exception as e:
-        logger.warning(f"KPI comparison error: {e}")
+# Removed _display_enriched_training_kpis() and _display_kpi_comparison()
+# These functions created visual conflicts and duplicate displays
 
 def _prepare_df_for_business_kpis(df: pd.DataFrame) -> pd.DataFrame:
     """Prépare DataFrame pour KPIs business"""
