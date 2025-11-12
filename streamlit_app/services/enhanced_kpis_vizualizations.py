@@ -1076,6 +1076,15 @@ def render_enhanced_visualizations(df: pd.DataFrame, kpis: Dict[str, Any]):
     # Separateur visuel avant la section visualisations
     st.markdown("---")
     
+    # DEBUG: Log available columns
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"\n{'='*60}")
+    logger.info("RENDER ENHANCED VISUALIZATIONS - DEBUG")
+    logger.info(f"DataFrame columns: {list(df.columns)}")
+    logger.info(f"DataFrame shape: {df.shape}")
+    logger.info(f"{'='*60}\n")
+    
     # Titre de section moderne sans emoji
     st.markdown("""
     <div style="text-align: center; margin: 2rem 0 1.5rem 0;">
@@ -1089,28 +1098,70 @@ def render_enhanced_visualizations(df: pd.DataFrame, kpis: Dict[str, Any]):
     </div>
     """, unsafe_allow_html=True)
     
-    # Vérifier si le dataset a les colonnes enrichies
-    has_enriched_data = 'Thème principal' in df.columns or 'Incident principal' in df.columns
+    # Vérifier les colonnes disponibles pour les visualisations
+    # Support pour colonnes enrichies ET colonnes standard
+    has_theme_data = (
+        'Thème principal' in df.columns or 
+        'topics' in df.columns or 
+        'category' in df.columns or
+        'theme' in df.columns
+    )
     
-    if has_enriched_data:
-        # Afficher les graphiques enrichis en colonnes
+    has_incident_data = (
+        'Incident principal' in df.columns or 
+        'incident' in df.columns or
+        'category' in df.columns
+    )
+    
+    # Afficher les graphiques si des données de thèmes OU incidents sont disponibles
+    if has_theme_data or has_incident_data:
         col1, col2 = st.columns(2, gap="large")
         
+        # Graphique des thèmes (gauche)
         with col1:
             st.markdown("#### <i class='fas fa-tags'></i> Distribution des Thèmes", unsafe_allow_html=True)
-            fig_theme = create_category_comparison_chart(df, 'Thème principal')
-            if fig_theme:
-                st.plotly_chart(fig_theme, use_container_width=True, key='business_viz_theme_dist')
+            
+            # Déterminer la colonne à utiliser
+            theme_col = None
+            if 'Thème principal' in df.columns:
+                theme_col = 'Thème principal'
+            elif 'topics' in df.columns:
+                theme_col = 'topics'
+            elif 'theme' in df.columns:
+                theme_col = 'theme'
+            elif 'category' in df.columns:
+                theme_col = 'category'
+            
+            if theme_col:
+                fig_theme = create_category_comparison_chart(df, theme_col)
+                if fig_theme:
+                    st.plotly_chart(fig_theme, use_container_width=True, key='business_viz_theme_dist')
+                else:
+                    st.info(f"Aucune donnée disponible dans la colonne '{theme_col}'")
             else:
-                st.info("Distribution des thèmes non disponible")
+                st.info("Colonne de thèmes non détectée")
         
+        # Graphique des incidents (droite)
         with col2:
             st.markdown("#### <i class='fas fa-exclamation-triangle'></i> Distribution des Incidents", unsafe_allow_html=True)
-            fig_incident = create_incident_distribution_chart(df)
-            if fig_incident:
-                st.plotly_chart(fig_incident, use_container_width=True, key='business_viz_incident_dist')
+            
+            # Déterminer la colonne à utiliser
+            incident_col = None
+            if 'Incident principal' in df.columns:
+                incident_col = 'Incident principal'
+            elif 'incident' in df.columns:
+                incident_col = 'incident'
+            elif 'category' in df.columns and not has_theme_data:
+                incident_col = 'category'
+            
+            if incident_col:
+                fig_incident = create_incident_distribution_chart(df)
+                if fig_incident:
+                    st.plotly_chart(fig_incident, use_container_width=True, key='business_viz_incident_dist')
+                else:
+                    st.info(f"Aucune donnée disponible dans la colonne '{incident_col}'")
             else:
-                st.info("Distribution des incidents non disponible")
+                st.info("Colonne d'incidents non détectée")
     
     # Afficher le graphique de sentiment si disponible
     st.markdown("#### <i class='fas fa-chart-pie'></i> Distribution des Sentiments", unsafe_allow_html=True)
