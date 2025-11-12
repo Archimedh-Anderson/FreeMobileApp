@@ -5,7 +5,7 @@
 # ============================================
 
 # CORE FRAMEWORK - Interface utilisateur interactive
-streamlit==1.28.1           # Application web pour dashboards analytiques
+streamlit>=1.30.0           # Application web pour dashboards analytiques
 
 # DATA PROCESSING - Traitement de données massives
 pandas==2.1.1               # Manipulation DataFrames et analyse vectorisée

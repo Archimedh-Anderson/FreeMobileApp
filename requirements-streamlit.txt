@@ -3,8 +3,8 @@
 # ============================================================================
 # Lightweight version without PyTorch/Transformers for faster deployment
 
-# Core Streamlit
-streamlit==1.28.1
+# Core Streamlit (st.switch_page requires >= 1.30.0)
+streamlit==1.51.0
 pandas>=2.2.0
 numpy==1.26.4
 
