@@ -42,6 +42,19 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # ==============================================================================
 
 @st.cache_resource(show_spinner=False)
+def _get_enriched_kpis_display():
+    """Charge le module d'affichage des KPIs enrichis"""
+    try:
+        from components.enriched_kpis_display import render_enriched_kpis_summary
+        return {
+            'render_enriched_kpis_summary': render_enriched_kpis_summary,
+            'available': True
+        }
+    except Exception as e:
+        logger.warning(f"Enriched KPIs display error: {e}")
+        return {'available': False}
+
+@st.cache_resource(show_spinner=False)
 def _get_role_selector():
     """Charge le role selector avec cache"""
     try:
@@ -1203,8 +1216,29 @@ def _display_business_dashboard(df):
         ekv = kpis_system['ekv']
         ekv.render_enhanced_visualizations(df_business, business_kpis)
         
+        # Afficher les KPIs enrichis du dataset d'entraînement
+        _display_enriched_training_kpis()
+        
     except Exception as e:
         logger.warning(f"Business dashboard error: {e}")
+
+def _display_enriched_training_kpis():
+    """Affiche les KPIs du dataset enrichi d'entraînement"""
+    enriched_kpis_system = _get_enriched_kpis_display()
+    
+    if not enriched_kpis_system.get('available'):
+        return
+    
+    try:
+        st.markdown("---")
+        st.markdown("## 📚 KPIs du Dataset d'Entraînement Enrichi")
+        st.caption("Métriques du dataset utilisé pour l'entraînement des modèles")
+        
+        render_enriched_kpis_summary = enriched_kpis_system['render_enriched_kpis_summary']
+        render_enriched_kpis_summary()
+        
+    except Exception as e:
+        logger.warning(f"Enriched training KPIs error: {e}")
 
 def _prepare_df_for_business_kpis(df: pd.DataFrame) -> pd.DataFrame:
     """Prépare DataFrame pour KPIs business"""

@@ -1,0 +1,116 @@
+{
+  "total_tweets": 3500,
+  "date_traitement": "2025-11-12 08:54:20",
+  "themes": {
+    "FIBRE": {
+      "count": 1545,
+      "percentage": 44.14,
+      "avg_confidence": 0.81
+    },
+    "SAV": {
+      "count": 724,
+      "percentage": 20.69,
+      "avg_confidence": 0.78
+    },
+    "autre": {
+      "count": 552,
+      "percentage": 15.77,
+      "avg_confidence": 0.5
+    },
+    "FACTURE": {
+      "count": 288,
+      "percentage": 8.23,
+      "avg_confidence": 0.79
+    },
+    "TV": {
+      "count": 166,
+      "percentage": 4.74,
+      "avg_confidence": 0.77
+    },
+    "MOBILE": {
+      "count": 120,
+      "percentage": 3.43,
+      "avg_confidence": 0.78
+    },
+    "RESEAU": {
+      "count": 74,
+      "percentage": 2.11,
+      "avg_confidence": 0.77
+    },
+    "RESILIATION": {
+      "count": 21,
+      "percentage": 0.6,
+      "avg_confidence": 0.77
+    },
+    "ACTIVATION": {
+      "count": 10,
+      "percentage": 0.29,
+      "avg_confidence": 0.8
+    }
+  },
+  "incidents": {
+    "aucun": {
+      "count": 1477,
+      "percentage": 42.2,
+      "avg_confidence": 0.5
+    },
+    "information": {
+      "count": 623,
+      "percentage": 17.8,
+      "avg_confidence": 0.69
+    },
+    "technique": {
+      "count": 534,
+      "percentage": 15.26,
+      "avg_confidence": 0.68
+    },
+    "incident_reseau": {
+      "count": 354,
+      "percentage": 10.11,
+      "avg_confidence": 0.66
+    },
+    "processus_sav": {
+      "count": 270,
+      "percentage": 7.71,
+      "avg_confidence": 0.68
+    },
+    "facturation": {
+      "count": 148,
+      "percentage": 4.23,
+      "avg_confidence": 0.66
+    },
+    "livraison": {
+      "count": 94,
+      "percentage": 2.69,
+      "avg_confidence": 0.67
+    }
+  },
+  "reclamations": {
+    "Non": {
+      "count": 1941,
+      "percentage": 55.46
+    },
+    "Oui": {
+      "count": 1559,
+      "percentage": 44.54
+    }
+  },
+  "responsables": {
+    "service_client": {
+      "count": 2370,
+      "percentage": 67.71
+    },
+    "service_technique": {
+      "count": 888,
+      "percentage": 25.37
+    },
+    "service_commercial": {
+      "count": 148,
+      "percentage": 4.23
+    },
+    "service_logistique": {
+      "count": 94,
+      "percentage": 2.69
+    }
+  }
+}

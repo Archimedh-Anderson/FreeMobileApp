@@ -1670,9 +1670,26 @@ def _display_business_dashboard_mistral(df, report):
                         delta=f"{urgent_pct:.1f}%"
                     )
         
+        # Afficher les KPIs enrichis du dataset d'entraînement
+        _display_enriched_training_kpis_mistral()
+        
     except Exception as e:
         logger.error(f"Erreur dashboard business: {e}")
         st.warning("Certains KPIs avancés ne sont pas disponibles", icon="⚠️")
+
+def _display_enriched_training_kpis_mistral():
+    """Affiche les KPIs du dataset enrichi d'entraînement pour Mistral"""
+    try:
+        from components.enriched_kpis_display import render_enriched_kpis_summary
+        
+        st.markdown("---")
+        st.markdown("## 📚 KPIs du Dataset d'Entraînement Enrichi")
+        st.caption("Métriques du dataset utilisé pour l'entraînement des modèles")
+        
+        render_enriched_kpis_summary()
+        
+    except Exception as e:
+        logger.warning(f"Enriched training KPIs error: {e}")
 
 def _render_export_section(df, report):
     """Section export avec vérification permissions"""
