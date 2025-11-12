@@ -37,27 +37,20 @@ COLORS = {
 
 
 def render_kpi_comparison_header():
-    """Affiche l'en-tête de la section comparaison KPI"""
+    """Affiche l'en-tête de la section comparaison KPI - Version simplifiée"""
     st.markdown("""
-    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-                padding: 2rem; 
-                border-radius: 15px; 
-                margin-bottom: 2rem;
-                box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
-        <div style="text-align: center;">
-            <h1 style="color: white; 
-                       font-size: 2.5rem; 
-                       margin: 0 0 0.5rem 0; 
-                       font-weight: 800;">
-                📊 Comparaison KPI
-            </h1>
-            <p style="color: rgba(255,255,255,0.95); 
-                     font-size: 1.1rem; 
-                     margin: 0;
-                     font-weight: 500;">
-                Référence Historique vs Analyse Actuelle
-            </p>
-        </div>
+    <div style="text-align: center; margin-bottom: 2rem;">
+        <h1 style="color: #1a202c; 
+                   font-size: 2rem; 
+                   margin: 0 0 0.5rem 0; 
+                   font-weight: 700;">
+            📊 Comparaison KPI
+        </h1>
+        <p style="color: #718096; 
+                 font-size: 1rem; 
+                 margin: 0;">
+            Référence Historique vs Analyse Actuelle
+        </p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -81,20 +74,44 @@ def calculate_business_kpis(df: pd.DataFrame) -> Dict[str, Any]:
     
     total_tweets = len(df)
     
-    # Détecter la colonne de réclamations
+    # Détecter la colonne de réclamations avec logging pour debug
     reclamations_count = 0
+    
+    logger.info(f"\n=== DEBUG KPI CALCULATION ===")
+    logger.info(f"Total tweets: {total_tweets}")
+    logger.info(f"Columns available: {list(df.columns)}")
     
     if 'réclamations' in df.columns:
         # Colonne enrichie
-        reclamations_count = int((df['réclamations'].str.lower() == 'oui').sum())
+        logger.info(f"Using 'réclamations' column")
+        logger.info(f"Sample values: {df['réclamations'].head().tolist()}")
+        reclamations_count = int((df['réclamations'].astype(str).str.lower() == 'oui').sum())
+        logger.info(f"Reclamations count (enriched): {reclamations_count}")
     elif 'is_claim' in df.columns:
-        # Colonne legacy
-        reclamations_count = int((df['is_claim'].astype(str).str.lower().isin(['1', 'oui', 'yes', 'true'])).sum())
+        # Colonne legacy - priorité pour Mistral qui utilise is_claim = 'oui'
+        logger.info(f"Using 'is_claim' column")
+        logger.info(f"Sample values: {df['is_claim'].head().tolist()}")
+        logger.info(f"Value types: {df['is_claim'].dtype}")
+        
+        # Convertir en string pour comparaison uniforme
+        is_claim_str = df['is_claim'].astype(str).str.lower().str.strip()
+        reclamations_mask = is_claim_str.isin(['1', 'oui', 'yes', 'true'])
+        reclamations_count = int(reclamations_mask.sum())
+        
+        logger.info(f"Reclamations count (is_claim): {reclamations_count}")
+        logger.info(f"Sample matches: {df[reclamations_mask]['is_claim'].head().tolist()}")
     elif 'category' in df.columns:
         # Détection par catégorie
+        logger.info(f"Using 'category' column")
         reclamations_count = int(df['category'].astype(str).str.contains('réclamation|claim|complaint', case=False, na=False).sum())
+        logger.info(f"Reclamations count (category): {reclamations_count}")
+    else:
+        logger.warning("No reclamations column found!")
     
     reclamations_rate = (reclamations_count / total_tweets * 100) if total_tweets > 0 else 0.0
+    
+    logger.info(f"Final rate: {reclamations_rate:.2f}%")
+    logger.info(f"=== END DEBUG ===")
     
     return {
         'total_tweets': total_tweets,
@@ -140,121 +157,121 @@ def get_training_kpis() -> Optional[Dict[str, Any]]:
 
 def render_comparison_metrics(training_kpis: Dict[str, Any], business_kpis: Dict[str, Any]):
     """
-    Affiche les métriques de comparaison en cartes st.metric.
+    Affiche les métriques de comparaison en cartes simplifiées et lisibles.
     
     Args:
         training_kpis: KPIs du dataset d'entraînement
         business_kpis: KPIs du fichier actuel
     """
-    st.markdown("### 📈 Métriques Comparatives")
-    
-    col1, col2, col3 = st.columns(3, gap="large")
+    col1, col2, col3 = st.columns(3, gap="medium")
     
     # Calcul de la différence
     diff_rate = business_kpis['reclamations_rate'] - training_kpis['reclamations_rate']
     diff_count = business_kpis['reclamations_count'] - training_kpis['reclamations_count']
     
-    # Carte 1: Taux Historique
+    # Carte 1: Taux Historique - Version simplifiée
     with col1:
         st.markdown(f"""
-        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-                    padding: 1.5rem; 
-                    border-radius: 12px; 
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        <div style="background: #f7fafc; 
+                    padding: 2rem 1.5rem; 
+                    border-radius: 8px; 
+                    border-left: 4px solid #667eea;
                     text-align: center;">
-            <div style="color: rgba(255,255,255,0.9); 
-                        font-size: 0.85rem; 
+            <div style="color: #667eea; 
+                        font-size: 0.75rem; 
                         font-weight: 600; 
                         text-transform: uppercase; 
-                        letter-spacing: 1px; 
-                        margin-bottom: 0.5rem;">
-                📚 Référence Historique
+                        letter-spacing: 1.5px; 
+                        margin-bottom: 1rem;">
+                📚 RÉFÉRENCE HISTORIQUE
             </div>
-            <div style="color: white; 
-                        font-size: 3rem; 
-                        font-weight: 800; 
-                        margin: 0.5rem 0;">
-                {training_kpis['reclamations_rate']:.1f}<span style="font-size: 1.5rem;">%</span>
+            <div style="color: #1a202c; 
+                        font-size: 3.5rem; 
+                        font-weight: 700; 
+                        line-height: 1;
+                        margin-bottom: 1rem;">
+                {training_kpis['reclamations_rate']:.1f}<span style="font-size: 2rem; color: #4a5568;">%</span>
             </div>
-            <div style="color: rgba(255,255,255,0.85); 
-                        font-size: 0.9rem; 
-                        margin-top: 0.5rem;">
+            <div style="color: #4a5568; 
+                        font-size: 0.9rem;">
                 {training_kpis['reclamations_count']:,} réclamations<br>
                 sur {training_kpis['total_tweets']:,} tweets
             </div>
         </div>
         """, unsafe_allow_html=True)
     
-    # Carte 2: Taux Actuel
+    # Carte 2: Taux Actuel - Version simplifiée avec couleur conditionnelle
     with col2:
         # Couleur conditionnelle
         if diff_rate < 0:
-            color_from, color_to = "#28a745", "#20c997"  # Vert (amélioration)
+            border_color = "#28a745"  # Vert (amélioration)
+            bg_color = "#f0fdf4"
         elif diff_rate > 0:
-            color_from, color_to = "#dc3545", "#c82333"  # Rouge (dégradation)
+            border_color = "#dc3545"  # Rouge (dégradation)
+            bg_color = "#fef2f2"
         else:
-            color_from, color_to = "#17a2b8", "#138496"  # Bleu (stable)
+            border_color = "#17a2b8"  # Bleu (stable)
+            bg_color = "#f0f9ff"
         
         st.markdown(f"""
-        <div style="background: linear-gradient(135deg, {color_from} 0%, {color_to} 100%); 
-                    padding: 1.5rem; 
-                    border-radius: 12px; 
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        <div style="background: {bg_color}; 
+                    padding: 2rem 1.5rem; 
+                    border-radius: 8px; 
+                    border-left: 4px solid {border_color};
                     text-align: center;">
-            <div style="color: rgba(255,255,255,0.9); 
-                        font-size: 0.85rem; 
+            <div style="color: {border_color}; 
+                        font-size: 0.75rem; 
                         font-weight: 600; 
                         text-transform: uppercase; 
-                        letter-spacing: 1px; 
-                        margin-bottom: 0.5rem;">
-                🔴 Analyse Actuelle
+                        letter-spacing: 1.5px; 
+                        margin-bottom: 1rem;">
+                🔴 ANALYSE ACTUELLE
             </div>
-            <div style="color: white; 
-                        font-size: 3rem; 
-                        font-weight: 800; 
-                        margin: 0.5rem 0;">
-                {business_kpis['reclamations_rate']:.1f}<span style="font-size: 1.5rem;">%</span>
+            <div style="color: #1a202c; 
+                        font-size: 3.5rem; 
+                        font-weight: 700; 
+                        line-height: 1;
+                        margin-bottom: 1rem;">
+                {business_kpis['reclamations_rate']:.1f}<span style="font-size: 2rem; color: #4a5568;">%</span>
             </div>
-            <div style="color: rgba(255,255,255,0.85); 
-                        font-size: 0.9rem; 
-                        margin-top: 0.5rem;">
+            <div style="color: #4a5568; 
+                        font-size: 0.9rem;">
                 {business_kpis['reclamations_count']:,} réclamations<br>
                 sur {business_kpis['total_tweets']:,} tweets
             </div>
         </div>
         """, unsafe_allow_html=True)
     
-    # Carte 3: Différence
+    # Carte 3: Différence - Version simplifiée
     with col3:
-        delta_symbol = "📈" if diff_rate > 0 else "📉" if diff_rate < 0 else "➡️"
+        delta_symbol = "↑" if diff_rate > 0 else "↓" if diff_rate < 0 else "→"
         delta_color = COLORS['danger'] if diff_rate > 0 else COLORS['success'] if diff_rate < 0 else COLORS['neutral']
         delta_text = f"{abs(diff_rate):.1f}%"
         delta_direction = "+" if diff_rate > 0 else "-" if diff_rate < 0 else ""
         
         st.markdown(f"""
         <div style="background: white; 
-                    padding: 1.5rem; 
-                    border-radius: 12px; 
-                    border: 3px solid {delta_color};
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+                    padding: 2rem 1.5rem; 
+                    border-radius: 8px; 
+                    border: 2px solid {delta_color};
                     text-align: center;">
             <div style="color: #4a5568; 
-                        font-size: 0.85rem; 
+                        font-size: 0.75rem; 
                         font-weight: 600; 
                         text-transform: uppercase; 
-                        letter-spacing: 1px; 
-                        margin-bottom: 0.5rem;">
-                {delta_symbol} Différence
+                        letter-spacing: 1.5px; 
+                        margin-bottom: 1rem;">
+                {delta_symbol} DIFFÉRENCE
             </div>
             <div style="color: {delta_color}; 
-                        font-size: 3rem; 
-                        font-weight: 800; 
-                        margin: 0.5rem 0;">
+                        font-size: 3.5rem; 
+                        font-weight: 700; 
+                        line-height: 1;
+                        margin-bottom: 1rem;">
                 {delta_direction}{delta_text}
             </div>
             <div style="color: #718096; 
-                        font-size: 0.9rem; 
-                        margin-top: 0.5rem;">
+                        font-size: 0.9rem;">
                 {delta_direction}{diff_count:,} réclamations<br>
                 de différence
             </div>
