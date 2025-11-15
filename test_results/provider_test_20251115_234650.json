@@ -1,0 +1,60 @@
+{
+  "summary": {
+    "total": 7,
+    "passed": 4,
+    "failed": 0,
+    "warnings": 0,
+    "skipped": 2
+  },
+  "results": [
+    {
+      "test_num": 1,
+      "test_name": "Ollama Available",
+      "status": "PASS",
+      "details": "Service running with 12 models",
+      "timestamp": "2025-11-15T23:46:37.432476"
+    },
+    {
+      "test_num": 2,
+      "test_name": "Ollama Unavailable",
+      "status": "SKIP",
+      "details": "Service is running",
+      "timestamp": "2025-11-15T23:46:37.455009"
+    },
+    {
+      "test_num": 3,
+      "test_name": "Gemini Configured",
+      "status": "INFO",
+      "details": "No API key",
+      "timestamp": "2025-11-15T23:46:37.459425"
+    },
+    {
+      "test_num": 4,
+      "test_name": "Gemini Fallback",
+      "status": "PASS",
+      "details": "Graceful degradation",
+      "timestamp": "2025-11-15T23:46:42.371006"
+    },
+    {
+      "test_num": 5,
+      "test_name": "No Providers",
+      "status": "SKIP",
+      "details": "Providers available",
+      "timestamp": "2025-11-15T23:46:42.410602"
+    },
+    {
+      "test_num": 6,
+      "test_name": "Module Loading",
+      "status": "PASS",
+      "details": "4 modules loaded",
+      "timestamp": "2025-11-15T23:46:50.773831"
+    },
+    {
+      "test_num": 7,
+      "test_name": "Availability Functions",
+      "status": "PASS",
+      "details": "Functions executed",
+      "timestamp": "2025-11-15T23:46:50.823371"
+    }
+  ]
+}
