@@ -734,9 +734,142 @@ Temps: {detail['time']}
 {detail['desc']}
         """)
         
+        st.markdown("---")
+        
+        # Modern Provider Selection Button
+        st.markdown("""
+        <div style="margin-bottom: 1rem;">
+            <h3 style="font-size: 1.15rem; font-weight: 700; color: #1E293B; margin-bottom: 0.75rem; 
+                        display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fas fa-microchip" style="color: #667eea;"></i>
+                Fournisseur de Traitement
+            </h3>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Check provider availability
+        mistral_status = _check_mistral_availability()
+        gemini_status = _check_gemini_availability()
+        
+        # Provider selection with modern toggle buttons
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            mistral_available = mistral_status.get('available', False)
+            mistral_button_style = """
+                background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+                color: white;
+                border: none;
+                padding: 0.75rem 1rem;
+                border-radius: 12px;
+                font-weight: 600;
+                font-size: 0.875rem;
+                box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+                cursor: pointer;
+                width: 100%;
+                transition: all 0.3s;
+            """ if mistral_available else """
+                background: linear-gradient(135deg, #E5E7EB 0%, #D1D5DB 100%);
+                color: #6B7280;
+                border: none;
+                padding: 0.75rem 1rem;
+                border-radius: 12px;
+                font-weight: 600;
+                font-size: 0.875rem;
+                cursor: not-allowed;
+                width: 100%;
+                opacity: 0.6;
+            """
+            
+            if st.button(
+                "🖥️ Local (Mistral)",
+                key="provider_mistral",
+                disabled=not mistral_available,
+                use_container_width=True
+            ):
+                st.session_state.selected_provider = 'mistral'
+                st.rerun()
+            
+            # Status indicator
+            if mistral_available:
+                st.success("✓ Disponible", icon="✅")
+            else:
+                st.warning("⚠ Non disponible", icon="⚠️")
+        
+        with col2:
+            gemini_available = gemini_status.get('available', False)
+            
+            if st.button(
+                "☁️ Cloud (Gemini)",
+                key="provider_gemini",
+                disabled=not gemini_available,
+                use_container_width=True
+            ):
+                st.session_state.selected_provider = 'gemini'
+                st.rerun()
+            
+            # Status indicator
+            if gemini_available:
+                st.success("✓ Disponible", icon="✅")
+            else:
+                st.info("ℹ Configuration requise", icon="ℹ️")
+        
+        # Show selected provider
+        selected_provider = st.session_state.get('selected_provider', 'auto')
+        
+        if selected_provider == 'mistral' and mistral_available:
+            st.markdown("""
+            <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.05) 100%);
+                        padding: 0.75rem 1rem; border-radius: 10px; margin-top: 0.5rem;
+                        border-left: 4px solid #10B981;">
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fas fa-check-circle" style="color: #10B981;"></i>
+                    <span style="font-weight: 600; color: #059669; font-size: 0.875rem;">
+                        Traitement local avec Mistral AI
+                    </span>
+                </div>
+                <p style="margin: 0.5rem 0 0 0; font-size: 0.8rem; color: #047857;">
+                    Vos données restent sur votre machine
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+        elif selected_provider == 'gemini' and gemini_available:
+            st.markdown("""
+            <div style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(37, 99, 235, 0.05) 100%);
+                        padding: 0.75rem 1rem; border-radius: 10px; margin-top: 0.5rem;
+                        border-left: 4px solid #3B82F6;">
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fas fa-cloud" style="color: #3B82F6;"></i>
+                    <span style="font-weight: 600; color: #2563EB; font-size: 0.875rem;">
+                        Traitement cloud avec Google Gemini
+                    </span>
+                </div>
+                <p style="margin: 0.5rem 0 0 0; font-size: 0.8rem; color: #1D4ED8;">
+                    Précision maximale avec l'IA de Google
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            # Auto mode or no provider available
+            st.markdown("""
+            <div style="background: linear-gradient(135deg, rgba(100, 116, 139, 0.1) 0%, rgba(71, 85, 105, 0.05) 100%);
+                        padding: 0.75rem 1rem; border-radius: 10px; margin-top: 0.5rem;
+                        border-left: 4px solid #64748B;">
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fas fa-magic" style="color: #64748B;"></i>
+                    <span style="font-weight: 600; color: #475569; font-size: 0.875rem;">
+                        Sélection automatique
+                    </span>
+                </div>
+                <p style="margin: 0.5rem 0 0 0; font-size: 0.8rem; color: #334155;">
+                    Le meilleur fournisseur sera choisi automatiquement
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+        
         st.session_state.config = {
             'mode': mode,
-            'provider': 'auto'  # Auto-select based on availability
+            'provider': selected_provider
         }
         
         st.markdown("---")
