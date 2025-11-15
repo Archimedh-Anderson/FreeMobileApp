@@ -68,6 +68,21 @@ parent_dir = os.path.dirname(current_dir)
 if parent_dir not in sys.path:
     sys.path.insert(0, parent_dir)
 
+# Imports du ProviderManager et du composant provider_selector
+try:
+    from services.provider_manager import provider_manager
+    from components.provider_selector import (
+        render_provider_selector,
+        render_provider_configuration_modal
+    )
+    PROVIDER_MANAGER_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"ProviderManager non disponible: {e}")
+    provider_manager = None
+    render_provider_selector = None
+    render_provider_configuration_modal = None
+    PROVIDER_MANAGER_AVAILABLE = False
+
 # ==============================================================================
 # LAZY LOADING - OPTIMISATION CRITIQUE
 # ==============================================================================
@@ -736,146 +751,144 @@ Temps: {detail['time']}
         
         st.markdown("---")
         
-        # Modern Provider Selection Button
-        st.markdown("""
-        <div style="margin-bottom: 1rem;">
-            <h3 style="font-size: 1.15rem; font-weight: 700; color: #1E293B; margin-bottom: 0.75rem; 
-                        display: flex; align-items: center; gap: 0.5rem;">
-                <i class="fas fa-microchip" style="color: #667eea;"></i>
-                Fournisseur de Traitement
-            </h3>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # Check provider availability
-        mistral_status = _check_mistral_availability()
-        gemini_status = _check_gemini_availability()
-        
-        # Provider selection with modern toggle buttons
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            mistral_available = mistral_status.get('available', False)
-            mistral_button_style = """
-                background: linear-gradient(135deg, #10B981 0%, #059669 100%);
-                color: white;
-                border: none;
-                padding: 0.75rem 1rem;
-                border-radius: 12px;
-                font-weight: 600;
-                font-size: 0.875rem;
-                box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-                cursor: pointer;
-                width: 100%;
-                transition: all 0.3s;
-            """ if mistral_available else """
-                background: linear-gradient(135deg, #E5E7EB 0%, #D1D5DB 100%);
-                color: #6B7280;
-                border: none;
-                padding: 0.75rem 1rem;
-                border-radius: 12px;
-                font-weight: 600;
-                font-size: 0.875rem;
-                cursor: not-allowed;
-                width: 100%;
-                opacity: 0.6;
-            """
+        # Modern Provider Selection with ProviderManager
+        if PROVIDER_MANAGER_AVAILABLE and render_provider_selector:
+            # Utiliser le nouveau composant provider_selector
+            render_provider_selector()
             
-            if st.button(
-                "🖥️ Local (Mistral)",
-                key="provider_mistral",
-                disabled=not mistral_available,
-                use_container_width=True
-            ):
-                st.session_state.selected_provider = 'mistral'
-                st.rerun()
-            
-            # Status indicator
-            if mistral_available:
-                st.success("✓ Disponible", icon="✅")
+            # Mapper le provider sélectionné au format attendu
+            selected_provider_name = st.session_state.get('selected_provider')
+            if selected_provider_name:
+                if "Mistral" in selected_provider_name:
+                    selected_provider = 'mistral'
+                elif "Gemini" in selected_provider_name:
+                    selected_provider = 'gemini'
+                else:
+                    selected_provider = 'auto'
             else:
-                st.warning("⚠ Non disponible", icon="⚠️")
-        
-        with col2:
-            gemini_available = gemini_status.get('available', False)
+                selected_provider = 'auto'
             
-            if st.button(
-                "☁️ Cloud (Gemini)",
-                key="provider_gemini",
-                disabled=not gemini_available,
-                use_container_width=True
-            ):
-                st.session_state.selected_provider = 'gemini'
-                st.rerun()
-            
-            # Status indicator
-            if gemini_available:
-                st.success("✓ Disponible", icon="✅")
-            else:
-                st.info("ℹ Configuration requise", icon="ℹ️")
-        
-        # Show selected provider
-        selected_provider = st.session_state.get('selected_provider', 'auto')
-        
-        if selected_provider == 'mistral' and mistral_available:
-            st.markdown("""
-            <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.05) 100%);
-                        padding: 0.75rem 1rem; border-radius: 10px; margin-top: 0.5rem;
-                        border-left: 4px solid #10B981;">
-                <div style="display: flex; align-items: center; gap: 0.5rem;">
-                    <i class="fas fa-check-circle" style="color: #10B981;"></i>
-                    <span style="font-weight: 600; color: #059669; font-size: 0.875rem;">
-                        Traitement local avec Mistral AI
-                    </span>
-                </div>
-                <p style="margin: 0.5rem 0 0 0; font-size: 0.8rem; color: #047857;">
-                    Vos données restent sur votre machine
-                </p>
-            </div>
-            """, unsafe_allow_html=True)
-        elif selected_provider == 'gemini' and gemini_available:
-            st.markdown("""
-            <div style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(37, 99, 235, 0.05) 100%);
-                        padding: 0.75rem 1rem; border-radius: 10px; margin-top: 0.5rem;
-                        border-left: 4px solid #3B82F6;">
-                <div style="display: flex; align-items: center; gap: 0.5rem;">
-                    <i class="fas fa-cloud" style="color: #3B82F6;"></i>
-                    <span style="font-weight: 600; color: #2563EB; font-size: 0.875rem;">
-                        Traitement cloud avec Google Gemini
-                    </span>
-                </div>
-                <p style="margin: 0.5rem 0 0 0; font-size: 0.8rem; color: #1D4ED8;">
-                    Précision maximale avec l'IA de Google
-                </p>
-            </div>
-            """, unsafe_allow_html=True)
+            st.session_state.config = {
+                'mode': mode,
+                'provider': selected_provider
+            }
         else:
-            # Auto mode or no provider available
+            # Fallback vers l'ancien système si ProviderManager n'est pas disponible
             st.markdown("""
-            <div style="background: linear-gradient(135deg, rgba(100, 116, 139, 0.1) 0%, rgba(71, 85, 105, 0.05) 100%);
-                        padding: 0.75rem 1rem; border-radius: 10px; margin-top: 0.5rem;
-                        border-left: 4px solid #64748B;">
-                <div style="display: flex; align-items: center; gap: 0.5rem;">
-                    <i class="fas fa-magic" style="color: #64748B;"></i>
-                    <span style="font-weight: 600; color: #475569; font-size: 0.875rem;">
-                        Sélection automatique
-                    </span>
-                </div>
-                <p style="margin: 0.5rem 0 0 0; font-size: 0.8rem; color: #334155;">
-                    Le meilleur fournisseur sera choisi automatiquement
-                </p>
+            <div style="margin-bottom: 1rem;">
+                <h3 style="font-size: 1.15rem; font-weight: 700; color: #1E293B; margin-bottom: 0.75rem; 
+                            display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fas fa-microchip" style="color: #667eea;"></i>
+                    Fournisseur de Traitement
+                </h3>
             </div>
             """, unsafe_allow_html=True)
-        
-        st.session_state.config = {
-            'mode': mode,
-            'provider': selected_provider
-        }
+            
+            # Check provider availability (ancien système)
+            mistral_status = _check_mistral_availability()
+            gemini_status = _check_gemini_availability()
+            
+            # Provider selection with modern toggle buttons
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                mistral_available = mistral_status.get('available', False)
+                
+                if st.button(
+                    "<i class='fas fa-desktop'></i> Local (Mistral)",
+                    key="provider_mistral",
+                    disabled=not mistral_available,
+                    use_container_width=True
+                ):
+                    st.session_state.selected_provider = 'mistral'
+                    st.rerun()
+                
+                # Status indicator
+                if mistral_available:
+                    st.success("Disponible", icon="✓")
+                else:
+                    st.warning("Non disponible", icon="⚠")
+            
+            with col2:
+                gemini_available = gemini_status.get('available', False)
+                
+                if st.button(
+                    "<i class='fas fa-cloud'></i> Cloud (Gemini)",
+                    key="provider_gemini",
+                    disabled=not gemini_available,
+                    use_container_width=True
+                ):
+                    st.session_state.selected_provider = 'gemini'
+                    st.rerun()
+                
+                # Status indicator
+                if gemini_available:
+                    st.success("Disponible", icon="✓")
+                else:
+                    st.info("Configuration requise", icon="ℹ")
+            
+            # Show selected provider
+            selected_provider = st.session_state.get('selected_provider', 'auto')
+            
+            if selected_provider == 'mistral' and mistral_available:
+                st.markdown("""
+                <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.05) 100%);
+                            padding: 0.75rem 1rem; border-radius: 10px; margin-top: 0.5rem;
+                            border-left: 4px solid #10B981;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fas fa-check-circle" style="color: #10B981;"></i>
+                        <span style="font-weight: 600; color: #059669; font-size: 0.875rem;">
+                            Traitement local avec Mistral AI
+                        </span>
+                    </div>
+                    <p style="margin: 0.5rem 0 0 0; font-size: 0.8rem; color: #047857;">
+                        Vos données restent sur votre machine
+                    </p>
+                </div>
+                """, unsafe_allow_html=True)
+            elif selected_provider == 'gemini' and gemini_available:
+                st.markdown("""
+                <div style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(37, 99, 235, 0.05) 100%);
+                            padding: 0.75rem 1rem; border-radius: 10px; margin-top: 0.5rem;
+                            border-left: 4px solid #3B82F6;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fas fa-cloud" style="color: #3B82F6;"></i>
+                        <span style="font-weight: 600; color: #2563EB; font-size: 0.875rem;">
+                            Traitement cloud avec Google Gemini
+                        </span>
+                    </div>
+                    <p style="margin: 0.5rem 0 0 0; font-size: 0.8rem; color: #1D4ED8;">
+                        Précision maximale avec l'IA de Google
+                    </p>
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                # Auto mode or no provider available
+                st.markdown("""
+                <div style="background: linear-gradient(135deg, rgba(100, 116, 139, 0.1) 0%, rgba(71, 85, 105, 0.05) 100%);
+                            padding: 0.75rem 1rem; border-radius: 10px; margin-top: 0.5rem;
+                            border-left: 4px solid #64748B;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fas fa-magic" style="color: #64748B;"></i>
+                        <span style="font-weight: 600; color: #475569; font-size: 0.875rem;">
+                            Sélection automatique
+                        </span>
+                    </div>
+                    <p style="margin: 0.5rem 0 0 0; font-size: 0.8rem; color: #334155;">
+                        Le meilleur fournisseur sera choisi automatiquement
+                    </p>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            st.session_state.config = {
+                'mode': mode,
+                'provider': selected_provider
+            }
         
         st.markdown("---")
         
         # Paramètres de nettoyage
-        with st.expander("⚙️ Paramètres de Nettoyage", expanded=False):
+        with st.expander("<i class='fas fa-cog'></i> Paramètres de Nettoyage", expanded=False):
             st.caption("Options de prétraitement des données")
             
             remove_duplicates = st.checkbox("Supprimer les doublons", value=True)
@@ -893,16 +906,20 @@ Temps: {detail['time']}
             }
         
         # Informations système (en bas de sidebar)
-        with st.expander("ℹ️ Informations Système", expanded=False):
+        with st.expander("<i class='fas fa-info-circle'></i> Informations Système", expanded=False):
             _render_system_info_tab()
         
         # Gestion des rôles
-        with st.expander("👥 Gestion des Rôles", expanded=False):
+        with st.expander("<i class='fas fa-users'></i> Gestion des Rôles", expanded=False):
             _render_role_management_tab()
         
         # Footer compact
         st.markdown("---")
         st.caption(f"<i class='fas fa-code'></i> Version 4.5 | {datetime.now().strftime('%Y-%m-%d')}", unsafe_allow_html=True)
+        
+        # Afficher la modal de configuration si nécessaire
+        if PROVIDER_MANAGER_AVAILABLE and render_provider_configuration_modal:
+            render_provider_configuration_modal()
 
 def _check_mistral_availability() -> dict:
     """
@@ -1562,7 +1579,7 @@ def _render_role_management_tab():
         st.info("🔒 Système de rôles non disponible")
         return
     
-    st.markdown("**👥 Rôle Utilisateur**")
+    st.markdown("**<i class='fas fa-users'></i> Rôle Utilisateur**", unsafe_allow_html=True)
     
     try:
         initialize_role_system = role_system['initialize_role_system']
@@ -2156,6 +2173,91 @@ def _perform_classification(df, text_col, mode, use_optimized):
     status = st.empty()
     
     try:
+        # ✅ VÉRIFICATION CRITIQUE: S'assurer qu'au moins un provider est disponible
+        if PROVIDER_MANAGER_AVAILABLE and provider_manager:
+            if not provider_manager.is_any_provider_available():
+                st.error("""
+                <div style="
+                    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+                    padding: 2rem;
+                    border-radius: 16px;
+                    border-left: 4px solid #EF4444;
+                    box-shadow: 0 8px 32px rgba(239, 68, 68, 0.25);
+                    margin: 1rem 0;
+                ">
+                    <h3 style="color: #991B1B; font-weight: 700; margin-bottom: 1rem;
+                               display: flex; align-items: center; gap: 0.75rem;">
+                        <i class="fas fa-exclamation-triangle" style="color: #EF4444; font-size: 1.5rem;"></i>
+                        ❌ Aucun Provider de Classification Disponible
+                    </h3>
+                    <p style="color: #7F1D1D; margin-bottom: 1.5rem; line-height: 1.6; font-size: 1rem;">
+                        Aucun provider de classification n'est disponible ou configuré. 
+                        Veuillez configurer au moins l'un des éléments suivants:
+                    </p>
+                    <div style="display: grid; gap: 1rem; margin-bottom: 1.5rem;">
+                        <div style="
+                            background: rgba(16, 185, 129, 0.1);
+                            border-left: 3px solid #10B981;
+                            padding: 1rem;
+                            border-radius: 8px;
+                        ">
+                            <h4 style="color: #059669; font-weight: 700; margin-bottom: 0.5rem;
+                                       display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="fas fa-server" style="color: #10B981;"></i>
+                                1. Mistral Local (Ollama)
+                            </h4>
+                            <p style="color: #047857; margin: 0; font-size: 0.9375rem;">
+                                <strong>Installation:</strong>
+                            </p>
+                            <ul style="color: #047857; margin: 0.5rem 0 0 1.5rem; font-size: 0.9375rem;">
+                                <li>Téléchargez Ollama: <a href="https://ollama.ai" target="_blank" style="color: #059669;">https://ollama.ai</a></li>
+                                <li>Installez le modèle: <code style="background: rgba(5, 150, 105, 0.2); padding: 0.2rem 0.4rem; border-radius: 4px;">ollama pull mistral</code></li>
+                                <li>Lancez le serveur: <code style="background: rgba(5, 150, 105, 0.2); padding: 0.2rem 0.4rem; border-radius: 4px;">ollama serve</code></li>
+                            </ul>
+                            <p style="color: #047857; margin: 0.5rem 0 0 0; font-size: 0.9375rem;">
+                                <strong>Ou utilisez Docker:</strong>
+                            </p>
+                            <code style="
+                                background: rgba(5, 150, 105, 0.2);
+                                padding: 0.75rem 1rem;
+                                border-radius: 6px;
+                                display: block;
+                                margin-top: 0.5rem;
+                                color: #065F46;
+                                font-size: 0.875rem;
+                            ">docker run -d --name ollama -p 11434:11434 ollama/ollama<br>docker exec ollama ollama pull mistral</code>
+                        </div>
+                        <div style="
+                            background: rgba(59, 130, 246, 0.1);
+                            border-left: 3px solid #3B82F6;
+                            padding: 1rem;
+                            border-radius: 8px;
+                        ">
+                            <h4 style="color: #2563EB; font-weight: 700; margin-bottom: 0.5rem;
+                                       display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="fas fa-cloud" style="color: #3B82F6;"></i>
+                                2. Gemini API (Google Cloud)
+                            </h4>
+                            <p style="color: #1D4ED8; margin: 0; font-size: 0.9375rem;">
+                                <strong>Étapes:</strong>
+                            </p>
+                            <ul style="color: #1D4ED8; margin: 0.5rem 0 0 1.5rem; font-size: 0.9375rem;">
+                                <li>Créez un compte Google Cloud: <a href="https://console.cloud.google.com" target="_blank" style="color: #2563EB;">https://console.cloud.google.com</a></li>
+                                <li>Générez une clé API: <a href="https://ai.google.dev/api" target="_blank" style="color: #2563EB;">https://ai.google.dev/api</a></li>
+                                <li>Ajoutez la clé dans le fichier <code style="background: rgba(37, 99, 235, 0.2); padding: 0.2rem 0.4rem; border-radius: 4px;">.env</code> à la racine du projet</li>
+                                <li>Ou configurez-la via le sidebar → Configuration Provider</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <p style="color: #7F1D1D; margin: 0; font-size: 0.9375rem;">
+                        <strong>💡 Astuce:</strong> Utilisez le bouton "⚙️ Configuration Provider" dans le sidebar pour configurer facilement vos providers.
+                    </p>
+                </div>
+                """, unsafe_allow_html=True)
+                status.empty()
+                progress_bar.empty()
+                st.stop()
+        
         status.info("Chargement des modules...")
         progress_bar.progress(0.1)
         
@@ -2163,6 +2265,47 @@ def _perform_classification(df, text_col, mode, use_optimized):
         selected_provider = st.session_state.get('selected_api_provider', 'mistral')
         config = st.session_state.get('config', {})
         selected_provider = config.get('provider', selected_provider)
+        
+        # Mapper depuis le nom du provider si nécessaire (nouveau système)
+        if PROVIDER_MANAGER_AVAILABLE and provider_manager:
+            selected_provider_name = st.session_state.get('selected_provider')
+            if selected_provider_name:
+                if "Mistral" in selected_provider_name:
+                    selected_provider = 'mistral'
+                elif "Gemini" in selected_provider_name:
+                    selected_provider = 'gemini'
+                else:
+                    selected_provider = config.get('provider', 'mistral')
+            
+            # Vérifier que le provider sélectionné est disponible
+            if selected_provider == 'mistral':
+                mistral_status = provider_manager.get_provider_status("Mistral Local (Ollama)")
+                if not mistral_status or not mistral_status.available:
+                    st.warning("<i class='fas fa-exclamation-triangle'></i> Mistral n'est pas disponible. Basculement vers Gemini ou fallback...", icon="⚠")
+                    # Essayer Gemini
+                    gemini_status = provider_manager.get_provider_status("Gemini API (Google Cloud)")
+                    if gemini_status and gemini_status.available:
+                        selected_provider = 'gemini'
+                        logger.info("Basculement vers Gemini car Mistral n'est pas disponible")
+                    else:
+                        st.error("❌ Aucun provider disponible. Impossible de classifier.")
+                        status.empty()
+                        progress_bar.empty()
+                        st.stop()
+            elif selected_provider == 'gemini':
+                gemini_status = provider_manager.get_provider_status("Gemini API (Google Cloud)")
+                if not gemini_status or not gemini_status.available:
+                    st.warning("<i class='fas fa-exclamation-triangle'></i> Gemini n'est pas disponible. Basculement vers Mistral ou fallback...", icon="⚠")
+                    # Essayer Mistral
+                    mistral_status = provider_manager.get_provider_status("Mistral Local (Ollama)")
+                    if mistral_status and mistral_status.available:
+                        selected_provider = 'mistral'
+                        logger.info("Basculement vers Mistral car Gemini n'est pas disponible")
+                    else:
+                        st.error("❌ Aucun provider disponible. Impossible de classifier.")
+                        status.empty()
+                        progress_bar.empty()
+                        st.stop()
         
         logger.info(f"Provider sélectionné: {selected_provider}")
         

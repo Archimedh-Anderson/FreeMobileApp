@@ -102,3 +102,4 @@ echo ""
 # Start Streamlit application
 streamlit run streamlit_app/app.py --server.port=8502 --server.headless=true
 
+

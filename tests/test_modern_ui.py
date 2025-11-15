@@ -89,3 +89,4 @@ def test_normalize_kpi_fields_alternative_columns():
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
 
+

@@ -55,3 +55,4 @@ loguru>=0.7.2
 # - Ollama is NOT included (local only, not available on Streamlit Cloud)
 # - BERT models require transformers/torch (use requirements-academic.txt locally)
 
+
