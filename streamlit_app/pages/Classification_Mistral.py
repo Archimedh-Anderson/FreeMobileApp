@@ -692,25 +692,6 @@ def _render_sidebar_complete():
     les paramètres de nettoyage et la gestion des rôles utilisateurs.
     """
     with st.sidebar:
-        # Provider de Classification - Section principale
-        st.markdown("""
-        <div style="margin-bottom: 1.5rem;">
-            <h3 style="font-size: 1.25rem; font-weight: 700; color: #1E293B; margin-bottom: 0.5rem; 
-                        display: flex; align-items: center; gap: 0.5rem;">
-                <i class="fas fa-plug" style="color: #667eea;"></i>
-                Provider de Classification
-            </h3>
-            <p style="color: #64748B; font-size: 0.875rem; margin: 0;">Sélectionnez votre modèle d'IA préféré</p>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        st.markdown("---")
-        
-        # Afficher les cartes de providers
-        selected_provider = _render_provider_cards()
-        
-        st.markdown("---")
-        
         # Mode de classification
         st.markdown("""
         <div style="margin-bottom: 1rem;">
@@ -755,7 +736,7 @@ Temps: {detail['time']}
         
         st.session_state.config = {
             'mode': mode,
-            'provider': selected_provider
+            'provider': 'auto'  # Auto-select based on availability
         }
         
         st.markdown("---")
