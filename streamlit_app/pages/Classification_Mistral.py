@@ -692,54 +692,35 @@ def _render_sidebar_complete():
     les paramètres de nettoyage et la gestion des rôles utilisateurs.
     """
     with st.sidebar:
-        # Header professionnel
+        # Provider de Classification - Section principale
         st.markdown("""
-        <div style="background: linear-gradient(135deg, #1E3A5F 0%, #2E4A6F 100%);
-                    padding: 1.5rem 1rem; border-radius: 16px; margin-bottom: 1.5rem;
-                    box-shadow: 0 8px 24px rgba(30, 58, 95, 0.35);">
-            <div style="text-align: center;">
-                <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">
-                    <i class="fas fa-cog"></i>
-                </div>
-                <h2 style="color: white; margin: 0; font-size: 1.4rem; font-weight: 800;">
-                    Configuration
-                </h2>
-                <div style="background: rgba(255,255,255,0.2); color: white; padding: 0.4rem 1.2rem;
-                            border-radius: 20px; margin-top: 0.75rem; font-size: 0.7rem; font-weight: 700;">
-                    PARAMÈTRES SYSTÈME
-                </div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # Statut Système avec nouvelle fonction
-        st.markdown("""
-        <div style="background: linear-gradient(135deg, #F8F9FA 0%, #EAECF0 100%);
-                    padding: 1rem; border-radius: 12px; margin-bottom: 1rem;
-                    border-left: 4px solid #2E86DE;">
-            <h3 style="margin: 0; color: var(--primary); font-size: 1.1rem; font-weight: 700;">
-                <i class="fas fa-info-circle"></i> Statut Système
+        <div style="margin-bottom: 1.5rem;">
+            <h3 style="font-size: 1.25rem; font-weight: 700; color: #1E293B; margin-bottom: 0.5rem; 
+                        display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fas fa-plug" style="color: #667eea;"></i>
+                Provider de Classification
             </h3>
+            <p style="color: #64748B; font-size: 0.875rem; margin: 0;">Sélectionnez votre modèle d'IA préféré</p>
         </div>
         """, unsafe_allow_html=True)
         
-        # Utiliser la nouvelle fonction pour afficher le statut système
-        _render_system_status()
-        
         st.markdown("---")
         
-        # ONGLET 1: CLASSIFICATEURS DISPONIBLES
-        _render_classifiers_tab()
-        
-        st.markdown("---")
-        
-        # Provider de Classification avec nouvelle fonction
+        # Afficher les cartes de providers
         selected_provider = _render_provider_cards()
         
         st.markdown("---")
         
         # Mode de classification
-        st.markdown("### Mode de Classification")
+        st.markdown("""
+        <div style="margin-bottom: 1rem;">
+            <h3 style="font-size: 1.15rem; font-weight: 700; color: #1E293B; margin-bottom: 0.5rem; 
+                        display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fas fa-sliders-h" style="color: #667eea;"></i>
+                Mode de Classification
+            </h3>
+        </div>
+        """, unsafe_allow_html=True)
         
         mode = st.radio(
             "Sélectionnez votre stratégie:",
@@ -779,8 +760,8 @@ Temps: {detail['time']}
         
         st.markdown("---")
         
-        # ONGLET 2: CLEANING PARAMETERS (RESTAURÉ)
-        with st.expander("Paramètres de Nettoyage", expanded=False):
+        # Paramètres de nettoyage
+        with st.expander("⚙️ Paramètres de Nettoyage", expanded=False):
             st.caption("Options de prétraitement des données")
             
             remove_duplicates = st.checkbox("Supprimer les doublons", value=True)
@@ -797,17 +778,17 @@ Temps: {detail['time']}
                 'convert_emojis': convert_emojis
             }
         
-        # ONGLET 3: INFORMATIONS SYSTÈME (RESTAURÉ)
-        _render_system_info_tab()
+        # Informations système (en bas de sidebar)
+        with st.expander("ℹ️ Informations Système", expanded=False):
+            _render_system_info_tab()
         
+        # Gestion des rôles
+        with st.expander("👥 Gestion des Rôles", expanded=False):
+            _render_role_management_tab()
+        
+        # Footer compact
         st.markdown("---")
-        
-        # ONGLET 4: ROLE MANAGEMENT (RESTAURÉ)
-        _render_role_management_tab()
-        
-        # Footer
-        st.markdown("---")
-        st.caption(f"<i class='fas fa-code'></i> Version 4.5 Final | {datetime.now().strftime('%Y-%m-%d')}", unsafe_allow_html=True)
+        st.caption(f"<i class='fas fa-code'></i> Version 4.5 | {datetime.now().strftime('%Y-%m-%d')}", unsafe_allow_html=True)
 
 def _check_mistral_availability() -> dict:
     """
@@ -1421,59 +1402,57 @@ def _render_classifiers_tab():
 
 def _render_system_info_tab():
     """
-    Affiche les informations système et de performance.
+    Affiche les informations système et de performance (version simplifiée).
     
     Présente les détails techniques du modèle BERT chargé, notamment
     le device utilisé (CPU/GPU), la taille des batches et le nom du modèle.
     """
-    with st.expander("Informations Système & Performance", expanded=False):
-        try:
-            modules = _load_classification_modules()
-            if modules.get('available'):
-                # Vérifier si BERT est disponible
-                if 'BERTClassifier' in modules.get('modules', {}):
-                    BERTClassifier = modules.get('BERTClassifier')
-                    if BERTClassifier:
-                        bert = BERTClassifier(use_gpu=False)
-                        info = bert.get_model_info()
-                        
-                        st.markdown("**<i class='fas fa-brain'></i> Modèle BERT**", unsafe_allow_html=True)
-                        
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            device_icon = "<i class='fas fa-microchip'></i>" if info['device'].upper() == "CPU" else "<i class='fas fa-gpu-card'></i>"
-                            st.caption(f"{device_icon} **Device:** {info['device'].upper()}")
-                            st.caption(f"<i class='fas fa-layer-group'></i> **Batch:** {info['batch_size']}", unsafe_allow_html=True)
-                        with col2:
-                            model_short = info['model_name'].split('/')[-1][:25]
-                            st.caption(f"<i class='fas fa-cube'></i> **Modèle:** {model_short}", unsafe_allow_html=True)
-                    else:
-                        st.info("BERT Classifier non disponible (PyTorch requis)")
+    try:
+        modules = _load_classification_modules()
+        if modules.get('available'):
+            # Vérifier si BERT est disponible
+            if 'BERTClassifier' in modules.get('modules', {}):
+                BERTClassifier = modules.get('modules', {}).get('BERTClassifier')
+                if BERTClassifier:
+                    bert = BERTClassifier(use_gpu=False)
+                    info = bert.get_model_info()
+                    
+                    st.markdown("**<i class='fas fa-brain'></i> Modèle BERT**", unsafe_allow_html=True)
+                    
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        device_icon = "<i class='fas fa-microchip'></i>" if info['device'].upper() == "CPU" else "<i class='fas fa-server'></i>"
+                        st.caption(f"{device_icon} **Device:** {info['device'].upper()}", unsafe_allow_html=True)
+                        st.caption(f"<i class='fas fa-layer-group'></i> **Batch:** {info['batch_size']}", unsafe_allow_html=True)
+                    with col2:
+                        model_short = info['model_name'].split('/')[-1][:25]
+                        st.caption(f"<i class='fas fa-cube'></i> **Modèle:** {model_short}", unsafe_allow_html=True)
                 else:
                     st.info("BERT Classifier non disponible (PyTorch requis)")
-                    st.caption("Installez PyTorch avec: pip install torch transformers")
-                
-        except Exception as e:
-            st.warning(f"Informations système non disponibles: {str(e)[:100]}")
+            else:
+                st.info("BERT Classifier non disponible (PyTorch requis)")
+                st.caption("Installez PyTorch avec: `pip install torch transformers`")
+            
+    except Exception as e:
+        st.warning(f"Informations système non disponibles: {str(e)[:100]}")
 
 def _render_role_management_tab():
     """
-    Affiche l'onglet de gestion des rôles utilisateurs.
+    Affiche la gestion des rôles utilisateurs (version simplifiée).
     
-    Permet de changer de rôle et affiche les permissions associées à chaque rôle
-    ainsi que les fonctionnalités disponibles.
+    Permet de changer de rôle et affiche les permissions associées.
     """
     role_system = _load_role_system()
     
     if not role_system.get('available'):
+        st.info("🔒 Système de rôles non disponible")
         return
     
-    with st.expander("Gestion des Rôles", expanded=False):
-        st.markdown("#### Rôle Utilisateur & Permissions")
-        
-        try:
-            initialize_role_system = role_system['initialize_role_system']
-            get_current_role = role_system['get_current_role']
+    st.markdown("**👥 Rôle Utilisateur**")
+    
+    try:
+        initialize_role_system = role_system['initialize_role_system']
+        get_current_role = role_system['get_current_role']
             
             role_manager, role_ui_manager = initialize_role_system()
             roles = role_manager.get_all_roles()
