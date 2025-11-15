@@ -17,22 +17,22 @@
 
 ---
 
-## 📋 Table des Matières
+## [TOC] Table des Matières
 
-1. [Vue d'ensemble du Projet](#-vue-densemble-du-projet)
-2. [Contexte et Problématique](#-contexte-et-problématique)
-3. [Architecture Technique](#-architecture-technique)
-4. [Méthodologie de Classification](#-méthodologie-de-classification)
-5. [Installation](#-installation)
-6. [Utilisation](#-utilisation)
-7. [Résultats et Métriques](#-résultats-et-métriques)
-8. [Documentation Technique](#-documentation-technique)
-9. [Contributions](#-contributions)
-10. [Licence](#-licence)
+1. [Vue d'ensemble du Projet](#vue-densemble-du-projet)
+2. [Contexte et Problématique](#contexte-et-problématique)
+3. [Architecture Technique](#architecture-technique)
+4. [Méthodologie de Classification](#méthodologie-de-classification)
+5. [Installation](#installation)
+6. [Utilisation](#utilisation)
+7. [Résultats et Métriques](#résultats-et-métriques)
+8. [Documentation Technique](#documentation-technique)
+9. [Contributions](#contributions)
+10. [Licence](#licence)
 
 ---
 
-## 🎯 Vue d'ensemble du Projet
+## [OVERVIEW] Vue d'ensemble du Projet
 
 **FreeMobilaChat** est une plateforme intelligente d'analyse de sentiment conçue spécifiquement pour l'industrie des télécommunications. Ce projet de mémoire de Master démontre l'application de techniques avancées de Traitement du Langage Naturel (NLP) et d'Apprentissage Automatique (ML) pour analyser les retours clients provenant des interactions sur les réseaux sociaux.
 
@@ -77,7 +77,7 @@ Ce projet contribue à la recherche en NLP appliquée en démontrant :
 
 ---
 
-## 🏗️ Architecture Technique
+## [ARCHITECTURE] Architecture Technique
 
 ### Vue d'Ensemble de l'Architecture
 
@@ -329,7 +329,7 @@ graph LR
 
 ---
 
-## 🧠 Méthodologie de Classification
+## [METHODOLOGY] Méthodologie de Classification
 
 ### Architecture Multi-Modèles
 
@@ -375,7 +375,7 @@ Le système classifie chaque tweet selon 7 dimensions :
 
 ---
 
-## 📦 Installation
+## [SETUP] Installation
 
 ### Prérequis
 

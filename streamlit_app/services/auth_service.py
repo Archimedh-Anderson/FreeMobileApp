@@ -12,7 +12,9 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Backend API URL - Use environment variable or default to localhost for local development
+# For demo purposes, allow offline authentication
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
+OFFLINE_MODE = os.getenv("OFFLINE_MODE", "true").lower() == "true"  # Enable offline demo mode
 
 
 class AuthService:
@@ -47,6 +49,19 @@ class AuthService:
         Returns:
             Tuple of (success, message, user_data)
         """
+        # Offline mode for demo/testing
+        if OFFLINE_MODE:
+            st.session_state.authenticated = True
+            user_data = {
+                "email": email,
+                "full_name": full_name,
+                "role": role
+            }
+            st.session_state.user = user_data
+            st.session_state.token = f"demo_token_{email}"
+            AuthService.load_permissions()
+            return True, "Registration successful!", user_data
+        
         try:
             response = requests.post(
                 f"{BACKEND_URL}/api/auth/signup",
@@ -91,6 +106,31 @@ class AuthService:
         Returns:
             Tuple of (success, message, user_data)
         """
+        # Offline mode for demo/testing - any non-empty credentials work
+        if OFFLINE_MODE:
+            if not email or not password:
+                return False, "Please fill in all fields", None
+            
+            st.session_state.authenticated = True
+            # Determine role based on email patterns
+            role = "manager"
+            if "analyst" in email.lower():
+                role = "data_analyst"
+            elif "agent" in email.lower():
+                role = "agent_sav"
+            elif "client" in email.lower():
+                role = "client_sav"
+            
+            user_data = {
+                "email": email,
+                "full_name": email.split("@")[0].replace(".", " ").title(),
+                "role": role
+            }
+            st.session_state.user = user_data
+            st.session_state.token = f"demo_token_{email}"
+            AuthService.load_permissions()
+            return True, "Login successful!", user_data
+        
         try:
             response = requests.post(
                 f"{BACKEND_URL}/api/auth/login",
@@ -241,12 +281,12 @@ class AuthService:
     
     @staticmethod
     def get_role_icon(role: str) -> str:
-        """Get icon for each role"""
+        """Get Font Awesome icon for each role (academic-appropriate)"""
         role_icons = {
-            "client_sav": "👤",
-            "agent_sav": "🎧",
-            "data_analyst": "📊",
-            "manager": "👔"
+            "client_sav": '<i class="fas fa-user" style="color: #2E86DE;"></i>',
+            "agent_sav": '<i class="fas fa-headset" style="color: #10AC84;"></i>',
+            "data_analyst": '<i class="fas fa-chart-bar" style="color: #F79F1F;"></i>',
+            "manager": '<i class="fas fa-user-tie" style="color: #EE5A6F;"></i>'
         }
-        return role_icons.get(role, "👤")
+        return role_icons.get(role, '<i class="fas fa-user"></i>')
 
