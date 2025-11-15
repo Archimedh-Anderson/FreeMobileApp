@@ -34,6 +34,8 @@ htmlcov/
 *.cover
 .hypothesis/
 *.log
+coverage.xml
+.pytest_cache/
 
 # IDEs
 .vscode/
@@ -42,6 +44,7 @@ htmlcov/
 *.swo
 *~
 .DS_Store
+Thumbs.db
 
 # Logs
 logs/*.log
@@ -50,28 +53,26 @@ logs/*.log
 # Environment variables
 .env
 .env.local
+.streamlit/secrets.toml
 
 # Jupyter Notebooks
 .ipynb_checkpoints
 
 # Data (optionnel - décommenter si nécessaire)
 # storage/datasets/*.csv
+data/raw/*.csv
+data/processed/*.csv
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+# Modèles et résultats
+models/evaluation/*.png
+models/evaluation/*.json
+!models/evaluation/.gitkeep
 
 # Rapports temporaires
 error_report.json
 
-# Classifier cache
-.classifier_cache/
-*.pkl
-
-# Temporary files
-temp_*.py
-*_temp.py
-integrate_*.py
-
-# Database files (keep in repo but can be regenerated)
-*.db
-
-# Test results
-test_results.json
-*_results.json
+# OS
+.DS_Store
+Thumbs.db

@@ -23,6 +23,7 @@ httpx==0.25.0
 # LLM APIs (without torch/transformers)
 anthropic>=0.8.0
 openai>=1.0.0
+google-generativeai>=0.8.0
 
 # Utilities
 python-dotenv==1.0.0
@@ -32,6 +33,7 @@ tenacity==8.2.3
 openpyxl==3.1.2
 pydantic==2.4.2
 pydantic-settings==2.0.3
+chardet==5.2.0
 
 # Authentication & Security
 bcrypt==4.0.1

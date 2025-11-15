@@ -29,22 +29,25 @@ class MultiModelOrchestrator:
     Optimisé pour RTX 5060 + i9-13900H + 32GB RAM
     """
     
-    def __init__(self, mode: str = 'balanced'):
+    def __init__(self, mode: str = 'balanced', provider: str = 'mistral'):
         """
         Initialise l'orchestrateur
         
         Args:
             mode: 'fast' | 'balanced' | 'precise'
+            provider: 'mistral' | 'gemini' - Provider LLM à utiliser
         """
         self.mode = mode
+        self.provider = provider  # 'mistral' ou 'gemini'
         self.models_loaded = False
         
-        logger.info(f" Orchestrateur multi-modèle: Mode {mode.upper()}")
+        logger.info(f" Orchestrateur multi-modèle: Mode {mode.upper()}, Provider {provider.upper()}")
         
         # Chargement lazy des modèles
         self.bert = None
         self.rules = None
         self.mistral = None
+        self.gemini = None
         self.parallel_processor = None
     
     def load_models(self, progress_callback=None):
@@ -78,16 +81,35 @@ class MultiModelOrchestrator:
             logger.info(" Classificateur par règles chargé")
             
             if progress_callback:
-                progress_callback("Chargement Mistral...", 0.5)
+                provider_name = "Gemini" if self.provider == 'gemini' else "Mistral"
+                progress_callback(f"Chargement {provider_name}...", 0.5)
             
-            # 3. Mistral (pour mode balanced et precise)
+            # 3. Mistral ou Gemini (pour mode balanced et precise)
             if self.mode in ['balanced', 'precise']:
-                from services.mistral_classifier import MistralClassifier
-                self.mistral = MistralClassifier(
-                    batch_size=50,
-                    temperature=0.1
-                )
-                logger.info(" Mistral chargé")
+                if self.provider == 'gemini':
+                    try:
+                        from services.gemini_classifier import GeminiClassifier
+                        self.gemini = GeminiClassifier(
+                            batch_size=50,
+                            temperature=0.1
+                        )
+                        logger.info(" Gemini chargé")
+                    except Exception as e:
+                        logger.warning(f"Erreur chargement Gemini: {e}. Fallback vers Mistral...")
+                        self.provider = 'mistral'  # Fallback vers Mistral
+                        from services.mistral_classifier import MistralClassifier
+                        self.mistral = MistralClassifier(
+                            batch_size=50,
+                            temperature=0.1
+                        )
+                        logger.info(" Mistral chargé (fallback)")
+                else:
+                    from services.mistral_classifier import MistralClassifier
+                    self.mistral = MistralClassifier(
+                        batch_size=50,
+                        temperature=0.1
+                    )
+                    logger.info(" Mistral chargé")
             
             if progress_callback:
                 progress_callback("Chargement Parallélisateur...", 0.7)
@@ -181,11 +203,12 @@ class MultiModelOrchestrator:
         logger.info(f" Phase 2: {total_tweets} tweets en {phase2_time:.1f}s ({total_tweets/phase2_time:.0f} tweets/s)")
         
         # ═══════════════════════════════════════════════════════════
-        # PHASE 3: Mistral sur ÉCHANTILLON intelligent (Mode Balanced)
+        # PHASE 3: Mistral/Gemini sur ÉCHANTILLON intelligent (Mode Balanced)
         # ═══════════════════════════════════════════════════════════
         if self.mode in ['balanced', 'precise']:
+            provider_name = "Gemini" if self.provider == 'gemini' else "Mistral"
             if progress_callback:
-                progress_callback("Phase 3: Mistral sur échantillon stratifié...", 0.5)
+                progress_callback(f"Phase 3: {provider_name} sur échantillon stratifié...", 0.5)
             
             phase3_start = time.time()
             
@@ -196,36 +219,43 @@ class MultiModelOrchestrator:
                 sample_df = results  # Mode precise: tous
             
             sample_size = len(sample_df)
-            logger.info(f" Phase 3: Mistral sur {sample_size} tweets ({sample_size/total_tweets*100:.1f}%)...")
+            logger.info(f" Phase 3: {provider_name} sur {sample_size} tweets ({sample_size/total_tweets*100:.1f}%)...")
             
             if progress_callback:
-                progress_callback(f"Phase 3: Classification Mistral de {sample_size} tweets...", 0.6)
+                progress_callback(f"Phase 3: Classification {provider_name} de {sample_size} tweets...", 0.6)
             
-            # Classification Mistral en parallèle
-            mistral_results = self._classify_mistral_parallel(
-                sample_df,
-                text_column,
-                progress_callback
-            )
+            # Classification Mistral ou Gemini en parallèle
+            if self.provider == 'gemini' and self.gemini:
+                llm_results = self._classify_gemini_parallel(
+                    sample_df,
+                    text_column,
+                    progress_callback
+                )
+            else:
+                llm_results = self._classify_mistral_parallel(
+                    sample_df,
+                    text_column,
+                    progress_callback
+                )
             
-            # Fusionner résultats Mistral
-            for idx in mistral_results.index:
+            # Fusionner résultats LLM
+            for idx in llm_results.index:
                 if idx in results.index:
                     # Topics
-                    if 'categorie' in mistral_results.columns:
-                        results.loc[idx, 'topics'] = mistral_results.loc[idx, 'categorie']
+                    if 'categorie' in llm_results.columns:
+                        results.loc[idx, 'topics'] = llm_results.loc[idx, 'categorie']
                     
                     # Incident
-                    if 'incident' in mistral_results.columns:
-                        results.loc[idx, 'incident'] = mistral_results.loc[idx, 'incident']
+                    if 'incident' in llm_results.columns:
+                        results.loc[idx, 'incident'] = llm_results.loc[idx, 'incident']
                     
                     # Confidence
-                    if 'score_confiance' in mistral_results.columns:
-                        results.loc[idx, 'confidence'] = mistral_results.loc[idx, 'score_confiance']
+                    if 'score_confiance' in llm_results.columns:
+                        results.loc[idx, 'confidence'] = llm_results.loc[idx, 'score_confiance']
                     
-                    # is_claim validé par Mistral
-                    if 'is_claim' in mistral_results.columns:
-                        results.loc[idx, 'is_claim'] = mistral_results.loc[idx, 'is_claim']
+                    # is_claim validé par LLM
+                    if 'is_claim' in llm_results.columns:
+                        results.loc[idx, 'is_claim'] = llm_results.loc[idx, 'is_claim']
             
             phase3_time = time.time() - phase3_start
             logger.info(f" Phase 3: {sample_size} tweets en {phase3_time:.1f}s ({sample_size/phase3_time:.0f} tweets/s)")
@@ -373,6 +403,41 @@ class MultiModelOrchestrator:
         
         return combined
     
+    def _classify_gemini_parallel(self,
+                                   df: pd.DataFrame,
+                                   text_column: str,
+                                   progress_callback=None) -> pd.DataFrame:
+        """
+        Classification Gemini en parallèle (optimisé pour i9)
+        
+        Args:
+            df: DataFrame échantillon
+            text_column: Colonne de texte
+            progress_callback: Callback progression
+            
+        Returns:
+            DataFrame avec résultats Gemini
+        """
+        if not self.gemini:
+            logger.error("Gemini non initialisé")
+            return df
+        
+        # Gemini gère déjà le batch processing, pas besoin de parallélisation complexe
+        try:
+            result = self.gemini.classify_dataframe(
+                df,
+                text_column,
+                show_progress=False
+            )
+            return result
+        except Exception as e:
+            logger.error(f"Erreur classification Gemini: {e}")
+            # Fallback: retourner df original avec valeurs par défaut
+            df['categorie'] = 'autre'
+            df['incident'] = 'non classifié'
+            df['score_confiance'] = 0.5
+            return df
+    
     def _classify_chunk_mistral(self, chunk: pd.DataFrame, text_column: str) -> pd.DataFrame:
         """
         Classifie un chunk avec Mistral
@@ -482,7 +547,8 @@ class MultiModelOrchestrator:
 def create_optimized_orchestrator(
     mode: str = 'balanced',
     gpu_available: bool = True,
-    cpu_cores: int = 8
+    cpu_cores: int = 8,
+    provider: str = 'mistral'
 ) -> MultiModelOrchestrator:
     """
     Factory pour créer un orchestrateur optimisé
@@ -491,16 +557,18 @@ def create_optimized_orchestrator(
         mode: Mode de classification
         gpu_available: GPU disponible
         cpu_cores: Nombre de cores CPU
+        provider: 'mistral' ou 'gemini' - Provider LLM à utiliser
         
     Returns:
         Orchestrateur configuré
     """
     logger.info(f"️ Création orchestrateur optimisé:")
     logger.info(f"   Mode: {mode}")
+    logger.info(f"   Provider: {provider}")
     logger.info(f"   GPU: {gpu_available}")
     logger.info(f"   CPU cores: {cpu_cores}")
     
-    orchestrator = MultiModelOrchestrator(mode=mode)
+    orchestrator = MultiModelOrchestrator(mode=mode, provider=provider)
     
     return orchestrator
 

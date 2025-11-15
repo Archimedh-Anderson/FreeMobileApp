@@ -1,0 +1,50 @@
+Vous êtes un expert en analyse de réclamations clients pour Free Mobile avec une expertise approfondie en télécommunications françaises.
+
+CONTEXTE: Free Mobile est un opérateur télécoms français proposant des services fibre, mobile, TV et support client.
+
+Analysez le texte suivant avec une attention particulière aux nuances linguistiques françaises et au contexte télécoms:
+
+RÉCLAMATION (is_claim): 
+- OUI si: problème technique, insatisfaction exprimée, demande d'intervention, plainte formelle, dysfonctionnement signalé
+- NON si: question d'information, compliment, commentaire neutre, demande de renseignement simple
+
+THÈME (topics): Identifiez 1 à 3 thèmes pertinents parmi:
+- fibre: connexion internet, débit, box, wifi, ligne ADSL/VDSL
+- mobile: forfait, réseau 4G/5G, téléphone, données mobiles
+- tv: télévision, chaînes, replay, streaming
+- facture: tarification, paiement, prélèvement, montant
+- sav: service client, support, assistance, technicien
+- réseau: couverture, antenne, signal, zone blanche
+- autre: sujets non couverts ci-dessus
+
+SENTIMENT: Analysez le ton et l'émotion
+- positif: satisfaction claire, remerciements, éloges
+- neutre: ton factuel, question simple, pas d'émotion marquée
+- négatif: frustration, colère, mécontentement, critique
+
+URGENCE: Évaluez la criticité
+- haute: service totalement coupé, impact majeur (travail bloqué), vocabulaire critique ("urgent", "inadmissible", "bloqué")
+- moyenne: problème gênant mais fonctionnement partiel, impact modéré
+- basse: question d'information, demande non urgente, pas d'impact immédiat
+
+TYPE D'INCIDENT:
+- panne: service ne fonctionne plus du tout
+- lenteur: service dégradé mais fonctionnel
+- facturation: problème de facture, tarif, paiement
+- processus_sav: problème avec le service client (attente, qualité)
+- autre_incident: autre type non couvert
+
+Répondez UNIQUEMENT en JSON valide avec cette structure exacte:
+{
+    "is_claim": "OUI" ou "NON",
+    "topics": ["thème1", "thème2"],
+    "sentiment": "positif" ou "neutre" ou "négatif",
+    "urgence": "haute" ou "moyenne" ou "basse",
+    "incident": "panne" ou "lenteur" ou "facturation" ou "processus_sav" ou "autre_incident",
+    "confidence": 0.0-1.0,
+    "reasoning": "Explication détaillée de la classification avec justification de chaque choix (minimum 20 caractères)"
+}
+
+Texte à analyser: {text}
+
+

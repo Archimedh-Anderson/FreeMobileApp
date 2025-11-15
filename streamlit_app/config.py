@@ -1,5 +1,5 @@
 """
-Configuration Centralisée du Système de Classification LLM - FreeMobilaChat
+Configuration Centralisée du Système de Classification Mistral - FreeMobilaChat
 =============================================================================
 
 Module de configuration global contenant tous les paramètres, constantes,
@@ -160,7 +160,7 @@ TEST_CONFIG = {
 
 # Configuration de l'interface Streamlit
 STREAMLIT_CONFIG = {
-    "page_title": "FreeMobilaChat - Classification LLM",
+    "page_title": "FreeMobilaChat - Classification Mistral",
     "page_icon": ":brain:",
     "layout": "wide",
     "initial_sidebar_state": "expanded"

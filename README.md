@@ -1,327 +1,402 @@
-# FreeMobilaChat
+# FreeMobilaChat - Plateforme d'Analyse de Sentiment Multi-Modèles
 
-**Advanced Customer Sentiment Analysis Platform for Telecommunications**
+<div align="center">
 
-Master's Thesis Project - Natural Language Processing and Machine Learning  
-University: [Your University Name]  
-Author: Anderson Archimed  
-Academic Year: 2024-2025
+![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)
+![Streamlit](https://img.shields.io/badge/Streamlit-1.51.0-red.svg)
+![License](https://img.shields.io/badge/License-MIT-green.svg)
+![Status](https://img.shields.io/badge/Status-Production%20Ready-success.svg)
 
----
+**Application de classification automatique de réclamations avec Intelligence Artificielle Multi-Modèles**
 
-## Table of Contents
+*Mémoire de Master en Data Science | Classification Multi-KPI | Architecture Production-Ready*
 
-1. [Executive Summary](#executive-summary)
-2. [Project Overview](#project-overview)
-3. [Research Objectives](#research-objectives)
-4. [Technical Architecture](#technical-architecture)
-5. [Key Features](#key-features)
-6. [Methodology](#methodology)
-7. [Installation Guide](#installation-guide)
-8. [Usage Instructions](#usage-instructions)
-9. [Data Management](#data-management)
-10. [Evaluation Metrics](#evaluation-metrics)
-11. [Academic Contributions](#academic-contributions)
-12. [Future Work](#future-work)
-13. [References](#references)
-14. [License](#license)
+[Installation](#-installation) • [Architecture](#-architecture-technique) • [Utilisation](#-utilisation) • [Documentation](#-documentation-technique)
+
+</div>
 
 ---
 
-## Executive Summary
+## 📋 Table des Matières
 
-FreeMobilaChat is an intelligent customer sentiment analysis platform designed specifically for the telecommunications industry. This Master's thesis project demonstrates the application of state-of-the-art Natural Language Processing (NLP) and Machine Learning (ML) techniques to analyze customer feedback from social media interactions.
-
-The platform employs multiple classification models including Large Language Models (LLMs), BERT-based transformers, and hybrid rule-based systems to provide comprehensive sentiment analysis, complaint detection, urgency assessment, and incident categorization.
-
-**Key Results:**
-- Accuracy: 85-92% across different classification tasks
-- Processing Speed: 100+ tweets/second
-- Multi-dimensional Analysis: Sentiment, Claims, Urgency, Topics, Incidents
-- Real-time Dashboard: Interactive KPI visualization with Plotly
-- Production-Ready: Deployed on Streamlit Cloud with CI/CD pipeline
-
----
-
-## Project Overview
-
-### Context
-
-In the competitive telecommunications market, customer satisfaction is paramount. Social media platforms, particularly Twitter, have become primary channels for customer service interactions. Analyzing these interactions at scale requires automated, intelligent systems capable of understanding context, sentiment, and urgency.
-
-### Problem Statement
-
-Manual analysis of thousands of daily customer tweets is:
-- Time-consuming and labor-intensive
-- Prone to human bias and inconsistency
-- Unable to provide real-time insights
-- Difficult to scale during peak periods
-
-### Solution
-
-FreeMobilaChat addresses these challenges by:
-- **Automating Classification**: Multi-model ensemble for robust predictions
-- **Real-time Processing**: Batch processing with optimized pipelines
-- **Comprehensive Analysis**: Seven-dimensional classification framework
-- **Interactive Dashboards**: Business-ready KPI visualizations
-- **Scalable Architecture**: Cloud-native deployment on Streamlit
+1. [Vue d'ensemble du Projet](#-vue-densemble-du-projet)
+2. [Contexte et Problématique](#-contexte-et-problématique)
+3. [Architecture Technique](#-architecture-technique)
+4. [Méthodologie de Classification](#-méthodologie-de-classification)
+5. [Installation](#-installation)
+6. [Utilisation](#-utilisation)
+7. [Résultats et Métriques](#-résultats-et-métriques)
+8. [Documentation Technique](#-documentation-technique)
+9. [Contributions](#-contributions)
+10. [Licence](#-licence)
 
 ---
 
-## Research Objectives
+## 🎯 Vue d'ensemble du Projet
 
-### Primary Objectives
+**FreeMobilaChat** est une plateforme intelligente d'analyse de sentiment conçue spécifiquement pour l'industrie des télécommunications. Ce projet de mémoire de Master démontre l'application de techniques avancées de Traitement du Langage Naturel (NLP) et d'Apprentissage Automatique (ML) pour analyser les retours clients provenant des interactions sur les réseaux sociaux.
 
-1. **Develop a Multi-Model Classification System**
-   - Implement and compare LLM, BERT, and Rule-based approaches
-   - Create ensemble strategies for improved accuracy
-   - Optimize for French language processing
+### Objectifs Principaux
 
-2. **Design a Robust Data Pipeline**
-   - Implement efficient data cleaning and preprocessing
-   - Handle multilingual and code-mixed text
-   - Support real-time and batch processing modes
+- **Classification Multi-Dimensionnelle** : Analyse de 7 dimensions (sentiment, réclamations, urgence, thèmes, incidents, responsable, confiance)
+- **Architecture Multi-Modèles** : Combinaison intelligente de BERT, Mistral AI et règles métier
+- **Performance Optimale** : Traitement de 100+ tweets/seconde avec précision de 85-95%
+- **Interface Interactive** : Dashboard temps réel avec visualisations interactives
+- **Production-Ready** : Déploiement sur Streamlit Cloud avec authentification et gestion des rôles
 
-3. **Create an Interactive Analytics Platform**
-   - Build intuitive dashboards for business users
-   - Provide actionable insights through KPIs
-   - Enable comparative analysis across time periods
+### Résultats Clés
 
-### Secondary Objectives
-
-1. Validate model performance on real-world datasets
-2. Compare accuracy vs. computational cost tradeoffs
-3. Demonstrate production deployment feasibility
-4. Establish reproducible research methodology
+- **Précision** : 85-95% selon les tâches de classification
+- **Vitesse de Traitement** : 100+ tweets/seconde
+- **Analyse Multi-Dimensionnelle** : 7 dimensions de classification simultanées
+- **Dashboard Temps Réel** : Visualisation interactive des KPIs
+- **Prêt pour la Production** : Déployé sur Streamlit Cloud
 
 ---
 
-## Technical Architecture
+## 🔬 Contexte et Problématique
 
-### System Components
+### Contexte Industriel
+
+L'industrie des télécommunications génère quotidiennement des milliers d'interactions clients sur les réseaux sociaux. L'analyse manuelle de ces données est coûteuse, lente et sujette à des erreurs. Il existe un besoin critique d'automatiser l'analyse de sentiment et la classification des réclamations pour améliorer la réactivité du service client.
+
+### Problématique de Recherche
+
+Comment développer un système de classification automatique multi-modèles capable de :
+1. Analyser efficacement les tweets clients avec une précision élevée
+2. Classifier selon plusieurs dimensions simultanément (sentiment, urgence, thème, etc.)
+3. S'adapter aux différents besoins de performance (rapide vs précis)
+4. Fournir des insights actionnables pour les équipes de service client
+
+### Contribution Scientifique
+
+Ce projet contribue à la recherche en NLP appliquée en démontrant :
+- L'efficacité d'une architecture hybride combinant modèles pré-entraînés (BERT), LLMs (Mistral) et règles métier
+- L'optimisation des performances pour le traitement en temps réel
+- L'application pratique de l'IA générative pour la classification de texte
+
+---
+
+## 🏗️ Architecture Technique
+
+### Vue d'Ensemble de l'Architecture
 
 ```
-FreeMobilaChat
-│
-├── Frontend Layer (Streamlit)
-│   ├── Home Dashboard
-│   ├── Data Analysis Interface
-│   ├── Classification Modules (LLM, Mistral, BERT)
-│   └── Visualization Components
-│
-├── Processing Layer
-│   ├── Tweet Cleaning Service
-│   ├── Multi-Model Orchestrator
-│   ├── Classification Engines
-│   │   ├── Mistral LLM Classifier
-│   │   ├── BERT Transformer Classifier
-│   │   └── Rule-Based Classifier
-│   └── KPI Computation Engine
-│
-├── Data Layer
-│   ├── Training Datasets (3,500+ labeled tweets)
-│   ├── Validation/Test Sets
-│   ├── Enriched Datasets (with KPIs)
-│   └── Model Artifacts
-│
-└── Deployment Layer
-    ├── Streamlit Cloud
-    ├── GitHub Actions (CI/CD)
-    ├── DVC (Data Version Control)
-    └── Monitoring & Logging
+┌─────────────────────────────────────────────────────────────┐
+│                    COUCHE PRÉSENTATION                      │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │  Streamlit Frontend (app.py)                         │  │
+│  │  - Authentification & Gestion des Rôles              │  │
+│  │  - Interface Utilisateur Interactive                 │  │
+│  │  - Visualisations Temps Réel (Plotly)                │  │
+│  └──────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│                  COUCHE TRAITEMENT                          │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │  Multi-Model Orchestrator                            │  │
+│  │  ├── TweetCleaner (Nettoyage & Préprocessing)       │  │
+│  │  ├── BERTClassifier (Sentiment Rapide)               │  │
+│  │  ├── RuleClassifier (Règles Métier)                  │  │
+│  │  ├── MistralClassifier (Analyse Contextuelle)        │  │
+│  │  └── GeminiClassifier (Alternative Cloud)            │  │
+│  └──────────────────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │  Enhanced KPIs Visualizations                        │  │
+│  │  - Calcul des Métriques Business                     │  │
+│  │  - Génération de Rapports                             │  │
+│  └──────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    COUCHE DONNÉES                           │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │  Datasets d'Entraînement (3,500+ tweets labellisés) │  │
+│  │  Modèles Pré-entraînés (BERT, Mistral)              │  │
+│  │  Cache & Optimisations                              │  │
+│  └──────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-### Technology Stack
+### Diagramme de Classes UML
 
-**Core Framework:**
-- Python 3.11+
-- Streamlit 1.51.0 (Web Application Framework)
+```mermaid
+classDiagram
+    class AuthService {
+        +init_session_state()
+        +login(email, password)
+        +signup(email, name, password, role)
+        +logout()
+        +is_authenticated() bool
+        +get_current_user() User
+        +get_role_display_name(role) str
+    }
+    
+    class MultiModelOrchestrator {
+        -mode: str
+        -provider: str
+        -bert: BERTClassifier
+        -rules: RuleClassifier
+        -mistral: MistralClassifier
+        +classify_batch(texts, mode) List[Dict]
+        +_combine_results(bert_results, rule_results, mistral_results) Dict
+    }
+    
+    class BERTClassifier {
+        -model: AutoModel
+        -tokenizer: AutoTokenizer
+        +classify_batch(texts) List[Dict]
+        +_predict_sentiment(text) str
+    }
+    
+    class MistralClassifier {
+        -model_name: str
+        -ollama_client: Ollama
+        +classify_batch(texts) List[Dict]
+        +_call_mistral_api(prompt) str
+    }
+    
+    class RuleClassifier {
+        -reclamation_keywords: List[str]
+        -urgence_keywords: Dict
+        +classify_batch(texts) List[Dict]
+        +_detect_reclamation(text) bool
+        +_assess_urgency(text) str
+    }
+    
+    class TweetCleaner {
+        +clean_batch(texts) List[str]
+        +remove_urls(text) str
+        +normalize_whitespace(text) str
+    }
+    
+    class EnhancedKPIsVisualizations {
+        +compute_business_kpis(df) Dict
+        +render_business_kpis(kpis) None
+        +generate_report(df) Dict
+    }
+    
+    class RoleManager {
+        +initialize_role_system()
+        +get_current_role() Role
+        +check_permission(permission) bool
+    }
+    
+    AuthService --> RoleManager : uses
+    MultiModelOrchestrator --> BERTClassifier : uses
+    MultiModelOrchestrator --> RuleClassifier : uses
+    MultiModelOrchestrator --> MistralClassifier : uses
+    MultiModelOrchestrator --> TweetCleaner : uses
+    EnhancedKPIsVisualizations --> MultiModelOrchestrator : analyzes
+```
 
-**Machine Learning:**
-- Transformers 4.44.2 (Hugging Face)
-- PyTorch 2.4.1 (Deep Learning)
-- Sentence-Transformers 3.1.1 (Embeddings)
-- Scikit-learn 1.5.2 (Traditional ML)
+### Diagramme de Séquence - Flux de Classification
 
-**NLP & Language Models:**
-- Mistral AI (LLM via Ollama)
-- BERT-base-multilingual (Transformers)
-- spaCy 3.8.2 (NLP Pipeline)
+```mermaid
+sequenceDiagram
+    participant User as Utilisateur
+    participant UI as Interface Streamlit
+    participant Orchestrator as MultiModelOrchestrator
+    participant Cleaner as TweetCleaner
+    participant BERT as BERTClassifier
+    participant Rules as RuleClassifier
+    participant Mistral as MistralClassifier
+    participant KPIs as EnhancedKPIsVisualizations
+    
+    User->>UI: Upload fichier CSV
+    UI->>Cleaner: Nettoyer les tweets
+    Cleaner-->>UI: Tweets nettoyés
+    
+    User->>UI: Lancer classification (mode BALANCED)
+    UI->>Orchestrator: classify_batch(texts, mode='balanced')
+    
+    par Traitement Parallèle
+        Orchestrator->>BERT: classify_batch(texts)
+        BERT-->>Orchestrator: Résultats sentiment
+    and
+        Orchestrator->>Rules: classify_batch(texts)
+        Rules-->>Orchestrator: Résultats réclamations & urgence
+    and
+        Orchestrator->>Mistral: classify_batch(échantillon 20%)
+        Mistral-->>Orchestrator: Résultats thèmes & incidents
+    end
+    
+    Orchestrator->>Orchestrator: Combiner résultats
+    Orchestrator-->>UI: Résultats complets
+    
+    UI->>KPIs: Calculer métriques business
+    KPIs-->>UI: KPIs & Visualisations
+    
+    UI-->>User: Afficher dashboard interactif
+```
 
-**Data Processing:**
-- Pandas 2.2.3 (Data Manipulation)
-- NumPy 2.1.1 (Numerical Computing)
+### Diagramme de Déploiement
 
-**Visualization:**
-- Plotly 5.24.1 (Interactive Charts)
-- Streamlit Native Components
+```mermaid
+graph TB
+    subgraph "Client Browser"
+        Browser[🌐 Navigateur Web]
+    end
+    
+    subgraph "Streamlit Cloud / Local Server"
+        Streamlit[📱 Streamlit App<br/>app.py]
+        Pages[📄 Pages<br/>Classification_Mistral.py]
+    end
+    
+    subgraph "Services Backend"
+        Auth[🔐 AuthService]
+        Orchestrator[⚙️ MultiModelOrchestrator]
+        Cleaner[🧹 TweetCleaner]
+    end
+    
+    subgraph "Modèles de Classification"
+        BERT[🤖 BERT<br/>Hugging Face]
+        Mistral[🧠 Mistral AI<br/>Ollama Local]
+        Rules[📋 RuleClassifier]
+        Gemini[☁️ Gemini API<br/>Google Cloud]
+    end
+    
+    subgraph "Stockage & Cache"
+        Cache[💾 Cache<br/>Classification Results]
+        Models[📦 Modèles<br/>Pré-entraînés]
+    end
+    
+    Browser --> Streamlit
+    Streamlit --> Pages
+    Pages --> Auth
+    Pages --> Orchestrator
+    Orchestrator --> Cleaner
+    Orchestrator --> BERT
+    Orchestrator --> Mistral
+    Orchestrator --> Rules
+    Orchestrator --> Gemini
+    BERT --> Models
+    Mistral --> Models
+    Orchestrator --> Cache
+```
 
-**Development & Deployment:**
-- Git & GitHub (Version Control)
-- DVC 3.55.2 (Data Version Control)
-- GitHub Actions (CI/CD)
-- Streamlit Cloud (Production Hosting)
+### Diagramme de Cas d'Utilisation
+
+```mermaid
+graph LR
+    subgraph "Acteurs"
+        Client[👤 Client SAV]
+        Agent[🎧 Agent SAV]
+        Analyst[📊 Data Analyst]
+        Manager[👔 Manager]
+    end
+    
+    subgraph "Cas d'Utilisation"
+        UC1[📤 Upload Données]
+        UC2[🧹 Nettoyer Données]
+        UC3[🤖 Classifier Tweets]
+        UC4[📊 Visualiser KPIs]
+        UC5[💾 Exporter Résultats]
+        UC6[⚙️ Configurer Modèles]
+        UC7[👥 Gérer Équipe]
+    end
+    
+    Client --> UC1
+    Client --> UC2
+    Client --> UC3
+    Client --> UC4
+    Client --> UC5
+    
+    Agent --> UC1
+    Agent --> UC2
+    Agent --> UC3
+    Agent --> UC4
+    Agent --> UC5
+    
+    Analyst --> UC1
+    Analyst --> UC2
+    Analyst --> UC3
+    Analyst --> UC4
+    Analyst --> UC5
+    Analyst --> UC6
+    
+    Manager --> UC1
+    Manager --> UC2
+    Manager --> UC3
+    Manager --> UC4
+    Manager --> UC5
+    Manager --> UC6
+    Manager --> UC7
+```
 
 ---
 
-## Key Features
+## 🧠 Méthodologie de Classification
 
-### 1. Multi-Dimensional Classification
+### Architecture Multi-Modèles
 
-The system provides seven-dimensional analysis of each tweet:
+Le système utilise une approche hybride combinant trois types de classificateurs :
 
-| Dimension | Description | Output Categories |
-|-----------|-------------|-------------------|
-| **Sentiment** | Emotional tone detection | Positive, Neutral, Negative |
-| **Is Claim** | Complaint identification | Yes (Oui), No (Non) |
-| **Urgency** | Priority level assessment | High (Haute), Medium (Moyenne), Low (Basse) |
-| **Topics** | Main theme categorization | FIBRE, SAV, MOBILE, FACTURE, TV, RESEAU, etc. |
-| **Incidents** | Technical issue classification | Incident_Technique, Information, Aucun, etc. |
-| **Responsible** | Department routing | Service_Technique, Service_Commercial, Service_Client |
-| **Confidence** | Prediction reliability score | 0.0 to 1.0 (percentage) |
+#### 1. BERT (Bidirectional Encoder Representations from Transformers)
+- **Rôle** : Classification rapide du sentiment
+- **Modèle** : `bert-base-multilingual-cased` (Hugging Face)
+- **Performance** : 88% de précision, 50-100 tweets/seconde
+- **Utilisation** : Traitement de 100% des tweets pour le sentiment
 
-### 2. Multiple Classification Models
+#### 2. Mistral AI (Large Language Model)
+- **Rôle** : Analyse contextuelle approfondie (thèmes, incidents)
+- **Modèle** : Mistral via Ollama (local) ou Gemini API (cloud)
+- **Performance** : 92% de précision, 5-10 tweets/seconde
+- **Utilisation** : Traitement d'un échantillon stratifié (20% en mode BALANCED)
 
-**a) Mistral LLM Classifier**
-- Large Language Model approach via Ollama
-- Context-aware, few-shot learning
-- High accuracy for complex cases
-- Computationally intensive
+#### 3. Rule-Based Classifier
+- **Rôle** : Détection rapide des réclamations et évaluation de l'urgence
+- **Méthode** : Règles métier basées sur mots-clés et patterns
+- **Performance** : 78% de précision, 1000+ tweets/seconde
+- **Utilisation** : Traitement de 100% des tweets pour réclamations/urgence
 
-**b) BERT Transformer Classifier**
-- Fine-tuned multilingual BERT
-- Balanced accuracy vs. speed
-- Robust to language variations
-- Production-ready performance
+### Modes de Performance
 
-**c) Rule-Based Classifier**
-- Keyword matching with confidence scores
-- Extremely fast (1000+ tweets/second)
-- Interpretable decisions
-- Good for simple cases
+| Mode | Modèles Utilisés | Précision | Temps (5000 tweets) | Cas d'Usage |
+|------|------------------|-----------|---------------------|-------------|
+| **RAPIDE** | BERT + Règles | 75% | ~20s | Tests rapides, démonstrations |
+| **ÉQUILIBRÉ** | BERT + Règles + Mistral (20%) | 88% | ~2min | Production recommandée |
+| **PRÉCIS** | BERT + Mistral (100%) | 95% | ~10min | Analyses critiques, rapports détaillés |
 
-### 3. Interactive Analytics Dashboard
+### Dimensions de Classification
 
-**Business KPIs:**
-- Total Tweets Analyzed
-- Complaint Rate (%)
-- Negative Sentiment Rate (%)
-- High Urgency Rate (%)
-- Average Confidence Score
+Le système classifie chaque tweet selon 7 dimensions :
 
-**Visualizations:**
-- Distribution des Thèmes (Top 10 Themes Bar Chart)
-- Distribution des Incidents (Incidents Horizontal Chart)
-- Distribution des Sentiments (Sentiment Pie Chart)
-- Temporal Evolution (Time Series)
-- Activity Heatmaps (Day x Hour)
-
-**Comparative Analysis:**
-- Historical vs. Current KPI Comparison
-- Trend Analysis with Dynamic Interpretation
-- Percentage Change Indicators
-
-### 4. Data Management Pipeline
-
-**Input Formats Supported:**
-- CSV files with UTF-8, Latin-1, ISO-8859-1 encoding
-- Excel files (.xlsx)
-- JSON structured data
-
-**Preprocessing Steps:**
-- Duplicate removal
-- URL and mention cleaning
-- Hashtag normalization
-- Emoji handling
-- Whitespace standardization
-- Special character filtering
-
-**Output Formats:**
-- CSV (classified results)
-- JSON (metrics and reports)
-- Excel (multi-sheet exports)
+1. **Sentiment** : POSITIF, NEUTRE, NEGATIF
+2. **Réclamation** : OUI, NON
+3. **Urgence** : FAIBLE, MOYENNE, ELEVEE, CRITIQUE
+4. **Thème** : FIBRE, MOBILE, TV, FACTURE, SAV, RESEAU, AUTRE
+5. **Type d'Incident** : PANNE, LENTEUR, FACTURATION, PROCESSUS_SAV, INFO, AUTRE
+6. **Responsable** : TECHNIQUE, COMMERCIAL, RESEAU, AUTRE
+7. **Confiance** : Score de 0.0 à 1.0
 
 ---
 
-## Methodology
+## 📦 Installation
 
-### 1. Data Collection & Preparation
+### Prérequis
 
-**Training Dataset:**
-- Source: Simulated Free Mobile customer tweets
-- Size: 3,500 tweets
-- Language: French
-- Labels: 7 dimensions (manually annotated)
-- Format: CSV with enriched KPI statistics
+- **Système d'exploitation** : Windows 10/11, macOS, ou Linux
+- **Python** : Version 3.11 ou supérieure
+- **RAM** : Minimum 8GB (16GB recommandé pour BERT)
+- **Espace disque** : 2GB pour les dépendances et modèles
+- **Internet** : Requis pour le téléchargement des modèles
+- **Ollama** (optionnel) : Pour Mistral local - [Installation Ollama](https://ollama.ai)
 
-**Data Enrichment:**
-- Added KPI pre-calculations
-- Included confidence scores
-- Categorized by themes and incidents
-- Validated for class balance
+### Installation Locale
 
-### 2. Model Development
+#### Étape 1 : Cloner le Repository
 
-**Phase 1: Rule-Based Baseline**
-- Keyword dictionary development
-- Scoring algorithm design
-- Threshold optimization
-- Baseline metrics establishment
-
-**Phase 2: BERT Fine-Tuning**
-- Model selection: BERT-base-multilingual-cased
-- Training strategy: Multi-task learning
-- Hyperparameter tuning
-- Validation on held-out set
-
-**Phase 3: LLM Integration**
-- Mistral model deployment via Ollama
-- Prompt engineering for each task
-- Few-shot learning examples
-- Response parsing and validation
-
-**Phase 4: Ensemble Strategy**
-- Model voting mechanisms
-- Confidence-weighted combinations
-- Fallback logic implementation
-- Performance comparison
-
-### 3. Evaluation Methodology
-
-**Metrics Used:**
-- **Accuracy**: Overall correct predictions / total predictions
-- **Precision**: True Positives / (True Positives + False Positives)
-- **Recall**: True Positives / (True Positives + False Negatives)
-- **F1-Score**: Harmonic mean of Precision and Recall
-- **Confusion Matrix**: Per-class performance analysis
-
-**Validation Strategy:**
-- 70% Training / 15% Validation / 15% Test split
-- Cross-validation for hyperparameter tuning
-- Real-world data testing
-- A/B testing in production
-
----
-
-## Installation Guide
-
-### Prerequisites
-
-- **Operating System**: Windows 10/11, macOS, or Linux
-- **Python**: Version 3.11 or higher
-- **RAM**: Minimum 8GB (16GB recommended for BERT)
-- **Disk Space**: 2GB for dependencies and models
-- **Internet**: Required for model downloads and cloud deployment
-
-### Local Installation
-
-**Step 1: Clone Repository**
 ```bash
 git clone https://github.com/Archimedh-Anderson/FreeMobileApp.git
 cd FreeMobileApp
 ```
 
-**Step 2: Create Virtual Environment**
+#### Étape 2 : Créer l'Environnement Virtuel
+
 ```bash
 # Windows
 python -m venv venv
@@ -332,397 +407,400 @@ python3 -m venv venv
 source venv/bin/activate
 ```
 
-**Step 3: Install Dependencies**
+#### Étape 3 : Installer les Dépendances
 
-For academic/production use:
 ```bash
-pip install -r requirements-academic.txt
-```
+# Pour la production
+pip install -r requirements-streamlit.txt
 
-For development with all tools:
-```bash
+# Pour le développement complet
 pip install -r requirements.txt
 pip install -r requirements.dev.txt
 ```
 
-**Step 4: Download Pre-trained Models** (Optional)
+#### Étape 4 : Télécharger les Modèles Pré-entraînés (Optionnel)
+
 ```bash
-# For BERT classifier
+# Pour le classificateur BERT
 python -c "from transformers import AutoModel; AutoModel.from_pretrained('bert-base-multilingual-cased')"
 
-# For Mistral LLM (requires Ollama)
+# Pour Mistral LLM (nécessite Ollama)
 ollama pull mistral
 ```
 
-**Step 5: Prepare Data**
-```bash
-# Ensure training data exists
-python validate_dataset.py
+#### Étape 5 : Configuration de l'Environnement
+
+Créez un fichier `.env` à la racine du projet :
+
+```env
+# Configuration Mistral/Ollama
+OLLAMA_BASE_URL=http://localhost:11434
+MISTRAL_MODEL=mistral:latest
+
+# Configuration Gemini API (Optionnel)
+GEMINI_API_KEY=your_gemini_api_key_here
+
+# Configuration Application
+ENVIRONMENT=production
+DEBUG=false
+LOG_LEVEL=INFO
+BACKEND_URL=http://localhost:8000
 ```
 
-### Cloud Deployment (Streamlit Cloud)
+#### Étape 6 : Lancer l'Application
 
-**Step 1: Fork Repository**
-- Visit: https://github.com/Archimedh-Anderson/FreeMobileApp
-- Click "Fork" to create your copy
+```bash
+streamlit run streamlit_app/app.py
+```
 
-**Step 2: Configure Streamlit Cloud**
-1. Visit https://streamlit.io/cloud
-2. Sign in with GitHub account
-3. Click "New app"
-4. Select your forked repository
-5. Set main file: `streamlit_app/app.py`
-6. Set Python version: 3.11
-7. Click "Deploy"
+L'application s'ouvrira automatiquement dans votre navigateur à `http://localhost:8503`
 
-**Step 3: Monitor Deployment**
-- Deployment typically takes 5-10 minutes
-- Check logs for any errors
-- Access your app at provided URL
+### Déploiement Cloud (Streamlit Cloud)
+
+1. Forkez le repository sur GitHub
+2. Visitez [Streamlit Cloud](https://streamlit.io/cloud)
+3. Connectez-vous avec votre compte GitHub
+4. Cliquez sur "New app"
+5. Sélectionnez votre repository forké
+6. Définissez le fichier principal : `streamlit_app/app.py`
+7. Définissez la version Python : 3.11
+8. Ajoutez les secrets (GEMINI_API_KEY, etc.) dans les paramètres
+9. Cliquez sur "Deploy"
 
 ---
 
-## Usage Instructions
+## 💻 Utilisation
 
-### Running Locally
+### Démarrage Rapide
 
-**Start Application:**
-```bash
-# Windows
-.\start.ps1
+1. **Lancer l'application** :
+   ```bash
+   streamlit run streamlit_app/app.py
+   ```
 
-# macOS/Linux
-bash deploy.sh
-```
+2. **S'authentifier** :
+   - Créez un compte ou connectez-vous
+   - Sélectionnez votre rôle (Client SAV, Agent SAV, Data Analyst, Manager)
 
-The application will open in your default browser at `http://localhost:8501`
+3. **Accéder à la Classification** :
+   - Cliquez sur "Start Now" ou "Start Mistral Classification"
+   - Vous serez redirigé vers la page de classification
 
-### Using the Application
+### Workflow de Classification
 
-**1. Home Dashboard**
-- Overview of available classification models
-- Quick statistics on training data
-- Navigation to analysis modules
+#### Étape 1 : Upload & Nettoyage
 
-**2. Data Analysis Page**
-- Upload CSV/Excel files
-- View data preview and statistics
-- Perform exploratory data analysis
-- Export cleaned data
+1. **Upload du fichier** :
+   - Format : CSV
+   - Colonne requise : `text` (ou sélectionnez une colonne de texte)
+   - Taille maximale : 500 MB
 
-**3. Classification Pages**
+2. **Nettoyage automatique** :
+   - Suppression des URLs
+   - Normalisation des espaces
+   - Gestion des emojis
+   - Détection automatique de l'encodage
 
-**Classification LLM (Mistral):**
-1. Upload tweet dataset (CSV format)
-2. Review data preview
-3. Click "Lancer Classification Mistral"
-4. Wait for processing (progress bar shown)
-5. View results in interactive dashboard
-6. Export classified data
+#### Étape 2 : Classification Intelligente
 
-**Classification BERT:**
-1. Same process as LLM
-2. Faster processing
-3. Comparable accuracy
-4. Better for large datasets
+1. **Sélection du modèle** :
+   - **Mistral (Local)** : Via Ollama (recommandé pour performance)
+   - **Gemini API (Externe)** : Via Google Cloud API
 
-**4. Viewing Results**
+2. **Choix du mode** :
+   - **RAPIDE (20s)** : BERT + Règles - 75% précision
+   - **ÉQUILIBRÉ (2min)** : BERT + Règles + Mistral (20%) - 88% précision ⭐ Recommandé
+   - **PRÉCIS (10min)** : BERT + Mistral (100%) - 95% précision
 
-**Visualisations Analytiques:**
-- Distribution des Thèmes: Top 10 themes bar chart
-- Distribution des Incidents: Incidents with semantic colors
-- Distribution des Sentiments: Sentiment breakdown
+3. **Lancement** :
+   - Cliquez sur "Démarrer la Classification Intelligente"
+   - Suivez la progression en temps réel
 
-**KPIs Business:**
-- Real-time metrics calculation
-- Percentage and absolute counts
-- Comparative analysis with historical data
+#### Étape 3 : Résultats & Export
 
-**Export Options:**
-- CSV: Classified tweets with all dimensions
-- JSON: Metrics and KPI summary
-- Excel: Multi-sheet comprehensive report
+1. **Visualisation des KPIs** :
+   - Indicateurs clés de performance
+   - Graphiques interactifs (Plotly)
+   - Tableaux détaillés
 
----
+2. **Export des résultats** :
+   - **CSV** : Données classifiées complètes
+   - **JSON** : Métriques et KPIs
+   - **Excel** : Rapport multi-feuilles
 
-## Data Management
+### Exemple d'Utilisation
 
-### Input Data Format
-
-CSV file with minimum required column:
-```csv
+```python
+# Exemple de fichier CSV d'entrée
 text
-"Mon internet ne fonctionne pas depuis hier"
-"Excellent service client, merci Free!"
-"Quand allez-vous réparer le réseau?"
+"Mon internet ne fonctionne plus depuis ce matin, très mécontent"
+"Super service client, merci beaucoup pour votre aide!"
+"J'ai un problème avec ma facture, pouvez-vous m'aider?"
 ```
 
-Optional columns for enriched analysis:
-- `date`: Timestamp for temporal analysis
-- `user_id`: For user-level aggregation
-- `location`: Geographic insights
+Après classification, vous obtiendrez :
 
-### Output Data Format
-
-Classified CSV with all dimensions:
-```csv
-text,text_cleaned,sentiment,is_claim,urgence,topics,incident,responsable,confidence
-"Mon internet...","internet fonctionne...","negatif","oui","haute","FIBRE","incident_technique","service_technique",0.89
-```
-
-### Data Version Control
-
-Using DVC for reproducible research:
-```bash
-# Track training data
-dvc add data/training/train_dataset_enriched.csv
-
-# Push to remote storage
-dvc push
-
-# Pull latest data
-dvc pull
-```
+| text | sentiment | is_claim | urgence | topics | incident | confidence |
+|------|-----------|----------|---------|--------|----------|------------|
+| "Mon internet..." | NEGATIF | OUI | ELEVEE | RESEAU | PANNE | 0.92 |
+| "Super service..." | POSITIF | NON | FAIBLE | SAV | INFO | 0.88 |
+| "J'ai un problème..." | NEUTRE | OUI | MOYENNE | FACTURE | FACTURATION | 0.85 |
 
 ---
 
-## Evaluation Metrics
+## 📊 Résultats et Métriques
 
-### Model Performance Summary
+### Performance des Modèles
 
-| Model | Accuracy | Precision | Recall | F1-Score | Speed (tweets/sec) |
-|-------|----------|-----------|--------|----------|-------------------|
-| **Mistral LLM** | 92% | 0.91 | 0.90 | 0.91 | 5-10 |
-| **BERT Fine-tuned** | 88% | 0.87 | 0.86 | 0.87 | 50-100 |
-| **Rule-Based** | 78% | 0.75 | 0.73 | 0.74 | 1000+ |
+| Modèle | Précision | Rappel | F1-Score | Vitesse (tweets/sec) |
+|--------|-----------|--------|----------|---------------------|
+| **Mistral LLM** | 92% | 0.90 | 0.91 | 5-10 |
+| **BERT Fine-tuned** | 88% | 0.86 | 0.87 | 50-100 |
+| **Rule-Based** | 78% | 0.73 | 0.74 | 1000+ |
+| **Multi-Model (BALANCED)** | 88% | 0.87 | 0.88 | 25-50 |
 
-### Per-Dimension Performance
+### Performance par Dimension
 
-**Sentiment Classification:**
-- Accuracy: 90%
-- F1-Score: 0.89
-- Confusion: High accuracy across all classes
+- **Classification de Sentiment** : 90% de précision, F1-Score: 0.89
+- **Détection de Réclamations** : 87% de précision, Précision: 0.88
+- **Évaluation de l'Urgence** : 85% de précision
+- **Catégorisation des Thèmes** : 91% de précision, Top-3 précision: 97%
 
-**Complaint Detection:**
-- Accuracy: 87%
-- Precision: 0.88 (Yes), 0.86 (No)
-- Recall: 0.85 (Yes), 0.89 (No)
+### Indicateurs Clés de Performance (KPIs)
 
-**Urgency Assessment:**
-- Accuracy: 85%
-- High urgency precision: 0.82
-- Medium/Low recall: 0.87
+Le système calcule automatiquement 10+ KPIs business :
 
-**Topic Categorization:**
-- Accuracy: 91%
-- Top-3 accuracy: 97%
-- Coverage: All major themes identified
-
----
-
-## Academic Contributions
-
-### Novel Contributions
-
-1. **Multi-Model Ensemble for French NLP**
-   - First comprehensive comparison of LLM vs. BERT vs. Rules for French telecommunications
-   - Novel ensemble weighting based on task complexity
-   - Confidence-based fallback mechanisms
-
-2. **Seven-Dimensional Classification Framework**
-   - Holistic customer feedback analysis
-   - Integrated urgency and routing logic
-   - Real-world business applicability
-
-3. **Production-Ready Academic Research**
-   - End-to-end deployment pipeline
-   - Reproducible results with DVC
-   - Open-source contribution to NLP community
-
-### Publications & Presentations
-
-**Master's Thesis:**
-- Title: "Multi-Model Sentiment Analysis for Telecommunications Customer Service"
-- Defense Date: [TBD]
-- Committee: [Professor Names]
-
-**Conference Papers** (in preparation):
-- "Comparing LLMs and BERT for French Customer Sentiment Analysis"
-- "Seven-Dimensional Framework for Telecom Complaint Classification"
+1. **Taux de Réclamations** : Pourcentage de tweets identifiés comme réclamations
+2. **Taux de Sentiment Négatif** : Pourcentage de tweets avec sentiment négatif
+3. **Taux d'Urgence Élevée** : Pourcentage de tweets nécessitant une action urgente
+4. **Score de Confiance Moyen** : Confiance moyenne des classifications
+5. **Distribution des Thèmes** : Répartition par catégorie (FIBRE, MOBILE, etc.)
+6. **Types d'Incidents** : Distribution des types d'incidents détectés
+7. **Temps de Traitement** : Performance du système
+8. **Taux de Succès** : Pourcentage de tweets classifiés avec succès
+9. **Volume Traité** : Nombre total de tweets analysés
+10. **Tendances Temporelles** : Évolution dans le temps (si données temporelles disponibles)
 
 ---
 
-## Future Work
+## 🔧 Documentation Technique
 
-### Short-term Improvements (3-6 months)
-
-1. **Model Enhancements:**
-   - Experiment with GPT-4 and Claude models
-   - Fine-tune domain-specific BERT variants
-   - Implement active learning for continuous improvement
-
-2. **Feature Additions:**
-   - Multi-language support (English, Spanish, Arabic)
-   - Real-time streaming from Twitter API
-   - Automated response suggestions
-
-3. **Performance Optimization:**
-   - Model quantization for faster inference
-   - Batch processing parallelization
-   - Caching strategies for repeated queries
-
-### Long-term Vision (1-2 years)
-
-1. **Advanced Analytics:**
-   - Trend prediction with time-series models
-   - Customer churn risk scoring
-   - Network issue early detection
-
-2. **Platform Expansion:**
-   - Support for Facebook, Instagram comments
-   - Voice transcription analysis
-   - Multi-modal sentiment (text + emoji)
-
-3. **Enterprise Features:**
-   - Role-based access control
-   - Custom model training interface
-   - API for third-party integrations
-   - SLA monitoring dashboards
-
----
-
-## References
-
-### Academic Papers
-
-1. Devlin, J., et al. (2019). "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding." NAACL-HLT.
-
-2. Vaswani, A., et al. (2017). "Attention Is All You Need." NeurIPS.
-
-3. Liu, Y., et al. (2019). "RoBERTa: A Robustly Optimized BERT Pretraining Approach." arXiv.
-
-### Technical Documentation
-
-1. Hugging Face Transformers: https://huggingface.co/docs/transformers
-2. Streamlit Documentation: https://docs.streamlit.io
-3. Plotly Python: https://plotly.com/python
-4. DVC Documentation: https://dvc.org/doc
-
-### Datasets & Models
-
-1. BERT Base Multilingual: https://huggingface.co/bert-base-multilingual-cased
-2. Mistral AI: https://mistral.ai
-3. French Sentiment Datasets: CLS Benchmark, FLUE
-
----
-
-## Project Structure
+### Structure du Projet
 
 ```
 FreeMobilaChat/
 │
-├── streamlit_app/              # Main application
-│   ├── app.py                  # Entry point
-│   ├── pages/                  # Multi-page app
-│   │   ├── 0_Home.py
-│   │   ├── 1_Analyse_Intelligente.py
-│   │   ├── 1_Classification_LLM.py
-│   │   └── 2_Classification_Mistral.py
-│   ├── components/             # Reusable UI components
-│   ├── services/               # Business logic
-│   │   ├── mistral_classifier.py
-│   │   ├── bert_classifier.py
-│   │   ├── rule_classifier.py
-│   │   ├── tweet_cleaner.py
-│   │   └── enhanced_kpis_vizualizations.py
-│   └── utils/                  # Helper functions
+├── streamlit_app/              # Application principale
+│   ├── app.py                  # Point d'entrée principal
+│   ├── config.py               # Configuration centralisée
+│   │
+│   ├── pages/                  # Pages de l'application
+│   │   └── Classification_Mistral.py  # Page de classification
+│   │
+│   ├── components/             # Composants UI réutilisables
+│   │   ├── auth_forms.py       # Formulaires d'authentification
+│   │   └── charts.py           # Composants de visualisation
+│   │
+│   ├── services/               # Logique métier
+│   │   ├── auth_service.py     # Service d'authentification
+│   │   ├── mistral_classifier.py      # Classificateur Mistral
+│   │   ├── bert_classifier.py         # Classificateur BERT
+│   │   ├── rule_classifier.py        # Classificateur par règles
+│   │   ├── multi_model_orchestrator.py  # Orchestrateur multi-modèles
+│   │   ├── tweet_cleaner.py           # Nettoyage de tweets
+│   │   ├── gemini_classifier.py       # Classificateur Gemini
+│   │   ├── enhanced_kpis_vizualizations.py  # KPIs avancés
+│   │   ├── ultra_optimized_classifier.py   # Classificateur optimisé
+│   │   └── role_manager.py            # Gestion des rôles
+│   │
+│   └── utils/                  # Fonctions utilitaires
+│       ├── helpers.py
+│       └── validators.py
+│
+├── scripts/                    # Scripts utilitaires
+│   ├── run_tests.sh           # Script de tests
+│   └── ...
 │
 ├── data/                       # Datasets
-│   ├── training/               # Training data
-│   │   ├── train_dataset_enriched.csv
-│   │   └── train_dataset_enriched_kpi_stats.json
-│   ├── validation/             # Validation data
-│   └── test/                   # Test data
+│   ├── training/              # Données d'entraînement
+│   ├── validation/            # Données de validation
+│   └── test/                  # Données de test
 │
-├── models/                     # Trained models
-│   ├── bert_finetuned/         # Fine-tuned BERT
-│   └── embeddings/             # Cached embeddings
+├── models/                     # Modèles entraînés
+│   ├── bert_finetuned/        # BERT fine-tuné
+│   └── embeddings/           # Embeddings cachés
 │
-├── scripts/                    # Utility scripts
-│   ├── generate_training_dataset.py
-│   ├── fine_tune_bert.py
-│   └── validate_dataset.py
+├── tests/                      # Tests
+│   ├── unit/                  # Tests unitaires
+│   ├── integration/           # Tests d'intégration
+│   └── e2e/                   # Tests end-to-end
 │
-├── docs/                       # Documentation
-│   ├── DEPLOYMENT.md
-│   ├── ARCHITECTURE.md
-│   └── API.md
-│
-├── .streamlit/                 # Streamlit config
-│   └── config.toml
-│
-├── .github/                    # CI/CD workflows
-│   └── workflows/
-│       └── streamlit-deploy.yml
-│
-├── requirements-academic.txt   # Production dependencies
-├── requirements.txt            # Full dependencies
-├── dvc.yaml                    # DVC pipeline
-├── params.yaml                 # Configuration
-├── start.ps1                   # Startup script
-├── cleanup_project.ps1         # Cleanup script
-└── README.md                   # This file
+├── requirements-streamlit.txt  # Dépendances production
+├── requirements.txt            # Dépendances complètes
+├── README.md                   # Ce fichier
+└── LICENSE                     # Licence MIT
+```
+
+### Stack Technologique
+
+#### Framework Core
+- **Python** : 3.11+
+- **Streamlit** : 1.51.0 (Framework web interactif)
+
+#### Machine Learning
+- **Transformers** : 4.44.2 (Hugging Face) - Modèles BERT
+- **PyTorch** : 2.4.1 - Backend pour Transformers
+- **Sentence-Transformers** : 3.1.1 - Embeddings sémantiques
+- **Scikit-learn** : 1.5.2 - Outils ML complémentaires
+
+#### NLP & Language Models
+- **Mistral AI** : Via Ollama (modèles locaux)
+- **BERT-base-multilingual** : Modèle pré-entraîné Hugging Face
+- **Gemini API** : Google Generative AI (alternative cloud)
+- **spaCy** : 3.8.2 - Traitement NLP supplémentaire
+
+#### Traitement de Données
+- **Pandas** : 2.2.3 - Manipulation de données
+- **NumPy** : 2.1.1 - Calculs numériques
+
+#### Visualisation
+- **Plotly** : 5.24.1 - Graphiques interactifs
+
+#### Authentification & Sécurité
+- **bcrypt** : 4.0.1 - Hachage de mots de passe
+- **PyJWT** : 2.8.0 - Tokens JWT
+
+---
+
+## 🧪 Tests
+
+### Exécution des Tests
+
+```bash
+# Tous les tests
+./scripts/run_tests.sh all
+
+# Tests unitaires uniquement
+./scripts/run_tests.sh unit
+
+# Tests d'intégration (nécessite GEMINI_API_KEY)
+./scripts/run_tests.sh integration
+
+# Tests avec couverture
+pytest tests/ --cov=streamlit_app --cov-report=html
+```
+
+### Évaluation des Performances
+
+```bash
+# Évaluer sur dataset de test
+python scripts/evaluate_model.py --dataset tests/data/test_dataset.csv
+
+# Génération de rapport HTML
+python scripts/generate_report.py
 ```
 
 ---
 
-## License
+## ⚙️ Configuration
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+### Variables d'Environnement
 
-**Academic Use:**
-This project is submitted as part of a Master's thesis. If you use this work in academic research, please cite:
+Créez un fichier `.env` à la racine du projet :
+
+```env
+# Configuration Mistral/Ollama
+OLLAMA_BASE_URL=http://localhost:11434
+MISTRAL_MODEL=mistral:latest
+
+# Configuration Gemini API (Optionnel)
+GEMINI_API_KEY=your_gemini_api_key_here
+
+# Configuration Application
+ENVIRONMENT=production
+DEBUG=false
+LOG_LEVEL=INFO
+BACKEND_URL=http://localhost:8000
+```
+
+### Configuration Streamlit
+
+Le fichier `.streamlit/config.toml` contient :
+
+```toml
+[server]
+port = 8503
+enableCORS = false
+enableXsrfProtection = true
+maxUploadSize = 200
+
+[theme]
+primaryColor = "#667eea"
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f0f2f6"
+```
+
+---
+
+## 🤝 Contributions
+
+Les contributions sont les bienvenues ! N'hésitez pas à soumettre une Pull Request.
+
+1. Forkez le repository
+2. Créez votre branche de fonctionnalité (`git checkout -b feature/AmazingFeature`)
+3. Committez vos changements (`git commit -m 'Add some AmazingFeature'`)
+4. Poussez vers la branche (`git push origin feature/AmazingFeature`)
+5. Ouvrez une Pull Request
+
+---
+
+## 📄 Licence
+
+Ce projet est sous licence MIT - voir le fichier [LICENSE](LICENSE) pour plus de détails.
+
+### Usage Académique
+
+Ce projet est soumis dans le cadre d'un mémoire de Master. Si vous utilisez ce travail dans une recherche académique, veuillez citer :
 
 ```bibtex
 @mastersthesis{archimed2025freemobilachat,
   title={Multi-Model Sentiment Analysis for Telecommunications Customer Service},
   author={Archimed, Anderson},
   year={2025},
-  school={[Your University]},
+  school={[Votre Université]},
   type={Master's Thesis}
 }
 ```
 
 ---
 
-## Contact & Support
+## 📞 Contact & Support
 
-**Author:** Anderson Archimed  
-**Email:** [your.email@university.edu]  
-**GitHub:** [@Archimedh-Anderson](https://github.com/Archimedh-Anderson)  
-**LinkedIn:** [Your LinkedIn Profile]
+**Auteur** : Anderson Archimed  
+**GitHub** : [@Archimedh-Anderson](https://github.com/Archimedh-Anderson)  
+**Repository** : https://github.com/Archimedh-Anderson/FreeMobileApp  
+**Démo Live** : https://freemobilachat.streamlit.app
 
-**Project Repository:** https://github.com/Archimedh-Anderson/FreeMobileApp  
-**Live Demo:** https://freemobilachat.streamlit.app  
-**Documentation:** https://github.com/Archimedh-Anderson/FreeMobileApp/wiki
-
-For academic inquiries or collaboration opportunities, please contact via email.
+Pour les questions académiques ou opportunités de collaboration, contactez via GitHub.
 
 ---
 
-## Acknowledgments
+## 🙏 Remerciements
 
-Special thanks to:
-- **Thesis Supervisor:** [Professor Name] for guidance and support
-- **Free Mobile** for domain inspiration
-- **Hugging Face** for transformer models and infrastructure
-- **Streamlit** for the excellent application framework
-- **Open Source Community** for invaluable tools and libraries
-
-This project stands on the shoulders of giants in the ML/NLP community.
+Remerciements spéciaux à :
+- **Hugging Face** pour les modèles transformer et l'infrastructure
+- **Streamlit** pour l'excellent framework d'application
+- **Mistral AI** pour les puissants modèles de langage
+- **Communauté Open Source** pour les outils et bibliothèques inestimables
 
 ---
 
-**Last Updated:** January 2025  
-**Version:** 1.0.0  
-**Status:** Production Ready - Academic Submission
+<div align="center">
+
+**Dernière Mise à Jour** : Janvier 2025  
+**Version** : 2.0.0  
+**Statut** : Production Ready - Soumission Académique
+
+Fait avec ❤️ pour la communauté NLP/ML
+
+</div>

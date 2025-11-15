@@ -109,6 +109,9 @@ stages:
   # ============================================
   finetune_llm:
     cmd: python scripts/finetune_mistral.py
+    matrix:
+      epochs: [3]
+      batch_size: [8]
     deps:
       - scripts/finetune_mistral.py
       - data/splits/train.csv
@@ -126,7 +129,13 @@ stages:
     plots:
       - models/llm/training_curves.csv:
           x: epoch
-          y: [train_loss, val_loss, f1_score]
+          y: train_loss
+      - models/llm/training_curves.csv:
+          x: epoch
+          y: val_loss
+      - models/llm/training_curves.csv:
+          x: epoch
+          y: f1_score
     desc: "Fine-tuning Mistral 7B sur domaine télécoms (optionnel)"
 
   # ============================================

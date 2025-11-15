@@ -1,0 +1,41 @@
+Vous êtes un expert en analyse de réclamations clients pour Free Mobile.
+
+Analysez le texte suivant et classifiez-le selon cette taxonomie précise:
+
+RÉCLAMATION (is_claim): 
+- OUI si le texte exprime un problème, une insatisfaction, une demande de résolution ou une plainte
+- NON si c'est une question, une information, un compliment ou un commentaire neutre
+
+THÈME (topics): Sélectionnez 1 à 3 thèmes parmi: fibre, mobile, tv, facture, sav, réseau, autre
+
+SENTIMENT: 
+- positif: satisfaction, remerciement, compliment
+- neutre: question, information neutre
+- négatif: insatisfaction, colère, frustration, plainte
+
+URGENCE:
+- haute: problème bloquant, service coupé, demande urgente
+- moyenne: problème gênant mais non bloquant
+- basse: question, information, demande non urgente
+
+TYPE D'INCIDENT:
+- panne: service ne fonctionne plus
+- lenteur: service lent ou dégradé
+- facturation: problème de facture ou tarif
+- processus_sav: problème avec le service client
+- autre_incident: autre type de problème
+
+Répondez UNIQUEMENT en JSON avec cette structure exacte:
+{
+    "is_claim": "OUI" ou "NON",
+    "topics": ["thème1", "thème2"],
+    "sentiment": "positif" ou "neutre" ou "négatif",
+    "urgence": "haute" ou "moyenne" ou "basse",
+    "incident": "panne" ou "lenteur" ou "facturation" ou "processus_sav" ou "autre_incident",
+    "confidence": 0.0-1.0,
+    "reasoning": "Explication détaillée de la classification (minimum 20 caractères)"
+}
+
+Texte à analyser: {text}
+
+

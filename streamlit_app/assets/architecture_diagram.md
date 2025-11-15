@@ -177,7 +177,7 @@ graph TB
         direction TB
         A1[Streamlit App]
         A1 --> A1a[Home.py]
-        A1 --> A1b[Classification_LLM.py]
+        A1 --> A1b[Classification_Mistral.py]
         A1 --> A1c[Classification_Mistral.py]
     end
     

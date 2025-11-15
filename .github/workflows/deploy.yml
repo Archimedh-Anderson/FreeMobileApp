@@ -1,33 +1,23 @@
-name: Deploy FreeMobilaChat to Streamlit Cloud
+name: Deploy to Streamlit Cloud
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+    branches:
+      - main
+  workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: 3.9
-        
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        
-    - name: Run tests
-      run: |
-        python -c "import streamlit; print('Streamlit version:', streamlit.__version__)"
-        
-    - name: Deploy to Streamlit Cloud
-      uses: streamlit/streamlit-action@main
-      with:
-        app_file: app.py
-        cloud_url: https://share.streamlit.io
+      - uses: actions/checkout@v4
+      
+      - name: Validate Streamlit app
+        run: |
+          pip install streamlit
+          python -m streamlit.cli run streamlit_app/app.py --server.headless true &
+          sleep 10
+          curl -f http://localhost:8501 || exit 1
+      
+      - name: Notify deployment
+        run: echo "✅ App ready for Streamlit Cloud"
