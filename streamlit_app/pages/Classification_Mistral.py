@@ -1453,60 +1453,60 @@ def _render_role_management_tab():
     try:
         initialize_role_system = role_system['initialize_role_system']
         get_current_role = role_system['get_current_role']
-            
-            role_manager, role_ui_manager = initialize_role_system()
-            roles = role_manager.get_all_roles()
-            role_options = {role.display_name: role.role_id for role in roles}
-            
-            current_role = get_current_role()
-            current_display = None
-            if current_role:
-                config = role_manager.get_role_config(current_role)
-                current_display = config.display_name if config else None
-            
-            selected_display = st.selectbox(
-                "Changer de rôle:",
-                options=list(role_options.keys()),
-                index=list(role_options.values()).index(current_role) if current_role and current_role in role_options.values() else 1,
-                key='role_selector_sidebar'
-            )
-            
-            selected_role = role_options[selected_display]
-            role_manager.set_current_role(selected_role)
-            
-            # Afficher info rôle
-            role_config = role_manager.get_role_config(selected_role)
-            if role_config:
-                st.markdown(f"""
-                <div style="background: {role_config.color}22; padding: 1rem; border-radius: 8px;
-                            border-left: 4px solid {role_config.color};">
-                    <div style="font-weight: 700; color: {role_config.color};">
-                        <i class="fas {role_config.icon}"></i> {role_config.display_name}
-                    </div>
-                    <p style="font-size: 0.85rem; color: #666; margin-top: 0.5rem;">
-                        {role_config.description}
-                    </p>
+        
+        role_manager, role_ui_manager = initialize_role_system()
+        roles = role_manager.get_all_roles()
+        role_options = {role.display_name: role.role_id for role in roles}
+        
+        current_role = get_current_role()
+        current_display = None
+        if current_role:
+            config = role_manager.get_role_config(current_role)
+            current_display = config.display_name if config else None
+        
+        selected_display = st.selectbox(
+            "Changer de rôle:",
+            options=list(role_options.keys()),
+            index=list(role_options.values()).index(current_role) if current_role and current_role in role_options.values() else 1,
+            key='role_selector_sidebar'
+        )
+        
+        selected_role = role_options[selected_display]
+        role_manager.set_current_role(selected_role)
+        
+        # Afficher info rôle
+        role_config = role_manager.get_role_config(selected_role)
+        if role_config:
+            st.markdown(f"""
+            <div style="background: {role_config.color}22; padding: 1rem; border-radius: 8px;
+                        border-left: 4px solid {role_config.color};">
+                <div style="font-weight: 700; color: {role_config.color};">
+                    <i class="fas {role_config.icon}"></i> {role_config.display_name}
                 </div>
-                """, unsafe_allow_html=True)
-                
-                # Permissions clés
-                st.markdown("**Permissions:**")
-                key_perms = {
-                    'export_data': "Exporter Données",
-                    'view_all_stats': "Voir Toutes Stats",
-                    'access_advanced_analytics': "Analytics Avancées",
-                    'create_reports': "Créer Rapports"
-                }
-                
-                for perm_key, perm_label in key_perms.items():
-                    has_perm = perm_key in role_config.permissions or "all" in role_config.permissions
-                    icon = "<i class='fas fa-check' style='color:#10AC84;'></i>" if has_perm else "<i class='fas fa-times' style='color:#95A5A6;'></i>"
-                    st.markdown(f"{icon} {perm_label}", unsafe_allow_html=True)
-                
-                st.caption(f"<i class='fas fa-th'></i> {len(role_config.features)} features disponibles", unsafe_allow_html=True)
-                
-        except Exception as e:
-            st.warning(f"Erreur système de rôles: {e}")
+                <p style="font-size: 0.85rem; color: #666; margin-top: 0.5rem;">
+                    {role_config.description}
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Permissions clés
+            st.markdown("**Permissions:**")
+            key_perms = {
+                'export_data': "Exporter Données",
+                'view_all_stats': "Voir Toutes Stats",
+                'access_advanced_analytics': "Analytics Avancées",
+                'create_reports': "Créer Rapports"
+            }
+            
+            for perm_key, perm_label in key_perms.items():
+                has_perm = perm_key in role_config.permissions or "all" in role_config.permissions
+                icon = "<i class='fas fa-check' style='color:#10AC84;'></i>" if has_perm else "<i class='fas fa-times' style='color:#95A5A6;'></i>"
+                st.markdown(f"{icon} {perm_label}", unsafe_allow_html=True)
+            
+            st.caption(f"<i class='fas fa-th'></i> {len(role_config.features)} features disponibles", unsafe_allow_html=True)
+            
+    except Exception as e:
+        st.warning(f"Erreur système de rôles: {e}")
 
 # ==============================================================================
 # SECTION UPLOAD - AVEC GESTION ERREUR 403 COMPLÈTE
