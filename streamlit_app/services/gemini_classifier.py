@@ -88,11 +88,21 @@ class GeminiClassifier:
         if api_key is None:
             api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
         
-        if not api_key:
-            raise ValueError(
-                "Clé API Gemini non trouvée. "
-                "Définissez GEMINI_API_KEY ou GOOGLE_API_KEY dans votre fichier .env"
+        # Si pas de clé API, afficher un avertissement mais ne pas lever d'exception
+        if not api_key or api_key.strip() == "":
+            logger.warning(
+                "Clé API Gemini non configurée. "
+                "Définissez GEMINI_API_KEY ou GOOGLE_API_KEY dans votre fichier .env pour activer Gemini. "
+                "L'application utilisera BERT + Classificateur par règles comme fallback."
             )
+            self.client = None
+            self.model = None
+            self.api_key = None
+            self.model_name = model_name
+            self.batch_size = batch_size
+            self.temperature = temperature
+            self.max_retries = max_retries
+            return  # Démarrage sans erreur, fallback activé
         
         # Stockage des paramètres de configuration dans les attributs d'instance
         self.api_key = api_key  # Clé API pour authentification
