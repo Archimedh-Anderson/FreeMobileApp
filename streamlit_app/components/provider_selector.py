@@ -79,7 +79,7 @@ def render_provider_selector():
         button_type = "primary" if mistral_selected else "secondary"
         
         if st.button(
-            "<i class='fas fa-desktop'></i> Local",
+            "🖥️ Local",
             key="btn_provider_mistral",
             disabled=not mistral_available,
             use_container_width=True,
@@ -96,9 +96,9 @@ def render_provider_selector():
         # Indicateur de statut
         if mistral_status:
             if mistral_available:
-                st.caption("<i class='fas fa-check-circle'></i> Disponible", help=mistral_status.status_message, unsafe_allow_html=True)
+                st.caption("✅ Disponible", help=mistral_status.status_message)
             else:
-                st.caption("<i class='fas fa-exclamation-triangle'></i> Non dispo.", help=mistral_status.error_message or mistral_status.status_message, unsafe_allow_html=True)
+                st.caption("⚠️ Non dispo.", help=mistral_status.error_message or mistral_status.status_message)
     
     with col2:
         # Bouton Gemini Cloud
@@ -108,7 +108,7 @@ def render_provider_selector():
         button_type = "primary" if gemini_selected else "secondary"
         
         if st.button(
-            "<i class='fas fa-cloud'></i> Cloud",
+            "☁️ Cloud",
             key="btn_provider_gemini",
             disabled=not gemini_available,
             use_container_width=True,
@@ -125,9 +125,9 @@ def render_provider_selector():
         # Indicateur de statut
         if gemini_status:
             if gemini_available:
-                st.caption("<i class='fas fa-check-circle'></i> Disponible", help=gemini_status.status_message, unsafe_allow_html=True)
+                st.caption("✅ Disponible", help=gemini_status.status_message)
             else:
-                st.caption("<i class='fas fa-info-circle'></i> Config req.", help=gemini_status.error_message or gemini_status.status_message, unsafe_allow_html=True)
+                st.caption("ℹ️ Config req.", help=gemini_status.error_message or gemini_status.status_message)
     
     # Afficher le provider sélectionné avec card de statut
     selected_provider_name = st.session_state.get('selected_provider')
@@ -160,7 +160,7 @@ def render_provider_selector():
                         {selected_status.name}
                     </span>
                     <span style="font-size: 0.875rem; color: {status_color}; font-weight: 600;">
-                        <i class="fas fa-{'check-circle' if selected_status.available else 'exclamation-triangle'}"></i>
+                        {'✅' if selected_status.available else '⚠️'}
                     </span>
                 </div>
                 <p style="margin: 0; font-size: 0.8125rem; color: #475569; line-height: 1.4;">
@@ -172,7 +172,7 @@ def render_provider_selector():
             # Afficher bouton de configuration si non disponible
             if not selected_status.available:
                 if st.sidebar.button(
-                    "<i class='fas fa-cog'></i> Configurer",
+                    "🔧 Configurer",
                     key="btn_configure_selected",
                     use_container_width=True
                 ):
@@ -186,7 +186,7 @@ def render_provider_selector():
     ]
     
     if unavailable_providers:
-        with st.sidebar.expander("<i class='fas fa-times-circle'></i> Providers non disponibles", expanded=False):
+        with st.sidebar.expander("❌ Providers non disponibles", expanded=False):
             for status in unavailable_providers:
                 st.markdown(f"""
                 <div style="
@@ -204,7 +204,7 @@ def render_provider_selector():
                 """, unsafe_allow_html=True)
                 
                 if status.installation_command:
-                    st.caption(f"<i class='fas fa-lightbulb'></i> {status.installation_command}", unsafe_allow_html=True)
+                    st.caption(f"💡 {status.installation_command}")
 
 
 def render_provider_configuration_modal():
@@ -219,7 +219,7 @@ def render_provider_configuration_modal():
     config_type = st.session_state.get("config_provider_type", "gemini")
     
     with st.sidebar:
-        with st.expander("<i class='fas fa-cog'></i> Configuration Provider", expanded=True):
+        with st.expander("⚙️ Configuration Provider", expanded=True):
             
             provider_type = st.radio(
                 "Quel provider configurer?",
@@ -257,9 +257,9 @@ def render_provider_configuration_modal():
                 """)
                 
                 # Test de connexion
-                st.markdown("**<i class='fas fa-search'></i> Test de connexion:**", unsafe_allow_html=True)
+                st.markdown("**🔍 Test de connexion:**")
                 
-                if st.button("<i class='fas fa-sync'></i> Vérifier la connexion Ollama", key="btn_test_ollama", use_container_width=True):
+                if st.button("🔄 Vérifier la connexion Ollama", key="btn_test_ollama", use_container_width=True):
                     if provider_manager:
                         available, msg = provider_manager.check_ollama_connection()
                         if available:
@@ -302,7 +302,7 @@ def render_provider_configuration_modal():
                     col1, col2 = st.columns(2)
                     
                     with col1:
-                        if st.button("<i class='fas fa-check'></i> Tester et Sauvegarder", key="btn_save_gemini", use_container_width=True):
+                        if st.button("✅ Tester et Sauvegarder", key="btn_save_gemini", use_container_width=True):
                             # Tester la clé
                             try:
                                 import google.generativeai as genai
@@ -312,10 +312,10 @@ def render_provider_configuration_modal():
                                 try:
                                     list(genai.list_models())
                                     test_result = True
-                                    test_msg = "<i class='fas fa-check-circle'></i> Clé API valide"
+                                    test_msg = "✅ Clé API valide"
                                 except Exception:
                                     test_result = True  # On considère valide même si list_models échoue
-                                    test_msg = "<i class='fas fa-check-circle'></i> Clé API acceptée"
+                                    test_msg = "✅ Clé API acceptée"
                                 
                                 if test_result:
                                     # Sauvegarder dans .env
@@ -343,23 +343,23 @@ def render_provider_configuration_modal():
                                     # Mettre à jour la variable d'environnement
                                     os.environ["GEMINI_API_KEY"] = api_key
                                     
-                                    st.success(test_msg, icon="✓")
-                                    st.success("Clé API Gemini sauvegardée dans .env!", icon="✓")
+                                    st.success(test_msg)
+                                    st.success("✅ Clé API Gemini sauvegardée dans .env!")
                                     
                                     # Fermer la modal et recharger
                                     st.session_state.show_provider_config_modal = False
                                     time.sleep(0.5)
                                     st.rerun()
                             except Exception as e:
-                                st.error(f"<i class='fas fa-times-circle'></i> Erreur: {str(e)[:100]}")
+                                st.error(f"❌ Erreur: {str(e)[:100]}")
                     
                     with col2:
-                        if st.button("<i class='fas fa-times'></i> Annuler", key="btn_cancel_gemini", use_container_width=True):
+                        if st.button("❌ Annuler", key="btn_cancel_gemini", use_container_width=True):
                             st.session_state.show_provider_config_modal = False
                             st.rerun()
             
             # Bouton pour fermer la modal
-            if st.button("<i class='fas fa-times'></i> Fermer", key="btn_close_modal", use_container_width=True):
+            if st.button("✖️ Fermer", key="btn_close_modal", use_container_width=True):
                 st.session_state.show_provider_config_modal = False
                 st.rerun()
 

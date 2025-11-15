@@ -795,7 +795,7 @@ Temps: {detail['time']}
                 mistral_available = mistral_status.get('available', False)
                 
                 if st.button(
-                    "<i class='fas fa-desktop'></i> Local (Mistral)",
+                    "Local (Mistral)",
                     key="provider_mistral",
                     disabled=not mistral_available,
                     use_container_width=True
@@ -813,7 +813,7 @@ Temps: {detail['time']}
                 gemini_available = gemini_status.get('available', False)
                 
                 if st.button(
-                    "<i class='fas fa-cloud'></i> Cloud (Gemini)",
+                    "Cloud (Gemini)",
                     key="provider_gemini",
                     disabled=not gemini_available,
                     use_container_width=True
@@ -888,7 +888,7 @@ Temps: {detail['time']}
         st.markdown("---")
         
         # Paramètres de nettoyage
-        with st.expander("<i class='fas fa-cog'></i> Paramètres de Nettoyage", expanded=False):
+        with st.expander("⚙️ Paramètres de Nettoyage", expanded=False):
             st.caption("Options de prétraitement des données")
             
             remove_duplicates = st.checkbox("Supprimer les doublons", value=True)
@@ -906,11 +906,11 @@ Temps: {detail['time']}
             }
         
         # Informations système (en bas de sidebar)
-        with st.expander("<i class='fas fa-info-circle'></i> Informations Système", expanded=False):
+        with st.expander("ℹ️ Informations Système", expanded=False):
             _render_system_info_tab()
         
         # Gestion des rôles
-        with st.expander("<i class='fas fa-users'></i> Gestion des Rôles", expanded=False):
+        with st.expander("👥 Gestion des Rôles", expanded=False):
             _render_role_management_tab()
         
         # Footer compact
@@ -1579,7 +1579,7 @@ def _render_role_management_tab():
         st.info("🔒 Système de rôles non disponible")
         return
     
-    st.markdown("**<i class='fas fa-users'></i> Rôle Utilisateur**", unsafe_allow_html=True)
+    st.markdown("**👥 Rôle Utilisateur**")
     
     try:
         initialize_role_system = role_system['initialize_role_system']
@@ -2281,7 +2281,7 @@ def _perform_classification(df, text_col, mode, use_optimized):
             if selected_provider == 'mistral':
                 mistral_status = provider_manager.get_provider_status("Mistral Local (Ollama)")
                 if not mistral_status or not mistral_status.available:
-                    st.warning("<i class='fas fa-exclamation-triangle'></i> Mistral n'est pas disponible. Basculement vers Gemini ou fallback...", icon="⚠")
+                    st.warning("⚠️ Mistral n'est pas disponible. Basculement vers Gemini ou fallback...")
                     # Essayer Gemini
                     gemini_status = provider_manager.get_provider_status("Gemini API (Google Cloud)")
                     if gemini_status and gemini_status.available:
@@ -2295,7 +2295,7 @@ def _perform_classification(df, text_col, mode, use_optimized):
             elif selected_provider == 'gemini':
                 gemini_status = provider_manager.get_provider_status("Gemini API (Google Cloud)")
                 if not gemini_status or not gemini_status.available:
-                    st.warning("<i class='fas fa-exclamation-triangle'></i> Gemini n'est pas disponible. Basculement vers Mistral ou fallback...", icon="⚠")
+                    st.warning("⚠️ Gemini n'est pas disponible. Basculement vers Mistral ou fallback...")
                     # Essayer Mistral
                     mistral_status = provider_manager.get_provider_status("Mistral Local (Ollama)")
                     if mistral_status and mistral_status.available:
