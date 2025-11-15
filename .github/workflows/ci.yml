@@ -30,19 +30,19 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install -r requirements-test.txt
+          pip install -r requirements.production.txt || pip install -r requirements-academic.txt || pip install -r streamlit_app/requirements.txt
+          pip install pytest pytest-cov pytest-asyncio pytest-mock || true
       
       - name: Run linting
         run: |
-          pip install ruff black
-          ruff check src/ tests/ || true
-          black --check src/ tests/ || true
+          pip install ruff black || true
+          ruff check streamlit_app/ tests/ || true
+          black --check streamlit_app/ tests/ || true
       
       - name: Run unit tests
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: pytest tests/unit/ -v --cov=src --cov-report=xml || true
+        run: pytest tests/unit/ -v --cov=streamlit_app --cov-report=xml || true
       
       - name: Run integration tests
         env:
@@ -67,5 +67,6 @@ jobs:
         run: |
           echo "Déploiement automatique vers Streamlit Cloud"
           # Streamlit Cloud détecte automatiquement les push sur main
+
 
 

@@ -20,6 +20,7 @@ import re  # Expressions régulières pour l'extraction de données structurées
 import time  # Gestion des délais entre les tentatives
 import logging  # Journalisation des opérations et erreurs
 import streamlit as st  # Interface utilisateur et barre de progression
+import os  # Accès aux variables d'environnement
 
 # Configuration du logger pour le suivi des opérations
 logger = logging.getLogger(__name__)
@@ -91,14 +92,45 @@ class MistralClassifier:
         """
         # Vérification de la disponibilité du module Python ollama
         if not OLLAMA_AVAILABLE:
-            logger.error("Module ollama non installé")
+            logger.warning("Module ollama non installé. Installation: pip install ollama")
             return False
         
         try:
             # Tentative de connexion au serveur en listant les modèles disponibles
-            ollama.list()  # Requête HTTP vers le serveur Ollama local (port 11434 par défaut)
-            logger.info("Connexion Ollama OK")  # Confirmation de la connexion réussie
-            return True
+            # Utiliser un timeout implicite via requests sous-jacent
+            import requests
+            from requests.exceptions import RequestException, Timeout
+            
+            # Vérifier que le serveur répond rapidement
+            base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+            try:
+                response = requests.get(f"{base_url}/api/tags", timeout=3)
+                if response.status_code == 200:
+                    logger.info("Connexion Ollama OK")
+                    # Vérifier que le modèle demandé est disponible
+                    models_data = response.json()
+                    available_models = [m.get('name', '') for m in models_data.get('models', [])]
+                    if self.model_name not in available_models and not any(self.model_name in m for m in available_models):
+                        logger.warning(f"Modèle {self.model_name} non trouvé. Modèles disponibles: {', '.join(available_models[:3])}")
+                    return True
+                else:
+                    logger.error(f"Ollama répond avec code {response.status_code}")
+                    return False
+            except Timeout:
+                logger.error("Timeout lors de la connexion à Ollama (serveur non démarré?)")
+                return False
+            except RequestException as e:
+                logger.error(f"Erreur connexion Ollama: {e}")
+                return False
+        except ImportError:
+            # Fallback si requests n'est pas disponible, utiliser ollama.list() directement
+            try:
+                ollama.list()
+                logger.info("Connexion Ollama OK")
+                return True
+            except Exception as e:
+                logger.error(f"Erreur connexion Ollama: {e}")
+                return False
         except Exception as e:
             # Capture de toute erreur de connexion (serveur non démarré, timeout, etc.)
             logger.error(f"Erreur connexion Ollama: {e}")
@@ -424,18 +456,39 @@ JSON:"""
 # Fonctions utilitaires
 def check_ollama_availability() -> bool:
     """
-    Vérifie si Ollama est disponible et répond
+    Vérifie si Ollama est disponible et répond avec timeout
     
     Returns:
-        True si Ollama est accessible
+        True si Ollama est accessible, False sinon
     """
     if not OLLAMA_AVAILABLE:
+        logger.debug("Module ollama non disponible")
         return False
     
     try:
-        ollama.list()
-        return True
-    except:
+        # Vérifier avec timeout via requests si disponible
+        try:
+            import requests
+            from requests.exceptions import RequestException, Timeout
+            
+            base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+            response = requests.get(f"{base_url}/api/tags", timeout=3)
+            if response.status_code == 200:
+                logger.debug("Ollama disponible et répond")
+                return True
+            else:
+                logger.debug(f"Ollama répond avec code {response.status_code}")
+                return False
+        except (ImportError, Timeout, RequestException):
+            # Fallback vers ollama.list() si requests non disponible ou timeout
+            try:
+                ollama.list()
+                logger.debug("Ollama disponible (via ollama.list)")
+                return True
+            except Exception:
+                return False
+    except Exception as e:
+        logger.debug(f"Erreur vérification Ollama: {e}")
         return False
 
 

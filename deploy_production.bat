@@ -25,7 +25,14 @@ call venv\Scripts\activate.bat
 REM Install production dependencies
 echo [OK] Installing production dependencies...
 python -m pip install --upgrade pip
-pip install -r requirements.production.txt
+if exist "requirements.production.txt" (
+    pip install -r requirements.production.txt
+) else if exist "requirements-academic.txt" (
+    pip install -r requirements-academic.txt
+) else (
+    echo [ERROR] No requirements file found!
+    exit /b 1
+)
 
 REM Create necessary directories
 echo [OK] Creating production directories...

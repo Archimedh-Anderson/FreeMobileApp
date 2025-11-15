@@ -1,0 +1,57 @@
+# ============================================================================
+# FreeMobilaChat - Production Dependencies
+# ============================================================================
+# Optimized for Streamlit Cloud deployment
+# Version: 2.0.0
+# Python: 3.10+
+# ============================================================================
+
+# Core Streamlit Framework
+streamlit>=1.32.0
+pandas>=2.2.1
+numpy>=1.26.4
+
+# Visualization
+plotly>=5.19.0
+
+# Text Processing
+emoji>=2.8.0
+unidecode>=1.3.0
+chardet>=5.2.0
+
+# API & HTTP
+requests>=2.31.0
+httpx>=0.25.0
+
+# LLM APIs (Cloud providers - no local models)
+anthropic>=0.8.0
+openai>=1.0.0
+google-generativeai>=0.4.1
+
+# Utilities
+python-dotenv>=1.0.0
+tqdm>=4.65.0
+psutil>=5.9.5
+tenacity>=8.2.3
+openpyxl>=3.1.2
+pydantic>=2.6.3
+pydantic-settings>=2.0.3
+
+# Authentication & Security
+bcrypt>=4.0.1
+pyjwt>=2.8.0
+
+# Database (lightweight SQLite)
+sqlalchemy>=2.0.21
+
+# Monitoring & Logging
+loguru>=0.7.2
+
+# ============================================================================
+# NOTES
+# ============================================================================
+# - This file excludes heavy ML dependencies (torch, transformers) for cloud deployment
+# - For local development with full ML capabilities, use requirements-academic.txt
+# - Ollama is NOT included (local only, not available on Streamlit Cloud)
+# - BERT models require transformers/torch (use requirements-academic.txt locally)
+

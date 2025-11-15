@@ -11,13 +11,26 @@ Performance:
 """
 
 from typing import List, Dict, Optional
-import torch
-from transformers import AutoTokenizer, AutoModelForSequenceClassification, pipeline
-import pandas as pd
 import logging
-from tqdm import tqdm
+import pandas as pd
 
 logger = logging.getLogger(__name__)
+
+# Import conditionnel de PyTorch et Transformers avec gestion d'erreur gracieuse
+try:
+    import torch
+    from transformers import AutoTokenizer, AutoModelForSequenceClassification, pipeline
+    from tqdm import tqdm
+    TORCH_AVAILABLE = True
+except ImportError as e:
+    TORCH_AVAILABLE = False
+    logger.warning(f"PyTorch/Transformers non disponible: {e}. Installation: pip install torch transformers")
+    # Créer des stubs pour éviter les erreurs d'attribut
+    torch = None
+    AutoTokenizer = None
+    AutoModelForSequenceClassification = None
+    pipeline = None
+    tqdm = lambda x, **kwargs: x
 
 
 class BERTClassifier:
@@ -39,7 +52,18 @@ class BERTClassifier:
             model_name: Nom du modèle Hugging Face
             batch_size: Taille des batches pour inférence
             use_gpu: Utiliser GPU si disponible
+            
+        Raises:
+            ImportError: Si PyTorch ou Transformers ne sont pas installés
         """
+        if not TORCH_AVAILABLE:
+            error_msg = (
+                "PyTorch et Transformers sont requis pour BERTClassifier. "
+                "Installation: pip install torch transformers"
+            )
+            logger.error(error_msg)
+            raise ImportError(error_msg)
+        
         self.model_name = model_name
         self.batch_size = batch_size
         
@@ -115,8 +139,23 @@ class BERTClassifier:
             logger.info(f" BERT chargé: {model_name}")
             
         except Exception as e:
-            logger.error(f" Erreur chargement BERT: {e}")
-            raise
+            error_msg = f"Erreur chargement BERT: {e}"
+            logger.error(error_msg)
+            # Fournir des instructions claires selon le type d'erreur
+            if "No module named" in str(e) or "cannot import" in str(e):
+                logger.error("Solution: pip install torch transformers")
+            elif "CUDA" in str(e) or "cuda" in str(e).lower():
+                logger.warning("Erreur CUDA détectée, utilisation CPU automatique")
+                # Réessayer avec CPU
+                try:
+                    self.device = 'cpu'
+                    self.model.to('cpu')
+                    logger.info("BERT chargé sur CPU avec succès")
+                except Exception as e2:
+                    logger.error(f"Échec chargement sur CPU: {e2}")
+                    raise
+            else:
+                raise RuntimeError(error_msg)
     
     def predict_sentiment(self, text: str) -> Dict[str, any]:
         """

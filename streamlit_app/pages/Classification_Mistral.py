@@ -42,17 +42,23 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Charger les variables d'environnement depuis .env
-# Chercher le fichier .env à la racine du projet
+# Chercher le fichier .env à la racine du projet (avec override pour forcer le rechargement)
 env_path = Path(__file__).parent.parent.parent / '.env'
 if env_path.exists():
-    load_dotenv(env_path)
+    load_dotenv(env_path, override=True)
     logger.info(f"Fichier .env chargé depuis: {env_path}")
+    # Vérifier que GEMINI_API_KEY est bien chargé
+    if os.getenv("GEMINI_API_KEY"):
+        logger.info("✓ GEMINI_API_KEY détectée dans .env")
 else:
     # Essayer aussi à la racine du workspace
     root_env = Path(__file__).parent.parent.parent.parent / '.env'
     if root_env.exists():
-        load_dotenv(root_env)
+        load_dotenv(root_env, override=True)
         logger.info(f"Fichier .env chargé depuis: {root_env}")
+        # Vérifier que GEMINI_API_KEY est bien chargé
+        if os.getenv("GEMINI_API_KEY"):
+            logger.info("✓ GEMINI_API_KEY détectée dans .env")
     else:
         logger.warning("Fichier .env non trouvé, utilisation des variables d'environnement système")
 
@@ -68,35 +74,155 @@ if parent_dir not in sys.path:
 
 @st.cache_resource(show_spinner=False)
 def _load_classification_modules():
-    """Charge les modules de classification avec cache"""
+    """
+    Charge les modules de classification avec cache et gestion gracieuse des erreurs.
+    
+    Gère l'absence de PyTorch et autres dépendances de manière conditionnelle.
+    Retourne des informations détaillées sur les modules disponibles/indisponibles.
+    """
+    # Recharger le .env avant de charger les modules pour s'assurer que les clés API sont à jour
     try:
-        logger.info("Chargement des modules de classification...")
-        
+        env_path = Path(__file__).parent.parent.parent / '.env'
+        if env_path.exists():
+            load_dotenv(env_path, override=True)
+            logger.debug(f"Fichier .env rechargé depuis: {env_path}")
+        else:
+            root_env = Path(__file__).parent.parent.parent.parent / '.env'
+            if root_env.exists():
+                load_dotenv(root_env, override=True)
+                logger.debug(f"Fichier .env rechargé depuis: {root_env}")
+    except Exception as e:
+        logger.debug(f"Erreur rechargement .env (non bloquant): {e}")
+    
+    modules_status = {
+        'available': False,
+        'modules': {},
+        'errors': {},
+        'warnings': []
+    }
+    
+    # Module 1: TweetCleaner (toujours disponible)
+    try:
         from services.tweet_cleaner import TweetCleaner
+        modules_status['modules']['TweetCleaner'] = TweetCleaner
+        logger.info("✓ TweetCleaner chargé")
+    except Exception as e:
+        modules_status['errors']['TweetCleaner'] = str(e)
+        logger.error(f"✗ TweetCleaner: {e}")
+    
+    # Module 2: RuleClassifier (toujours disponible)
+    try:
+        from services.rule_classifier import EnhancedRuleClassifier
+        modules_status['modules']['EnhancedRuleClassifier'] = EnhancedRuleClassifier
+        logger.info("✓ RuleClassifier chargé")
+    except Exception as e:
+        modules_status['errors']['EnhancedRuleClassifier'] = str(e)
+        logger.error(f"✗ RuleClassifier: {e}")
+    
+    # Module 3: BERTClassifier (nécessite PyTorch)
+    try:
+        from services.bert_classifier import BERTClassifier, TORCH_AVAILABLE
+        if TORCH_AVAILABLE:
+            modules_status['modules']['BERTClassifier'] = BERTClassifier
+            modules_status['modules']['torch_available'] = True
+            logger.info("✓ BERTClassifier disponible (PyTorch installé)")
+        else:
+            modules_status['errors']['BERTClassifier'] = "PyTorch non installé"
+            modules_status['warnings'].append({
+                'module': 'BERTClassifier',
+                'message': 'PyTorch requis pour BERT',
+                'solution': 'pip install torch transformers'
+            })
+            logger.warning("✗ BERTClassifier: PyTorch non disponible")
+    except ImportError as e:
+        modules_status['errors']['BERTClassifier'] = f"Import error: {str(e)}"
+        modules_status['warnings'].append({
+            'module': 'BERTClassifier',
+            'message': 'PyTorch requis pour BERT',
+            'solution': 'pip install torch transformers'
+        })
+        logger.warning(f"✗ BERTClassifier: {e}")
+    except Exception as e:
+        modules_status['errors']['BERTClassifier'] = str(e)
+        logger.error(f"✗ BERTClassifier: {e}")
+    
+    # Module 4: MistralClassifier
+    try:
         from services.mistral_classifier import (
             MistralClassifier,
             check_ollama_availability,
             list_available_models
         )
-        from services.multi_model_orchestrator import MultiModelOrchestrator
-        from services.bert_classifier import BERTClassifier
-        from services.rule_classifier import EnhancedRuleClassifier
-        
-        logger.info("Modules chargés avec succès")
-        
-        return {
-            'TweetCleaner': TweetCleaner,
-            'MistralClassifier': MistralClassifier,
-            'check_ollama_availability': check_ollama_availability,
-            'list_available_models': list_available_models,
-            'MultiModelOrchestrator': MultiModelOrchestrator,
-            'BERTClassifier': BERTClassifier,
-            'EnhancedRuleClassifier': EnhancedRuleClassifier,
-            'available': True
-        }
+        modules_status['modules']['MistralClassifier'] = MistralClassifier
+        modules_status['modules']['check_ollama_availability'] = check_ollama_availability
+        modules_status['modules']['list_available_models'] = list_available_models
+        logger.info("✓ MistralClassifier chargé")
+    except ImportError as e:
+        modules_status['errors']['MistralClassifier'] = f"Import error: {str(e)}"
+        modules_status['warnings'].append({
+            'module': 'MistralClassifier',
+            'message': 'Module ollama requis',
+            'solution': 'pip install ollama'
+        })
+        logger.warning(f"✗ MistralClassifier: {e}")
     except Exception as e:
-        logger.error(f"Erreur lors du chargement des modules: {e}")
-        return {'available': False, 'error': str(e)}
+        modules_status['errors']['MistralClassifier'] = str(e)
+        logger.error(f"✗ MistralClassifier: {e}")
+    
+    # Module 5: GeminiClassifier
+    try:
+        from services.gemini_classifier import (
+            GeminiClassifier,
+            check_gemini_availability
+        )
+        modules_status['modules']['GeminiClassifier'] = GeminiClassifier
+        modules_status['modules']['check_gemini_availability'] = check_gemini_availability
+        logger.info("✓ GeminiClassifier chargé")
+    except ImportError as e:
+        modules_status['errors']['GeminiClassifier'] = f"Import error: {str(e)}"
+        modules_status['warnings'].append({
+            'module': 'GeminiClassifier',
+            'message': 'Module google-generativeai requis',
+            'solution': 'pip install google-generativeai'
+        })
+        logger.warning(f"✗ GeminiClassifier: {e}")
+    except Exception as e:
+        modules_status['errors']['GeminiClassifier'] = str(e)
+        logger.error(f"✗ GeminiClassifier: {e}")
+    
+    # Module 6: MultiModelOrchestrator (peut fonctionner sans BERT)
+    try:
+        from services.multi_model_orchestrator import MultiModelOrchestrator
+        modules_status['modules']['MultiModelOrchestrator'] = MultiModelOrchestrator
+        logger.info("✓ MultiModelOrchestrator chargé")
+    except Exception as e:
+        modules_status['errors']['MultiModelOrchestrator'] = str(e)
+        logger.error(f"✗ MultiModelOrchestrator: {e}")
+    
+    # Déterminer si le système est utilisable (au moins TweetCleaner et RuleClassifier)
+    core_modules = ['TweetCleaner', 'EnhancedRuleClassifier']
+    has_core = all(m in modules_status['modules'] for m in core_modules)
+    
+    modules_status['available'] = has_core
+    
+    # Format de retour compatible avec l'ancien code
+    result = {
+        'available': modules_status['available'],
+        'modules_status': modules_status,
+        'error': None
+    }
+    
+    # Ajouter les modules chargés pour compatibilité
+    for key, value in modules_status['modules'].items():
+        if key != 'torch_available':
+            result[key] = value
+    
+    # Si erreur principale, l'ajouter
+    if not has_core and modules_status['errors']:
+        main_error = list(modules_status['errors'].values())[0]
+        result['error'] = main_error
+    
+    return result
 
 @st.cache_resource(show_spinner=False)
 def _load_role_system():
@@ -173,63 +299,293 @@ def main():
 
 def _load_modern_css():
     """
-    Charge les styles CSS personnalisés pour l'interface utilisateur.
+    Charge les styles CSS personnalisés modernes pour l'interface utilisateur.
     
-    Utilise Font Awesome pour les icônes et définit une palette de couleurs
-    cohérente ainsi que des animations pour améliorer l'expérience utilisateur.
+    Design premium avec glassmorphism, animations fluides et palette de couleurs moderne.
     """
     st.markdown("""
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
     
     :root {
-        --primary: #1E3A5F;
+        --primary: #667eea;
+        --primary-dark: #764ba2;
         --secondary: #2E86DE;
-        --success: #10AC84;
-        --warning: #F79F1F;
-        --danger: #EE5A6F;
-        --light: #F5F6FA;
-        --dark: #2C3E50;
+        --success: #10B981;
+        --warning: #F59E0B;
+        --danger: #EF4444;
+        --info: #3B82F6;
+        --light: #F8FAFC;
+        --dark: #0F172A;
+        --gray-50: #F8FAFC;
+        --gray-100: #F1F5F9;
+        --gray-200: #E2E8F0;
+        --gray-300: #CBD5E1;
+        --gray-400: #94A3B8;
+        --gray-500: #64748B;
+        --gray-600: #475569;
+        --gray-700: #334155;
+        --gray-800: #1E293B;
+        --gray-900: #0F172A;
+        
+        --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        
+        --radius-sm: 8px;
+        --radius-md: 12px;
+        --radius-lg: 16px;
+        --radius-xl: 20px;
+        
+        --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+        --transition-normal: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+        --transition-slow: 500ms cubic-bezier(0.4, 0, 0.2, 1);
     }
     
-    * {font-family: 'Inter', sans-serif;}
+    * {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        box-sizing: border-box;
+    }
     
     .main {
-        background: linear-gradient(135deg, #F5F7FA 0%, #FFFFFF 100%);
-        animation: fadeIn 0.5s ease-in-out;
+        background: linear-gradient(135deg, #F8FAFC 0%, #FFFFFF 50%, #F1F5F9 100%);
+        animation: fadeIn 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        min-height: 100vh;
     }
     
     @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
+        from { 
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to { 
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
     
+    @keyframes slideInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    @keyframes pulse {
+        0%, 100% {
+            opacity: 1;
+        }
+        50% {
+            opacity: 0.5;
+        }
+    }
+    
+    @keyframes shimmer {
+        0% {
+            background-position: -1000px 0;
+        }
+        100% {
+            background-position: 1000px 0;
+        }
+    }
+    
+    /* Provider Cards Hover Effect */
+    .provider-card {
+        transition: all var(--transition-normal);
+        cursor: pointer;
+    }
+    
+    .provider-card:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--shadow-xl) !important;
+    }
+    
+    /* Buttons modernes */
     .stButton > button {
-        background: linear-gradient(135deg, var(--secondary) 0%, #1A6FC7 100%);
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
         color: white;
         border: none;
-        border-radius: 12px;
-        padding: 0.875rem 2.5rem;
-        font-weight: 700;
-        font-size: 1.05rem;
-        box-shadow: 0 4px 16px rgba(46, 134, 222, 0.35);
-        transition: all 0.3s;
+        border-radius: var(--radius-md);
+        padding: 0.875rem 2rem;
+        font-weight: 600;
+        font-size: 0.9375rem;
+        box-shadow: var(--shadow-md);
+        transition: all var(--transition-normal);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .stButton > button::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+        transition: left var(--transition-slow);
     }
     
     .stButton > button:hover {
         transform: translateY(-2px);
-        box-shadow: 0 8px 24px rgba(46, 134, 222, 0.5);
+        box-shadow: var(--shadow-lg);
     }
     
+    .stButton > button:hover::before {
+        left: 100%;
+    }
+    
+    .stButton > button:active {
+        transform: translateY(0);
+        box-shadow: var(--shadow-sm);
+    }
+    
+    /* Progress bars modernes */
     .stProgress > div > div {
-        background: linear-gradient(90deg, #2E86DE 0%, #10AC84 100%);
+        background: linear-gradient(90deg, var(--primary) 0%, var(--primary-dark) 50%, var(--success) 100%);
+        background-size: 200% 100%;
+        animation: shimmer 2s infinite;
         height: 8px;
-        border-radius: 10px;
+        border-radius: var(--radius-lg);
+        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
     }
     
+    /* File uploader moderne */
+    .stFileUploader > div {
+        border: 2px dashed var(--gray-300);
+        border-radius: var(--radius-lg);
+        padding: 2rem;
+        background: linear-gradient(135deg, var(--gray-50) 0%, white 100%);
+        transition: all var(--transition-normal);
+    }
+    
+    .stFileUploader > div:hover {
+        border-color: var(--primary);
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, white 100%);
+        box-shadow: var(--shadow-md);
+    }
+    
+    /* Expander moderne */
+    .streamlit-expanderHeader {
+        background: linear-gradient(135deg, var(--gray-50) 0%, white 100%);
+        border-radius: var(--radius-md);
+        padding: 0.75rem 1rem;
+        font-weight: 600;
+        color: var(--gray-800);
+        transition: all var(--transition-fast);
+    }
+    
+    .streamlit-expanderHeader:hover {
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, white 100%);
+    }
+    
+    /* Spinner moderne */
+    .stSpinner > div {
+        border: 3px solid var(--gray-200);
+        border-top-color: var(--primary);
+        animation: spin 0.8s linear infinite;
+    }
+    
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+    
+    /* Metric cards */
+    [data-testid="stMetricValue"] {
+        font-weight: 800;
+        font-size: 2rem;
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    
+    /* Sidebar moderne */
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, white 0%, var(--gray-50) 100%);
+    }
+    
+    /* Hide default Streamlit elements */
     #MainMenu, footer, header {visibility: hidden;}
+    
+    /* Scrollbar moderne */
+    ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+    
+    ::-webkit-scrollbar-track {
+        background: var(--gray-100);
+        border-radius: 4px;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+        background: var(--gray-400);
+        border-radius: 4px;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+        background: var(--gray-500);
+    }
+    
+    /* Animations pour les éléments qui apparaissent */
+    [data-testid="stMarkdownContainer"] {
+        animation: slideInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    /* Amélioration des inputs */
+    .stTextInput > div > div > input {
+        border-radius: var(--radius-md);
+        border: 1px solid var(--gray-300);
+        transition: all var(--transition-fast);
+    }
+    
+    .stTextInput > div > div > input:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    
+    /* Radio buttons modernes */
+    .stRadio > div {
+        gap: 0.75rem;
+    }
+    
+    .stRadio > div > label {
+        padding: 0.75rem 1rem;
+        border-radius: var(--radius-md);
+        border: 2px solid var(--gray-200);
+        transition: all var(--transition-fast);
+        cursor: pointer;
+    }
+    
+    .stRadio > div > label:hover {
+        border-color: var(--primary);
+        background: rgba(102, 126, 234, 0.05);
+    }
+    
+    /* Selectbox moderne */
+    .stSelectbox > div > div {
+        border-radius: var(--radius-md);
+        border: 1px solid var(--gray-300);
+    }
+    
+    /* Checkbox moderne */
+    .stCheckbox > label {
+        cursor: pointer;
+        transition: color var(--transition-fast);
+    }
+    
+    .stCheckbox > label:hover {
+        color: var(--primary);
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -356,7 +712,7 @@ def _render_sidebar_complete():
         </div>
         """, unsafe_allow_html=True)
         
-        # System status
+        # Statut Système avec nouvelle fonction
         st.markdown("""
         <div style="background: linear-gradient(135deg, #F8F9FA 0%, #EAECF0 100%);
                     padding: 1rem; border-radius: 12px; margin-bottom: 1rem;
@@ -367,62 +723,18 @@ def _render_sidebar_complete():
         </div>
         """, unsafe_allow_html=True)
         
-        # ONGLET 1: CLASSIFICATEURS DISPONIBLES (RESTAURÉ)
+        # Utiliser la nouvelle fonction pour afficher le statut système
+        _render_system_status()
+        
+        st.markdown("---")
+        
+        # ONGLET 1: CLASSIFICATEURS DISPONIBLES
         _render_classifiers_tab()
         
-        # Sélecteur de Provider API (Mistral Local vs Gemini API)
-        st.markdown("### Provider de Classification")
+        st.markdown("---")
         
-        # Vérifier disponibilité des providers
-        mistral_available = _check_mistral_availability()
-        gemini_available = _check_gemini_availability()
-        
-        provider_options = []
-        provider_labels = {}
-        
-        if mistral_available:
-            provider_options.append('mistral')
-            provider_labels['mistral'] = 'Mistral (Local)'
-        
-        if gemini_available:
-            provider_options.append('gemini')
-            provider_labels['gemini'] = 'Gemini API (Externe)'
-        
-        # Si aucun provider disponible, ajouter quand même les options avec avertissement
-        if not provider_options:
-            provider_options = ['mistral', 'gemini']
-            provider_labels = {
-                'mistral': 'Mistral (Local) - Non disponible',
-                'gemini': 'Gemini API (Externe) - Non disponible'
-            }
-        
-        # Sélection du provider
-        selected_provider = st.radio(
-            "Choisissez le modèle de classification:",
-            options=provider_options,
-            format_func=lambda x: provider_labels.get(x, x),
-            index=0 if 'mistral' in provider_options else 0,
-            key='api_provider_selector',
-            help="Mistral: Local via Ollama (situation de crise) | Gemini: API externe (serveur entreprise)"
-        )
-        
-        # Afficher statut des providers
-        col1, col2 = st.columns(2)
-        with col1:
-            if mistral_available:
-                st.success("Mistral disponible")
-            else:
-                st.error("Mistral indisponible")
-        
-        with col2:
-            if gemini_available:
-                st.success("Gemini disponible")
-            else:
-                st.warning("Gemini indisponible")
-                st.caption("Vérifiez GEMINI_API_KEY dans .env")
-        
-        # Sauvegarder le provider sélectionné
-        st.session_state.selected_api_provider = selected_provider
+        # Provider de Classification avec nouvelle fonction
+        selected_provider = _render_provider_cards()
         
         st.markdown("---")
         
@@ -497,115 +809,615 @@ Temps: {detail['time']}
         st.markdown("---")
         st.caption(f"<i class='fas fa-code'></i> Version 4.5 Final | {datetime.now().strftime('%Y-%m-%d')}", unsafe_allow_html=True)
 
-def _check_mistral_availability() -> bool:
-    """Vérifie si Mistral/Ollama est disponible"""
+def _check_mistral_availability() -> dict:
+    """
+    Vérifie si Mistral/Ollama est disponible avec détails.
+    
+    Returns:
+        dict avec 'available', 'message', 'details', 'solution'
+    """
+    result = {
+        'available': False,
+        'message': 'Mistral non disponible',
+        'details': '',
+        'solution': '',
+        'icon': 'fa-times-circle',
+        'color': '#EE5A6F'
+    }
+    
     try:
         modules = _load_classification_modules()
-        if modules.get('available'):
-            check_ollama = modules.get('check_ollama_availability')
-            if check_ollama:
-                return check_ollama()
-        return False
+        modules_dict = modules.get('modules', {})
+        modules_status = modules.get('modules_status', {})
+        
+        # Vérifier si MistralClassifier est chargé
+        if 'MistralClassifier' not in modules_dict:
+            error_msg = modules_status.get('errors', {}).get('MistralClassifier', 'Erreur inconnue')
+            result['message'] = 'Module MistralClassifier non chargé'
+            result['details'] = str(error_msg)[:100]  # Limiter la longueur
+            if 'ollama' in str(error_msg).lower() or 'import' in str(error_msg).lower():
+                result['solution'] = 'Installation: pip install ollama'
+            else:
+                result['solution'] = 'Vérifiez que le module mistral_classifier.py existe et est valide'
+            return result
+        
+        # Vérifier Ollama
+        check_ollama = modules_dict.get('check_ollama_availability')
+        if not check_ollama:
+            result['message'] = 'Fonction check_ollama_availability non disponible'
+            result['details'] = 'Le module MistralClassifier ne fournit pas la fonction de vérification'
+            result['solution'] = 'Vérifiez l\'implémentation de mistral_classifier.py'
+            return result
+        
+        # Tester la connexion Ollama
+        try:
+            is_available = check_ollama()
+            if is_available:
+                result['available'] = True
+                result['message'] = 'Mistral disponible via Ollama'
+                result['details'] = 'Service Ollama actif et opérationnel'
+                result['icon'] = 'fa-check-circle'
+                result['color'] = '#10AC84'
+                result['solution'] = ''
+            else:
+                result['message'] = 'Ollama non disponible'
+                result['details'] = 'Le service Ollama n\'est pas démarré ou inaccessible'
+                result['solution'] = 'Démarrez Ollama avec: ollama serve\nOu installez: https://ollama.ai'
+        except Exception as e:
+            result['message'] = 'Erreur lors de la vérification Ollama'
+            result['details'] = str(e)[:100]
+            result['solution'] = 'Vérifiez que Ollama est installé: pip install ollama\nPuis démarrez: ollama serve'
+            
     except Exception as e:
         logger.warning(f"Erreur vérification Mistral: {e}")
-        return False
+        result['details'] = str(e)
+        result['solution'] = 'Vérifiez les logs pour plus de détails'
+    
+    return result
 
-def _check_gemini_availability() -> bool:
-    """Vérifie si l'API Gemini est disponible"""
+def _check_gemini_availability() -> dict:
+    """
+    Vérifie si l'API Gemini est disponible avec détails.
+    
+    Returns:
+        dict avec 'available', 'message', 'details', 'solution'
+    """
+    result = {
+        'available': False,
+        'message': 'Gemini API non disponible',
+        'details': '',
+        'solution': '',
+        'icon': 'fa-times-circle',
+        'color': '#F79F1F'
+    }
+    
+    # S'assurer que le .env est chargé avant la vérification
     try:
-        from services.gemini_classifier import check_gemini_availability
-        return check_gemini_availability()
+        env_path = Path(__file__).parent.parent.parent / '.env'
+        if env_path.exists():
+            load_dotenv(env_path, override=True)
+            logger.debug(f"Fichier .env rechargé depuis: {env_path}")
+        else:
+            root_env = Path(__file__).parent.parent.parent.parent / '.env'
+            if root_env.exists():
+                load_dotenv(root_env, override=True)
+                logger.debug(f"Fichier .env rechargé depuis: {root_env}")
+    except Exception as e:
+        logger.debug(f"Erreur lors du chargement .env (non bloquant): {e}")
+    
+    try:
+        modules = _load_classification_modules()
+        modules_dict = modules.get('modules', {})
+        
+        # Vérifier si GeminiClassifier est chargé
+        if 'GeminiClassifier' not in modules_dict:
+            error_msg = modules.get('modules_status', {}).get('errors', {}).get('GeminiClassifier', 'Erreur inconnue')
+            result['message'] = 'Module GeminiClassifier non chargé'
+            result['details'] = str(error_msg)[:100]
+            if 'google-generativeai' in str(error_msg).lower() or 'import' in str(error_msg).lower():
+                result['solution'] = 'Installation: pip install google-generativeai'
+            else:
+                result['solution'] = 'Vérifiez que le module gemini_classifier.py existe et est valide'
+            return result
+        
+        # Utiliser la fonction check_gemini_availability du module si disponible
+        check_gemini = modules_dict.get('check_gemini_availability')
+        if check_gemini:
+            try:
+                is_available = check_gemini()
+                if is_available:
+                    result['available'] = True
+                    result['message'] = 'Gemini API disponible'
+                    result['details'] = 'Clé API configurée et valide'
+                    result['icon'] = 'fa-check-circle'
+                    result['color'] = '#10AC84'
+                    result['solution'] = ''
+                else:
+                    # Vérifier directement la clé API
+                    api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+                    if not api_key:
+                        result['message'] = 'Gemini API non configurée'
+                        result['details'] = 'La clé API Gemini n\'est pas définie'
+                        result['solution'] = 'Ajoutez GEMINI_API_KEY=votre_cle dans le fichier .env à la racine du projet\nObtenez votre clé sur: https://makersuite.google.com/app/apikey'
+                    else:
+                        result['message'] = 'Gemini API non accessible'
+                        result['details'] = 'La clé API semble invalide ou le service est inaccessible'
+                        result['solution'] = 'Vérifiez votre clé API sur: https://makersuite.google.com/app/apikey'
+            except Exception as e:
+                result['message'] = 'Erreur lors de la vérification Gemini'
+                result['details'] = str(e)[:100]
+                result['solution'] = 'Vérifiez la configuration de votre clé API'
+        else:
+            # Fallback: vérifier directement la clé API
+            api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+            if api_key:
+                result['available'] = True
+                result['message'] = 'Gemini API configurée'
+                result['details'] = 'Clé API trouvée (validation non disponible)'
+                result['icon'] = 'fa-check-circle'
+                result['color'] = '#10AC84'
+            else:
+                result['message'] = 'Gemini API non configurée'
+                result['details'] = 'La clé API Gemini n\'est pas définie'
+                result['solution'] = 'Ajoutez GEMINI_API_KEY=votre_cle dans le fichier .env à la racine du projet\nObtenez votre clé sur: https://makersuite.google.com/app/apikey'
+    
     except Exception as e:
         logger.warning(f"Erreur vérification Gemini: {e}")
-        return False
+        # Fallback: vérifier directement la clé API
+        api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+        if api_key:
+            result['available'] = True
+            result['message'] = 'Gemini API configurée'
+            result['details'] = 'Clé API trouvée'
+            result['icon'] = 'fa-check-circle'
+            result['color'] = '#10AC84'
+        else:
+            result['message'] = 'Gemini API non configurée'
+            result['details'] = str(e)[:100]
+            result['solution'] = 'Ajoutez GEMINI_API_KEY=votre_cle dans le fichier .env\nObtenez votre clé sur: https://makersuite.google.com/app/apikey'
+    
+    try:
+        from services.gemini_classifier import check_gemini_availability
+        
+        try:
+            is_available = check_gemini_availability()
+            if is_available:
+                result['available'] = True
+                result['message'] = 'Gemini API disponible'
+                result['details'] = 'Clé API configurée et valide'
+                result['icon'] = 'fa-check-circle'
+                result['color'] = '#10AC84'
+                result['solution'] = ''
+            else:
+                if api_key:
+                    result['message'] = 'Gemini API non accessible'
+                    result['details'] = 'La clé API est présente mais la connexion échoue'
+                    result['solution'] = 'Vérifiez que la clé est valide et que google-generativeai est installé'
+                else:
+                    result['message'] = 'Gemini API non configurée'
+                    result['details'] = 'La clé API Gemini n\'est pas définie'
+                    result['solution'] = 'Ajoutez GEMINI_API_KEY=votre_cle dans le fichier .env à la racine du projet'
+        except Exception as e:
+            result['message'] = 'Erreur lors de la vérification Gemini'
+            result['details'] = str(e)[:100]
+            if 'google-generativeai' in str(e).lower() or 'import' in str(e).lower():
+                result['solution'] = 'Installez: pip install google-generativeai'
+            else:
+                result['solution'] = 'Vérifiez la configuration de la clé API'
+            
+    except ImportError as e:
+        result['message'] = 'Module GeminiClassifier non disponible'
+        result['details'] = str(e)[:100]
+        result['solution'] = 'Vérifiez que le module gemini_classifier.py existe et que google-generativeai est installé'
+    except Exception as e:
+        logger.warning(f"Erreur vérification Gemini: {e}")
+        result['details'] = str(e)[:100]
+        result['solution'] = 'Vérifiez les logs pour plus de détails'
+    
+    return result
+
+def _render_system_status():
+    """
+    Affiche le statut système avec design épuré et professionnel.
+    
+    Présente le statut de manière concise sans surcharge visuelle.
+    """
+    modules = _load_classification_modules()
+    modules_status = modules.get('modules_status', {})
+    
+    # Statut global simplifié
+    overall_status = modules.get('available', False)
+    status_color = '#10AC84' if overall_status else '#EE5A6F'
+    status_icon = 'fa-check-circle' if overall_status else 'fa-exclamation-triangle'
+    status_text = 'Opérationnel' if overall_status else 'Partiellement Disponible'
+    
+    st.markdown(f"""
+    <div style="background: {'#F0FDF4' if overall_status else '#FEF2F2'};
+                padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1rem;
+                border-left: 3px solid {status_color};">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <i class="fas {status_icon}" style="color: {status_color}; font-size: 1rem;"></i>
+            <span style="font-weight: 600; color: #1E3A5F; font-size: 0.9rem;">{status_text}</span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Liste compacte des modules
+    available_modules = modules_status.get('modules', {})
+    error_modules = modules_status.get('errors', {})
+    
+    # Afficher uniquement les modules avec erreurs dans un expander
+    if error_modules:
+        with st.expander(f"⚠️ Modules indisponibles ({len(error_modules)})", expanded=False):
+            for module_key, error_msg in list(error_modules.items())[:3]:  # Limiter à 3 pour ne pas surcharger
+                module_names = {
+                    'BERTClassifier': 'BERT',
+                    'MistralClassifier': 'Mistral',
+                    'TweetCleaner': 'Tweet Cleaner',
+                    'EnhancedRuleClassifier': 'Rule Classifier',
+                    'MultiModelOrchestrator': 'Orchestrator'
+                }
+                name = module_names.get(module_key, module_key)
+                st.caption(f"**{name}**: {error_msg[:60]}{'...' if len(error_msg) > 60 else ''}")
+            
+            if len(error_modules) > 3:
+                st.caption(f"... et {len(error_modules) - 3} autre(s)")
+            
+            # Aide compacte
+            if 'BERTClassifier' in error_modules:
+                st.caption("💡 Solution: `pip install torch transformers`")
+
+def _render_provider_cards():
+    """
+    Affiche les cards visuelles modernes avec design glassmorphism pour les providers Mistral et Gemini.
+    
+    Design premium avec animations, gradients et effets de profondeur.
+    """
+    mistral_status = _check_mistral_availability()
+    gemini_status = _check_gemini_availability()
+    
+    st.markdown("""
+    <div style="margin-bottom: 1.5rem;">
+        <h3 style="font-size: 1.25rem; font-weight: 700; color: #1E293B; margin-bottom: 0.5rem; 
+                    display: flex; align-items: center; gap: 0.5rem;">
+            <i class="fas fa-plug" style="color: #667eea;"></i>
+            Provider de Classification
+        </h3>
+        <p style="color: #64748B; font-size: 0.875rem; margin: 0;">Sélectionnez votre modèle d'IA préféré</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Cards modernes avec glassmorphism
+    col1, col2 = st.columns(2, gap="large")
+    
+    with col1:
+        # Card Mistral - Design premium avec glassmorphism
+        mistral_available = mistral_status.get('available', False)
+        mistral_color = '#10B981' if mistral_available else '#EF4444'
+        mistral_bg_gradient = 'linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.05) 100%)' if mistral_available else 'linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.05) 100%)'
+        mistral_icon = 'fa-check-circle' if mistral_available else 'fa-exclamation-circle'
+        mistral_message = mistral_status.get('message', 'Non disponible')
+        mistral_status_text = 'Disponible' if mistral_available else 'Indisponible'
+        
+        st.markdown(f"""
+        <div class="provider-card" style="
+            background: {mistral_bg_gradient};
+            backdrop-filter: blur(10px);
+            border: 1px solid {'rgba(16, 185, 129, 0.2)' if mistral_available else 'rgba(239, 68, 68, 0.2)'};
+            padding: 1.5rem;
+            border-radius: 16px;
+            margin-bottom: 1rem;
+            box-shadow: 0 4px 20px {'rgba(16, 185, 129, 0.15)' if mistral_available else 'rgba(239, 68, 68, 0.15)'};
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        ">
+            <div style="position: absolute; top: 0; right: 0; width: 100px; height: 100px; 
+                        background: radial-gradient(circle, {'rgba(16, 185, 129, 0.1)' if mistral_available else 'rgba(239, 68, 68, 0.1)'} 0%, transparent 70%);
+                        border-radius: 50%; transform: translate(30px, -30px);"></div>
+            
+            <div style="display: flex; align-items: flex-start; justify-content: space-between; 
+                        margin-bottom: 1rem; position: relative; z-index: 1;">
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <div style="
+                        width: 48px; height: 48px;
+                        background: {'linear-gradient(135deg, #10B981 0%, #059669 100%)' if mistral_available else 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)'};
+                        border-radius: 12px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        box-shadow: 0 4px 12px {'rgba(16, 185, 129, 0.3)' if mistral_available else 'rgba(239, 68, 68, 0.3)'};
+                    ">
+                        <i class="fas fa-robot" style="color: white; font-size: 1.25rem;"></i>
+                    </div>
+                    <div>
+                        <div style="font-weight: 700; color: #0F172A; font-size: 1rem; margin-bottom: 0.25rem;">
+                            Mistral AI
+                        </div>
+                        <div style="font-size: 0.75rem; color: #64748B; font-weight: 500;">
+                            <i class="fas fa-server" style="margin-right: 0.25rem;"></i>Local via Ollama
+                        </div>
+                    </div>
+                </div>
+                <div style="
+                    padding: 0.375rem 0.75rem;
+                    background: {'rgba(16, 185, 129, 0.15)' if mistral_available else 'rgba(239, 68, 68, 0.15)'};
+                    border-radius: 20px;
+                    display: flex;
+                    align-items: center;
+                    gap: 0.375rem;
+                ">
+                    <i class="fas {mistral_icon}" style="color: {mistral_color}; font-size: 0.75rem;"></i>
+                    <span style="font-size: 0.75rem; font-weight: 600; color: {mistral_color};">
+                        {mistral_status_text}
+                    </span>
+                </div>
+            </div>
+            
+            <div style="font-size: 0.8125rem; color: #475569; line-height: 1.5; position: relative; z-index: 1;
+                        padding-top: 0.75rem; border-top: 1px solid {'rgba(16, 185, 129, 0.1)' if mistral_available else 'rgba(239, 68, 68, 0.1)'};">
+                <i class="fas fa-info-circle" style="color: #64748B; margin-right: 0.375rem; font-size: 0.75rem;"></i>
+                {mistral_message}
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        # Card Gemini - Design premium avec glassmorphism
+        gemini_available = gemini_status.get('available', False)
+        gemini_color = '#10B981' if gemini_available else '#F59E0B'
+        gemini_bg_gradient = 'linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.05) 100%)' if gemini_available else 'linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(217, 119, 6, 0.05) 100%)'
+        gemini_icon = 'fa-check-circle' if gemini_available else 'fa-exclamation-circle'
+        gemini_message = gemini_status.get('message', 'Non disponible')
+        gemini_status_text = 'Disponible' if gemini_available else 'Configuration requise'
+        
+        st.markdown(f"""
+        <div class="provider-card" style="
+            background: {gemini_bg_gradient};
+            backdrop-filter: blur(10px);
+            border: 1px solid {'rgba(16, 185, 129, 0.2)' if gemini_available else 'rgba(245, 158, 11, 0.2)'};
+            padding: 1.5rem;
+            border-radius: 16px;
+            margin-bottom: 1rem;
+            box-shadow: 0 4px 20px {'rgba(16, 185, 129, 0.15)' if gemini_available else 'rgba(245, 158, 11, 0.15)'};
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        ">
+            <div style="position: absolute; top: 0; right: 0; width: 100px; height: 100px; 
+                        background: radial-gradient(circle, {'rgba(16, 185, 129, 0.1)' if gemini_available else 'rgba(245, 158, 11, 0.1)'} 0%, transparent 70%);
+                        border-radius: 50%; transform: translate(30px, -30px);"></div>
+            
+            <div style="display: flex; align-items: flex-start; justify-content: space-between; 
+                        margin-bottom: 1rem; position: relative; z-index: 1;">
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <div style="
+                        width: 48px; height: 48px;
+                        background: {'linear-gradient(135deg, #10B981 0%, #059669 100%)' if gemini_available else 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)'};
+                        border-radius: 12px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        box-shadow: 0 4px 12px {'rgba(16, 185, 129, 0.3)' if gemini_available else 'rgba(245, 158, 11, 0.3)'};
+                    ">
+                        <i class="fas fa-cloud" style="color: white; font-size: 1.25rem;"></i>
+                    </div>
+                    <div>
+                        <div style="font-weight: 700; color: #0F172A; font-size: 1rem; margin-bottom: 0.25rem;">
+                            Gemini API
+                        </div>
+                        <div style="font-size: 0.75rem; color: #64748B; font-weight: 500;">
+                            <i class="fas fa-globe" style="margin-right: 0.25rem;"></i>Google Cloud
+                        </div>
+                    </div>
+                </div>
+                <div style="
+                    padding: 0.375rem 0.75rem;
+                    background: {'rgba(16, 185, 129, 0.15)' if gemini_available else 'rgba(245, 158, 11, 0.15)'};
+                    border-radius: 20px;
+                    display: flex;
+                    align-items: center;
+                    gap: 0.375rem;
+                ">
+                    <i class="fas {gemini_icon}" style="color: {gemini_color}; font-size: 0.75rem;"></i>
+                    <span style="font-size: 0.75rem; font-weight: 600; color: {gemini_color};">
+                        {gemini_status_text}
+                    </span>
+                </div>
+            </div>
+            
+            <div style="font-size: 0.8125rem; color: #475569; line-height: 1.5; position: relative; z-index: 1;
+                        padding-top: 0.75rem; border-top: 1px solid {'rgba(16, 185, 129, 0.1)' if gemini_available else 'rgba(245, 158, 11, 0.1)'};">
+                <i class="fas fa-info-circle" style="color: #64748B; margin-right: 0.375rem; font-size: 0.75rem;"></i>
+                {gemini_message}
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Messages d'aide compacts uniquement si nécessaire
+    if not gemini_available and gemini_status.get('solution'):
+        with st.expander("💡 Configuration Gemini", expanded=False):
+            st.caption(gemini_status.get('solution', ''))
+    
+    if not mistral_available and mistral_status.get('solution'):
+        with st.expander("💡 Configuration Mistral", expanded=False):
+            st.caption(mistral_status.get('solution', ''))
+    
+    # Sélection du provider
+    provider_options = []
+    provider_labels = {}
+    
+    if mistral_available:
+        provider_options.append('mistral')
+        provider_labels['mistral'] = 'Mistral (Local)'
+    
+    if gemini_available:
+        provider_options.append('gemini')
+        provider_labels['gemini'] = 'Gemini API'
+    
+    # Si aucun provider disponible, ajouter quand même les options
+    if not provider_options:
+        provider_options = ['mistral', 'gemini']
+        provider_labels = {
+            'mistral': 'Mistral (Local) - Non disponible',
+            'gemini': 'Gemini API - Non disponible'
+        }
+    
+    selected_provider = st.radio(
+        "Choisissez le modèle:",
+        options=provider_options,
+        format_func=lambda x: provider_labels.get(x, x),
+        index=0 if 'mistral' in provider_options else (1 if 'gemini' in provider_options else 0),
+        key='api_provider_selector',
+        help="Mistral: Local via Ollama | Gemini: API externe Google"
+    )
+    
+    # Sauvegarder le provider sélectionné
+    st.session_state.selected_api_provider = selected_provider
+    
+    return selected_provider
 
 def _render_classifiers_tab():
     """
-    Affiche l'onglet des classificateurs disponibles.
+    Affiche l'onglet des classificateurs disponibles avec affichage structuré.
     
     Liste tous les modèles de classification disponibles (BERT, Règles, Mistral, etc.)
     et affiche leur statut ainsi que les modèles Ollama disponibles si applicable.
+    Utilise la nouvelle structure de modules avec gestion gracieuse des erreurs.
     """
     modules = _load_classification_modules()
+    modules_status = modules.get('modules_status', {})
+    available_modules = modules_status.get('modules', {})
+    error_modules = modules_status.get('errors', {})
     
+    # Header avec statut
     if modules.get('available'):
         st.markdown("""
         <div style="background: linear-gradient(135deg, rgba(16, 172, 132, 0.15) 0%, rgba(16, 172, 132, 0.08) 100%);
                     padding: 0.75rem 1rem; border-radius: 10px; margin-bottom: 1rem;
                     border-left: 4px solid #10AC84;">
-            <strong style="color: #10AC84;"><i class="fas fa-check-circle"></i> Modules chargés</strong>
+            <strong style="color: #10AC84;"><i class="fas fa-check-circle"></i> Classificateurs Disponibles</strong>
         </div>
         """, unsafe_allow_html=True)
-        
-        with st.expander("Classificateurs Disponibles (5)", expanded=False):
-            classificateurs = [
-                ("BERT Classifier", "Deep Learning - Analyse de sentiment", "Actif"),
-                ("Rule Classifier", "Classification par règles métier", "Actif"),
-                ("Mistral Classifier", "LLM Mistral AI via Ollama", "Actif"),
-                ("Multi-Model Orchestrator", "Orchestration intelligente", "Actif"),
-                ("Ultra-Optimized V2", "Performance 3x optimisée", "Actif")
-            ]
-            
-            for name, desc, status in classificateurs:
-                st.markdown(f"""
-                <div style="background: white; padding: 0.75rem; border-radius: 8px; margin-bottom: 0.5rem;
-                            border: 1px solid #E0E0E0;">
-                    <div style="font-weight: 700; color: #1E3A5F; font-size: 0.95rem;">{name}</div>
-                    <div style="font-size: 0.8rem; color: #666;">{desc}</div>
-                    <div style="font-size: 0.75rem; font-weight: 600;">{status}</div>
-                </div>
-                """, unsafe_allow_html=True)
-        
-        # ONGLET MODÈLES OLLAMA (RESTAURÉ)
-        try:
-            check_ollama = modules.get('check_ollama_availability')
-            list_models = modules.get('list_available_models')
-            
-            if check_ollama and check_ollama():
-                st.markdown("""
-                <div style="background: linear-gradient(135deg, rgba(16, 172, 132, 0.15) 0%, rgba(16, 172, 132, 0.08) 100%);
-                            padding: 0.75rem 1rem; border-radius: 10px; margin-bottom: 1rem;
-                            border-left: 4px solid #10AC84;">
-                    <strong style="color: #10AC84;"><i class="fas fa-check-circle"></i> Ollama actif</strong>
-                    <span style="color: #666;"> | Service LLM opérationnel</span>
-                </div>
-                """, unsafe_allow_html=True)
-                
-                if list_models:
-                    models = list_models()
-                    if models:
-                        with st.expander(f"Modèles LLM Disponibles ({len(models)})", expanded=False):
-                            for idx, model in enumerate(models):
-                                status = "Recommandé" if idx == 0 else "Disponible"
-                                st.markdown(f"""
-                                <div style="background: #F8F9FA; padding: 0.75rem; border-radius: 8px;
-                                            margin-bottom: 0.5rem; border-left: 3px solid #2E86DE;">
-                                    <div style="font-weight: 700; color: #1E3A5F;">{model}</div>
-                                    <div style="font-size: 0.75rem; color: #10AC84; font-weight: 600;">
-                                        {status}
+    else:
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, rgba(238, 90, 111, 0.15) 0%, rgba(238, 90, 111, 0.08) 100%);
+                    padding: 0.75rem 1rem; border-radius: 10px; margin-bottom: 1rem;
+                    border-left: 4px solid #EE5A6F;">
+            <strong style="color: #EE5A6F;"><i class="fas fa-exclamation-triangle"></i> Modules Partiellement Disponibles</strong>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Liste des classificateurs avec statut détaillé
+    classificateurs_info = {
+        'TweetCleaner': ('Tweet Cleaner', 'Nettoyage et préprocessing', True),
+        'EnhancedRuleClassifier': ('Rule Classifier', 'Classification par règles métier', True),
+        'BERTClassifier': ('BERT Classifier', 'Deep Learning - Analyse de sentiment', False),
+        'MistralClassifier': ('Mistral Classifier', 'LLM Mistral AI via Ollama', False),
+        'MultiModelOrchestrator': ('Multi-Model Orchestrator', 'Orchestration intelligente', False)
+    }
+    
+    # Afficher les classificateurs disponibles
+    available_count = len([k for k in available_modules.keys() if k in classificateurs_info and k != 'torch_available'])
+    if available_count > 0:
+        with st.expander(f"Classificateurs Disponibles ({available_count})", expanded=True):
+            for module_key, (name, desc, essential) in classificateurs_info.items():
+                if module_key in available_modules:
+                    st.markdown(f"""
+                    <div style="background: linear-gradient(135deg, rgba(16, 172, 132, 0.1) 0%, rgba(16, 172, 132, 0.05) 100%);
+                                padding: 0.75rem; border-radius: 8px; margin-bottom: 0.5rem;
+                                border-left: 3px solid #10AC84;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="fas fa-check-circle" style="color: #10AC84;"></i>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 700; color: #1E3A5F; font-size: 0.95rem;">{name}</div>
+                                <div style="font-size: 0.8rem; color: #666;">{desc}</div>
+                            </div>
+                            <span style="background: #10AC84; color: white; padding: 0.25rem 0.5rem; border-radius: 12px; font-size: 0.7rem; font-weight: 600;">Actif</span>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+    
+    # Afficher les classificateurs indisponibles
+    if error_modules:
+        error_count = len([k for k in error_modules.keys() if k in classificateurs_info])
+        if error_count > 0:
+            with st.expander(f"Classificateurs Indisponibles ({error_count})", expanded=False):
+                for module_key, error_msg in error_modules.items():
+                    if module_key in classificateurs_info:
+                        name, desc, essential = classificateurs_info[module_key]
+                        error_color = '#EE5A6F' if essential else '#F79F1F'
+                        
+                        st.markdown(f"""
+                        <div style="background: linear-gradient(135deg, {error_color}15 0%, {error_color}08 100%);
+                                    padding: 0.75rem; border-radius: 8px; margin-bottom: 0.5rem;
+                                    border-left: 3px solid {error_color};">
+                            <div style="display: flex; align-items: flex-start; gap: 0.5rem;">
+                                <i class="fas fa-times-circle" style="color: {error_color}; margin-top: 0.2rem;"></i>
+                                <div style="flex: 1;">
+                                    <div style="font-weight: 700; color: #1E3A5F; font-size: 0.95rem;">{name}</div>
+                                    <div style="font-size: 0.8rem; color: #666; margin-top: 0.25rem;">{desc}</div>
+                                    <div style="font-size: 0.75rem; color: {error_color}; margin-top: 0.5rem; font-weight: 600;">
+                                        <i class="fas fa-exclamation-circle"></i> {error_msg[:80]}{'...' if len(error_msg) > 80 else ''}
                                     </div>
                                 </div>
-                                """, unsafe_allow_html=True)
-            else:
-                st.markdown("""
-                <div style="background: linear-gradient(135deg, rgba(238, 90, 111, 0.15) 0%, rgba(238, 90, 111, 0.08) 100%);
-                            padding: 0.75rem 1rem; border-radius: 10px; margin-bottom: 1rem;
-                            border-left: 4px solid #EE5A6F;">
-                    <strong style="color: #EE5A6F;"><i class="fas fa-exclamation-circle"></i> Ollama inactif</strong>
-                    <div style="font-size: 0.85rem; color: #666; margin-top: 0.5rem;">
-                        Service LLM non disponible
+                                <span style="background: {error_color}; color: white; padding: 0.25rem 0.5rem; border-radius: 12px; font-size: 0.7rem; font-weight: 600;">{'Critique' if essential else 'Optionnel'}</span>
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+    
+    # ONGLET MODÈLES OLLAMA
+    try:
+        check_ollama = modules.get('check_ollama_availability')
+        list_models = modules.get('list_available_models')
+        
+        if check_ollama:
+            try:
+                ollama_available = check_ollama()
+                if ollama_available:
+                    st.markdown("""
+                    <div style="background: linear-gradient(135deg, rgba(16, 172, 132, 0.15) 0%, rgba(16, 172, 132, 0.08) 100%);
+                                padding: 0.75rem 1rem; border-radius: 10px; margin-bottom: 1rem;
+                                border-left: 4px solid #10AC84;">
+                        <strong style="color: #10AC84;"><i class="fas fa-check-circle"></i> Ollama actif</strong>
+                        <span style="color: #666;"> | Service LLM opérationnel</span>
                     </div>
-                    <div style="margin-top: 0.5rem;">
-                        <i class="fas fa-terminal"></i> <code style="font-size: 0.75rem;">ollama serve</code>
+                    """, unsafe_allow_html=True)
+                    
+                    if list_models:
+                        models = list_models()
+                        if models:
+                            with st.expander(f"Modèles LLM Disponibles ({len(models)})", expanded=False):
+                                for idx, model in enumerate(models):
+                                    status = "Recommandé" if idx == 0 else "Disponible"
+                                    st.markdown(f"""
+                                    <div style="background: #F8F9FA; padding: 0.75rem; border-radius: 8px;
+                                                margin-bottom: 0.5rem; border-left: 3px solid #2E86DE;">
+                                        <div style="font-weight: 700; color: #1E3A5F;">{model}</div>
+                                        <div style="font-size: 0.75rem; color: #10AC84; font-weight: 600;">
+                                            {status}
+                                        </div>
+                                    </div>
+                                    """, unsafe_allow_html=True)
+                else:
+                    st.markdown("""
+                    <div style="background: linear-gradient(135deg, rgba(238, 90, 111, 0.15) 0%, rgba(238, 90, 111, 0.08) 100%);
+                                padding: 0.75rem 1rem; border-radius: 10px; margin-bottom: 1rem;
+                                border-left: 4px solid #EE5A6F;">
+                        <strong style="color: #EE5A6F;"><i class="fas fa-exclamation-circle"></i> Ollama inactif</strong>
+                        <div style="font-size: 0.85rem; color: #666; margin-top: 0.5rem;">
+                            Service LLM non disponible
+                        </div>
+                        <div style="margin-top: 0.5rem;">
+                            <i class="fas fa-terminal"></i> <code style="font-size: 0.75rem;">ollama serve</code>
+                        </div>
                     </div>
-                </div>
-                """, unsafe_allow_html=True)
-        except Exception as e:
-            logger.warning(f"Ollama check error: {e}")
-    else:
-        st.error("Modules non chargés")
-        if modules.get('error'):
-            st.caption(f"Erreur: {modules['error'][:100]}")
+                    """, unsafe_allow_html=True)
+            except Exception as e:
+                logger.warning(f"Ollama check error: {e}")
+                st.warning(f"Erreur lors de la vérification Ollama: {str(e)[:100]}")
+    except Exception as e:
+        logger.warning(f"Ollama check error: {e}")
 
 def _render_system_info_tab():
     """
@@ -618,23 +1430,31 @@ def _render_system_info_tab():
         try:
             modules = _load_classification_modules()
             if modules.get('available'):
-                BERTClassifier = modules['BERTClassifier']
-                bert = BERTClassifier(use_gpu=False)
-                info = bert.get_model_info()
-                
-                st.markdown("**<i class='fas fa-brain'></i> Modèle BERT**", unsafe_allow_html=True)
-                
-                col1, col2 = st.columns(2)
-                with col1:
-                    device_icon = "<i class='fas fa-microchip'></i>" if info['device'].upper() == "CPU" else "<i class='fas fa-gpu-card'></i>"
-                    st.caption(f"{device_icon} **Device:** {info['device'].upper()}")
-                    st.caption(f"<i class='fas fa-layer-group'></i> **Batch:** {info['batch_size']}", unsafe_allow_html=True)
-                with col2:
-                    model_short = info['model_name'].split('/')[-1][:25]
-                    st.caption(f"<i class='fas fa-cube'></i> **Modèle:** {model_short}", unsafe_allow_html=True)
+                # Vérifier si BERT est disponible
+                if 'BERTClassifier' in modules.get('modules', {}):
+                    BERTClassifier = modules.get('BERTClassifier')
+                    if BERTClassifier:
+                        bert = BERTClassifier(use_gpu=False)
+                        info = bert.get_model_info()
+                        
+                        st.markdown("**<i class='fas fa-brain'></i> Modèle BERT**", unsafe_allow_html=True)
+                        
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            device_icon = "<i class='fas fa-microchip'></i>" if info['device'].upper() == "CPU" else "<i class='fas fa-gpu-card'></i>"
+                            st.caption(f"{device_icon} **Device:** {info['device'].upper()}")
+                            st.caption(f"<i class='fas fa-layer-group'></i> **Batch:** {info['batch_size']}", unsafe_allow_html=True)
+                        with col2:
+                            model_short = info['model_name'].split('/')[-1][:25]
+                            st.caption(f"<i class='fas fa-cube'></i> **Modèle:** {model_short}", unsafe_allow_html=True)
+                    else:
+                        st.info("BERT Classifier non disponible (PyTorch requis)")
+                else:
+                    st.info("BERT Classifier non disponible (PyTorch requis)")
+                    st.caption("Installez PyTorch avec: pip install torch transformers")
                 
         except Exception as e:
-            st.warning("Informations système non disponibles")
+            st.warning(f"Informations système non disponibles: {str(e)[:100]}")
 
 def _render_role_management_tab():
     """
@@ -714,63 +1534,197 @@ def _render_role_management_tab():
 # ==============================================================================
 
 def _section_upload():
-    """Section upload avec gestion complète des erreurs"""
-    st.markdown("## Étape 1 | Upload et Nettoyage des Données")
+    """Section upload avec design moderne et gestion complète des erreurs"""
+    # Header moderne avec gradient
+    st.markdown("""
+    <div style="
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 2rem;
+        border-radius: 16px;
+        margin-bottom: 2rem;
+        box-shadow: 0 8px 32px rgba(102, 126, 234, 0.25);
+        position: relative;
+        overflow: hidden;
+    ">
+        <div style="position: absolute; top: 0; right: 0; width: 200px; height: 200px; 
+                    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+                    border-radius: 50%; transform: translate(50px, -50px);"></div>
+        <div style="position: relative; z-index: 1;">
+            <h2 style="color: white; font-size: 1.75rem; font-weight: 800; margin: 0 0 0.5rem 0; 
+                       display: flex; align-items: center; gap: 0.75rem;">
+                <i class="fas fa-cloud-upload-alt" style="font-size: 1.5rem;"></i>
+                Étape 1 | Upload et Nettoyage des Données
+            </h2>
+            <p style="color: rgba(255,255,255,0.9); font-size: 0.9375rem; margin: 0; font-weight: 400;">
+                Importez vos données CSV pour commencer l'analyse automatique
+            </p>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
     
-    # Instructions
-    with st.expander("Instructions d'Utilisation", expanded=True):
+    # Instructions modernes avec design card
+    with st.expander("📋 Instructions d'Utilisation", expanded=False):
         st.markdown("""
-        **Préparation des données:**
+        <div style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+                    padding: 1.5rem; border-radius: 12px; margin-bottom: 1rem;">
+            <h4 style="color: #1E293B; font-weight: 700; margin-bottom: 1rem; 
+                      display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fas fa-file-csv" style="color: #667eea;"></i>
+                Préparation des données
+            </h4>
+            <div style="display: grid; gap: 0.75rem;">
+                <div style="display: flex; align-items: start; gap: 0.75rem;">
+                    <div style="width: 24px; height: 24px; background: #667eea; border-radius: 6px; 
+                               display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                        <span style="color: white; font-weight: 700; font-size: 0.75rem;">1</span>
+                    </div>
+                    <div>
+                        <strong style="color: #1E293B;">Format requis:</strong> Fichier CSV
+                    </div>
+                </div>
+                <div style="display: flex; align-items: start; gap: 0.75rem;">
+                    <div style="width: 24px; height: 24px; background: #667eea; border-radius: 6px; 
+                               display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                        <span style="color: white; font-weight: 700; font-size: 0.75rem;">2</span>
+                    </div>
+                    <div>
+                        <strong style="color: #1E293B;">Contenu:</strong> Au moins une colonne de texte contenant les tweets à analyser
+                    </div>
+                </div>
+                <div style="display: flex; align-items: start; gap: 0.75rem;">
+                    <div style="width: 24px; height: 24px; background: #667eea; border-radius: 6px; 
+                               display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                        <span style="color: white; font-weight: 700; font-size: 0.75rem;">3</span>
+                    </div>
+                    <div>
+                        <strong style="color: #1E293B;">Taille maximale:</strong> 500 MB (limite augmentée pour éviter les erreurs d'accès)
+                    </div>
+                </div>
+                <div style="display: flex; align-items: start; gap: 0.75rem;">
+                    <div style="width: 24px; height: 24px; background: #667eea; border-radius: 6px; 
+                               display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                        <span style="color: white; font-weight: 700; font-size: 0.75rem;">4</span>
+                    </div>
+                    <div>
+                        <strong style="color: #1E293B;">Encodage:</strong> UTF-8 recommandé (détection automatique de 6 encodages supportés)
+                    </div>
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
         
-        1. **Format requis:** Fichier CSV
-        2. **Contenu:** Au moins une colonne de texte contenant les tweets à analyser
-        3. **Taille maximale:** 500 MB (limite augmentée pour éviter les erreurs d'accès)
-        4. **Encodage:** UTF-8 recommandé (détection automatique de 6 encodages supportés)
-        
-        **En cas d'erreur 403 (Accès Interdit):**
-        
-        """)
-        st.warning("""
-        **Vérifications à effectuer:**
-        
-        1. Vérifier que la taille du fichier est inférieure à 500 MB
-        2. Rafraîchir la page (touche F5)
-        3. Vérifier que le fichier n'est pas en lecture seule
-        4. Vider le cache du navigateur (Ctrl+Shift+Del)
-        5. Désactiver temporairement l'anti-virus si nécessaire
-        6. Redémarrer l'application si le problème persiste
-        
-        **Commande de redémarrage:**
-        ```bash
-        streamlit run streamlit_app/app.py --server.port=8503
-        ```
-        """)
-        st.markdown("**Pour plus d'aide:** Consultez le guide d'utilisation")
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, #fff3cd 0%, #ffe69c 100%);
+                    padding: 1.25rem; border-radius: 12px; border-left: 4px solid #F59E0B;
+                    margin-top: 1rem;">
+            <h4 style="color: #92400E; font-weight: 700; margin-bottom: 0.75rem; 
+                      display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fas fa-exclamation-triangle" style="color: #F59E0B;"></i>
+                En cas d'erreur 403 (Accès Interdit)
+            </h4>
+            <div style="color: #78350F; font-size: 0.875rem; line-height: 1.75;">
+                <div style="margin-bottom: 0.5rem;">
+                    <i class="fas fa-check-circle" style="color: #F59E0B; margin-right: 0.5rem;"></i>
+                    Vérifier que la taille du fichier est inférieure à 500 MB
+                </div>
+                <div style="margin-bottom: 0.5rem;">
+                    <i class="fas fa-sync-alt" style="color: #F59E0B; margin-right: 0.5rem;"></i>
+                    Rafraîchir la page (touche F5)
+                </div>
+                <div style="margin-bottom: 0.5rem;">
+                    <i class="fas fa-file-alt" style="color: #F59E0B; margin-right: 0.5rem;"></i>
+                    Vérifier que le fichier n'est pas en lecture seule
+                </div>
+                <div style="margin-bottom: 0.5rem;">
+                    <i class="fas fa-trash-alt" style="color: #F59E0B; margin-right: 0.5rem;"></i>
+                    Vider le cache du navigateur (Ctrl+Shift+Del)
+                </div>
+                <div style="margin-bottom: 0.5rem;">
+                    <i class="fas fa-shield-alt" style="color: #F59E0B; margin-right: 0.5rem;"></i>
+                    Désactiver temporairement l'anti-virus si nécessaire
+                </div>
+                <div>
+                    <i class="fas fa-redo" style="color: #F59E0B; margin-right: 0.5rem;"></i>
+                    Redémarrer l'application si le problème persiste
+                </div>
+            </div>
+            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(245, 158, 11, 0.2);">
+                <code style="background: rgba(0,0,0,0.05); padding: 0.5rem 1rem; border-radius: 6px; 
+                            display: inline-block; color: #78350F; font-size: 0.8125rem;">
+                    streamlit run streamlit_app/app.py --server.port=8503
+                </code>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
     
-    st.markdown("### Sélection du Fichier")
+    # Zone d'upload moderne
+    st.markdown("""
+    <div style="margin: 2rem 0 1rem 0;">
+        <h3 style="font-size: 1.25rem; font-weight: 700; color: #1E293B; margin-bottom: 0.5rem;
+                   display: flex; align-items: center; gap: 0.5rem;">
+            <i class="fas fa-folder-open" style="color: #667eea;"></i>
+            Sélection du Fichier
+        </h3>
+    </div>
+    """, unsafe_allow_html=True)
     
     # FILE UPLOADER ROBUSTE
     try:
         uploaded_file = st.file_uploader(
             "Déposez votre fichier CSV ici",
             type=['csv'],
-            help="Glissez-déposez ou cliquez pour parcourir. Max: 500 MB"
+            help="Glissez-déposez ou cliquez pour parcourir. Max: 500 MB",
+            label_visibility="collapsed"
         )
     except Exception as e:
-        st.error(f"Erreur file uploader: {str(e)}")
         logger.error(f"File uploader error: {e}", exc_info=True)
         
         if "403" in str(e) or "Forbidden" in str(e):
-            st.error("""
-            <h4><i class='fas fa-ban'></i> Erreur 403 - Accès Interdit</h4>
-            
-            Cette erreur indique un problème de permissions. Solutions recommandées:
-            
-            1. <i class='fas fa-weight'></i> Vérifier que la taille du fichier est inférieure à 500 MB
-            2. <i class='fas fa-sync'></i> Rafraîchir la page (F5)
-            3. <i class='fas fa-trash'></i> Vider le cache du navigateur
-            4. <i class='fas fa-redo'></i> Redémarrer Streamlit
-            """, icon="error")
+            st.markdown("""
+            <div style="background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+                        padding: 1.5rem; border-radius: 12px; border-left: 4px solid #EF4444;
+                        margin: 1rem 0; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15);">
+                <h4 style="color: #991B1B; font-weight: 700; margin-bottom: 1rem;
+                           display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fas fa-ban" style="color: #EF4444; font-size: 1.25rem;"></i>
+                    Erreur 403 - Accès Interdit
+                </h4>
+                <p style="color: #7F1D1D; margin-bottom: 1rem; line-height: 1.6;">
+                    Cette erreur indique un problème de permissions. Solutions recommandées:
+                </p>
+                <div style="display: grid; gap: 0.5rem; color: #7F1D1D;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fas fa-weight" style="color: #EF4444;"></i>
+                        Vérifier que la taille du fichier est inférieure à 500 MB
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fas fa-sync" style="color: #EF4444;"></i>
+                        Rafraîchir la page (F5)
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fas fa-trash" style="color: #EF4444;"></i>
+                        Vider le cache du navigateur
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fas fa-redo" style="color: #EF4444;"></i>
+                        Redémarrer Streamlit
+                    </div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown(f"""
+            <div style="background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+                        padding: 1.5rem; border-radius: 12px; border-left: 4px solid #EF4444;
+                        margin: 1rem 0; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15);">
+                <h4 style="color: #991B1B; font-weight: 700; margin-bottom: 0.5rem;
+                           display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fas fa-exclamation-circle" style="color: #EF4444;"></i>
+                    Erreur lors du chargement
+                </h4>
+                <p style="color: #7F1D1D; margin: 0;">{str(e)}</p>
+            </div>
+            """, unsafe_allow_html=True)
         return
     
     if uploaded_file:
@@ -791,12 +1745,47 @@ def _handle_upload_robust(uploaded_file):
         file_size_mb = uploaded_file.size / (1024 * 1024)
         
         if file_size_mb > 500:
-            st.error(f"Fichier trop volumineux: {file_size_mb:.1f} MB (max: 500 MB)")
-            st.info("Réduisez la taille du fichier ou filtrez les données")
+            st.markdown(f"""
+            <div style="background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+                        padding: 1.25rem; border-radius: 12px; border-left: 4px solid #EF4444;
+                        margin: 1rem 0; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15);">
+                <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                    <i class="fas fa-exclamation-triangle" style="color: #EF4444; font-size: 1.25rem;"></i>
+                    <h4 style="color: #991B1B; font-weight: 700; margin: 0;">Fichier trop volumineux</h4>
+                </div>
+                <p style="color: #7F1D1D; margin: 0 0 0.75rem 0;">
+                    Taille actuelle: <strong>{file_size_mb:.1f} MB</strong> | Maximum autorisé: <strong>500 MB</strong>
+                </p>
+                <p style="color: #7F1D1D; margin: 0; font-size: 0.875rem;">
+                    <i class="fas fa-lightbulb" style="color: #F59E0B; margin-right: 0.375rem;"></i>
+                    Réduisez la taille du fichier ou filtrez les données avant l'upload
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
             return
         
-        # Info fichier
-        st.success(f"Fichier accepté: {uploaded_file.name} ({file_size_mb:.1f} MB)")
+        # Info fichier avec design moderne
+        st.markdown(f"""
+        <div style="background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+                    padding: 1.25rem; border-radius: 12px; border-left: 4px solid #10B981;
+                    margin: 1rem 0; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
+                    display: flex; align-items: center; gap: 1rem;">
+            <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+                       border-radius: 12px; display: flex; align-items: center; justify-content: center;
+                       box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); flex-shrink: 0;">
+                <i class="fas fa-check-circle" style="color: white; font-size: 1.5rem;"></i>
+            </div>
+            <div style="flex: 1;">
+                <div style="font-weight: 700; color: #065F46; font-size: 1rem; margin-bottom: 0.25rem;">
+                    Fichier accepté avec succès
+                </div>
+                <div style="color: #047857; font-size: 0.875rem;">
+                    <i class="fas fa-file-csv" style="margin-right: 0.375rem;"></i>
+                    <strong>{uploaded_file.name}</strong> • {file_size_mb:.1f} MB
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
         
         # Lecture robuste avec multi-encodage
         with st.spinner("Lecture du fichier en cours..."):
@@ -1110,54 +2099,8 @@ def _perform_classification(df, text_col, mode, use_optimized):
                     show_progress=False
                 )
                 
-                # Les résultats Gemini sont déjà complets avec tous les champs KPI
-                # Vérification et validation post-traitement
-                required_fields = ['sentiment', 'categorie', 'score_confiance', 'is_claim', 'urgence', 'topics', 'incident']
-                missing_fields = [field for field in required_fields if field not in df_classified.columns]
-                
-                if missing_fields:
-                    logger.warning(f"Champs manquants après classification Gemini: {missing_fields}")
-                    # Compléter avec valeurs par défaut si nécessaire
-                    if 'is_claim' not in df_classified.columns:
-                        df_classified['is_claim'] = df_classified['sentiment'].apply(
-                            lambda x: 'oui' if str(x).lower() == 'negatif' else 'non'
-                        )
-                    if 'urgence' not in df_classified.columns:
-                        df_classified['urgence'] = df_classified.apply(
-                            lambda row: 'haute' if (
-                                str(row.get('sentiment', '')).lower() == 'negatif' and 
-                                row.get('is_claim', 'non') == 'oui'
-                            ) else 'moyenne' if str(row.get('sentiment', '')).lower() == 'negatif' else 'faible',
-                            axis=1
-                        )
-                    if 'topics' not in df_classified.columns:
-                        df_classified['topics'] = df_classified.get('categorie', 'autre')
-                    if 'incident' not in df_classified.columns:
-                        df_classified['incident'] = df_classified['is_claim'].apply(
-                            lambda x: 'non_specifie' if x == 'oui' else 'aucun'
-                        )
-                
-                # Validation post-traitement stricte
-                # Assert sur enum sentiment
-                valid_sentiments = ['positif', 'negatif', 'neutre']
-                invalid_sentiments = df_classified[~df_classified['sentiment'].isin(valid_sentiments)]
-                if len(invalid_sentiments) > 0:
-                    logger.warning(f"Correction de {len(invalid_sentiments)} sentiments invalides")
-                    df_classified.loc[~df_classified['sentiment'].isin(valid_sentiments), 'sentiment'] = 'neutre'
-                
-                # Assert sur enum categorie
-                valid_categories = ['produit', 'service', 'support', 'promotion', 'autre']
-                invalid_categories = df_classified[~df_classified['categorie'].isin(valid_categories)]
-                if len(invalid_categories) > 0:
-                    logger.warning(f"Correction de {len(invalid_categories)} catégories invalides")
-                    df_classified.loc[~df_classified['categorie'].isin(valid_categories), 'categorie'] = 'autre'
-                
-                # Assert sur range score_confiance (0.0-1.0)
-                df_classified['score_confiance'] = df_classified['score_confiance'].clip(0.0, 1.0)
-                
-                # Alias confidence pour compatibilité
-                if 'confidence' not in df_classified.columns:
-                    df_classified['confidence'] = df_classified['score_confiance']
+                # Normaliser et compléter les champs KPI requis
+                df_classified = _normalize_kpi_fields(df_classified)
                 
                 progress_bar.progress(0.95)
                 logger.info("Classification Gemini terminée avec succès")
@@ -1247,9 +2190,8 @@ def _perform_classification(df, text_col, mode, use_optimized):
                         progress_callback=lambda msg, pct: progress_bar.progress(0.2 + pct * 0.7)
                     )
         
-        # Vérifier que df_classified est défini avant de calculer les métriques
-        # Note: Si Gemini a réussi, le code s'arrête avant avec st.rerun()
-        # Cette vérification s'applique uniquement au cas Mistral
+        # Normaliser et compléter les champs KPI pour tous les providers
+        df_classified = _normalize_kpi_fields(df_classified)
         
         # Calcul rapport
         status.info("📊 Calcul des métriques...")
@@ -1319,6 +2261,136 @@ def _classify_fallback(df: pd.DataFrame, text_col: str) -> pd.DataFrame:
     
     classifications = df_copy[text_col].apply(classify_row)
     return pd.concat([df_copy, classifications], axis=1)
+
+def _normalize_kpi_fields(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Normalise et complète les champs KPI requis dans le DataFrame classifié.
+    
+    Cette fonction garantit que toutes les colonnes nécessaires pour le calcul
+    des KPIs sont présentes et normalisées, avec des valeurs par défaut
+    appropriées pour les champs manquants.
+    
+    Args:
+        df: DataFrame avec les résultats de classification
+        
+    Returns:
+        DataFrame avec les champs KPI normalisés et complétés
+    """
+    df = df.copy()
+    
+    # 1. Normaliser la colonne sentiment
+    if 'sentiment' not in df.columns:
+        # Chercher des colonnes alternatives
+        for col in ['sentiment_label', 'sentiment_class', 'Sentiment']:
+            if col in df.columns:
+                df['sentiment'] = df[col]
+                break
+        else:
+            df['sentiment'] = 'NEUTRE'
+    else:
+        # Normaliser les valeurs de sentiment
+        df['sentiment'] = df['sentiment'].astype(str).str.upper().str.strip()
+        df['sentiment'] = df['sentiment'].replace({
+            'POSITIVE': 'POSITIF',
+            'POS': 'POSITIF',
+            'NEGATIVE': 'NEGATIF',
+            'NEG': 'NEGATIF',
+            'NEUTRAL': 'NEUTRE',
+            'NEU': 'NEUTRE'
+        })
+    
+    # 2. Normaliser la colonne is_claim
+    if 'is_claim' not in df.columns:
+        # Chercher des colonnes alternatives
+        for col in ['is_claim', 'reclamation', 'réclamation', 'claim', 'is_reclamation']:
+            if col in df.columns:
+                df['is_claim'] = df[col]
+                break
+        else:
+            df['is_claim'] = 'NON'
+    else:
+        # Normaliser les valeurs (OUI/NON)
+        df['is_claim'] = df['is_claim'].astype(str).str.upper().str.strip()
+        df['is_claim'] = df['is_claim'].replace({
+            'YES': 'OUI',
+            'TRUE': 'OUI',
+            '1': 'OUI',
+            'NO': 'NON',
+            'FALSE': 'NON',
+            '0': 'NON'
+        })
+    
+    # 3. Normaliser la colonne urgence
+    if 'urgence' not in df.columns:
+        # Chercher des colonnes alternatives
+        for col in ['priority', 'urgence', 'urgency', 'Priority', 'Urgence']:
+            if col in df.columns:
+                df['urgence'] = df[col]
+                break
+        else:
+            df['urgence'] = 'FAIBLE'
+    else:
+        # Normaliser les valeurs d'urgence
+        df['urgence'] = df['urgence'].astype(str).str.upper().str.strip()
+        df['urgence'] = df['urgence'].replace({
+            'CRITICAL': 'CRITIQUE',
+            'HIGH': 'ELEVEE',
+            'MEDIUM': 'MOYENNE',
+            'LOW': 'FAIBLE',
+            'BASSE': 'FAIBLE',
+            'MOYEN': 'MOYENNE',
+            'ÉLEVÉE': 'ELEVEE',
+            'ÉLEVEE': 'ELEVEE'
+        })
+    
+    # 4. Normaliser la colonne theme/topic
+    if 'theme' not in df.columns and 'topics' not in df.columns:
+        # Chercher des colonnes alternatives
+        for col in ['Thème principal', 'category', 'Category', 'theme', 'topics', 'topic']:
+            if col in df.columns:
+                df['theme'] = df[col]
+                break
+        else:
+            df['theme'] = 'AUTRE'
+    
+    # 5. Normaliser la colonne incident
+    if 'incident' not in df.columns:
+        # Chercher des colonnes alternatives
+        for col in ['Incident principal', 'incident', 'incident_type', 'type_incident']:
+            if col in df.columns:
+                df['incident'] = df[col]
+                break
+        else:
+            df['incident'] = 'AUTRE'
+    
+    # 6. Normaliser la colonne confidence
+    if 'confidence' not in df.columns:
+        # Chercher des colonnes alternatives
+        for col in ['confidence', 'score_confiance', 'confiance', 'confidence_score']:
+            if col in df.columns:
+                df['confidence'] = pd.to_numeric(df[col], errors='coerce')
+                break
+        else:
+            df['confidence'] = 0.5
+    else:
+        # S'assurer que confidence est numérique
+        df['confidence'] = pd.to_numeric(df['confidence'], errors='coerce').fillna(0.5)
+        # Limiter entre 0 et 1
+        df['confidence'] = df['confidence'].clip(0.0, 1.0)
+    
+    # 7. Compléter les valeurs manquantes avec des valeurs par défaut appropriées
+    if 'sentiment' in df.columns:
+        df['sentiment'] = df['sentiment'].fillna('NEUTRE')
+    if 'is_claim' in df.columns:
+        df['is_claim'] = df['is_claim'].fillna('NON')
+    if 'urgence' in df.columns:
+        df['urgence'] = df['urgence'].fillna('FAIBLE')
+    if 'theme' in df.columns:
+        df['theme'] = df['theme'].fillna('AUTRE')
+    if 'incident' in df.columns:
+        df['incident'] = df['incident'].fillna('AUTRE')
+    
+    return df
 
 def _calculate_metrics(df: pd.DataFrame) -> Dict[str, Any]:
     """

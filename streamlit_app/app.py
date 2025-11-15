@@ -88,7 +88,8 @@ def render_header():
         # Use string formatting with proper escaping
         escaped_full_name = html.escape(full_name) if full_name else ""
         escaped_role_name = html.escape(role_name) if role_name else ""
-        escaped_role_icon = role_icon  # Icons are safe, no need to escape
+        # DO NOT escape role_icon - it contains safe HTML from Font Awesome
+        # The icon is already sanitized in AuthService.get_role_icon()
         
         st.markdown(f"""
         <div style="background: linear-gradient(135deg, #CC0000 0%, #8B0000 100%); padding: 1.5rem 3rem; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
@@ -103,7 +104,7 @@ def render_header():
             </div>
             <div style="display: flex; gap: 2rem; align-items: center;">
                 <div style="display: flex; align-items: center; gap: 1rem; background: rgba(255,255,255,0.1); padding: 0.5rem 1.5rem; border-radius: 25px;">
-                    <span style="font-size: 1.2rem;">{escaped_role_icon}</span>
+                    <span style="font-size: 1.2rem;">{role_icon}</span>
                     <div style="display: flex; flex-direction: column;">
                         <span style="font-size: 0.9rem; font-weight: 600; color: white;">{escaped_full_name}</span>
                         <span style="font-size: 0.75rem; color: rgba(255,255,255,0.8);">{escaped_role_name}</span>

@@ -430,22 +430,25 @@ ollama pull mistral
 
 #### Étape 5 : Configuration de l'Environnement
 
-Créez un fichier `.env` à la racine du projet :
+Créez un fichier `.env` à la racine du projet avec les variables essentielles :
 
 ```env
-# Configuration Mistral/Ollama
+# Configuration Gemini API (Recommandé pour classification cloud)
+GEMINI_API_KEY=your_gemini_api_key_here
+# Obtenez votre clé sur: https://makersuite.google.com/app/apikey
+
+# Configuration Mistral/Ollama (Optionnel - pour classification locale)
 OLLAMA_BASE_URL=http://localhost:11434
 MISTRAL_MODEL=mistral:latest
-
-# Configuration Gemini API (Optionnel)
-GEMINI_API_KEY=your_gemini_api_key_here
+# Installation: https://ollama.ai puis "ollama pull mistral"
 
 # Configuration Application
-ENVIRONMENT=production
+ENVIRONMENT=development
 DEBUG=false
 LOG_LEVEL=INFO
-BACKEND_URL=http://localhost:8000
 ```
+
+**Note importante** : Le fichier `.env` est optionnel pour le développement local mais requis pour certaines fonctionnalités (Gemini API, etc.). Ne commitez jamais le fichier `.env` (il est dans `.gitignore`).
 
 #### Étape 6 : Lancer l'Application
 
@@ -455,17 +458,30 @@ streamlit run streamlit_app/app.py
 
 L'application s'ouvrira automatiquement dans votre navigateur à `http://localhost:8503`
 
-### Déploiement Cloud (Streamlit Cloud)
+### Déploiement Rapide
+
+#### Démarrage Local (Windows)
+```cmd
+start_application.bat
+```
+
+#### Démarrage Local (Linux/macOS)
+```bash
+chmod +x start_application.sh
+./start_application.sh
+```
+
+#### Déploiement Streamlit Cloud
 
 1. Forkez le repository sur GitHub
 2. Visitez [Streamlit Cloud](https://streamlit.io/cloud)
 3. Connectez-vous avec votre compte GitHub
-4. Cliquez sur "New app"
-5. Sélectionnez votre repository forké
-6. Définissez le fichier principal : `streamlit_app/app.py`
-7. Définissez la version Python : 3.11
-8. Ajoutez les secrets (GEMINI_API_KEY, etc.) dans les paramètres
-9. Cliquez sur "Deploy"
+4. Créez une nouvelle app avec :
+   - **Main file** : `streamlit_app/app.py`
+   - **Python version** : 3.10+
+   - **Requirements** : `requirements.production.txt` ou `streamlit_app/requirements.txt`
+5. Ajoutez les secrets dans les paramètres (GEMINI_API_KEY, etc.)
+6. Cliquez sur "Deploy"
 
 ---
 

@@ -10,8 +10,16 @@ echo "====================================="
 # Vérifications
 if [ ! -f ".env" ]; then
     echo "⚠️ Fichier .env non trouvé"
-    echo "Copiez env.example vers .env et configurez vos variables"
-    exit 1
+    if [ -f ".env.example" ]; then
+        echo "Copiez .env.example vers .env et configurez vos variables"
+    elif [ -f "ENV_SETUP.md" ]; then
+        echo "Consultez ENV_SETUP.md pour créer votre fichier .env"
+    else
+        echo "Créez un fichier .env avec vos variables d'environnement"
+    fi
+    echo ""
+    echo "Note: Le fichier .env est optionnel pour le développement local"
+    echo "mais requis pour certaines fonctionnalités (Gemini API, etc.)"
 fi
 
 # Tests avant déploiement
@@ -30,5 +38,6 @@ echo "2. Streamlit Cloud détectera automatiquement le déploiement"
 echo ""
 echo "Pour déploiement local:"
 echo "streamlit run streamlit_app/app.py"
+
 
 

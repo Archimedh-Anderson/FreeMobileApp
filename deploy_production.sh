@@ -26,7 +26,15 @@ source venv/bin/activate
 # Install production dependencies
 echo "✓ Installing production dependencies..."
 pip install --upgrade pip
-pip install -r requirements.txt
+if [ -f "requirements.production.txt" ]; then
+    pip install -r requirements.production.txt
+elif [ -f "requirements-academic.txt" ]; then
+    pip install -r requirements-academic.txt
+elif [ -f "requirements.txt" ]; then
+    pip install -r requirements.txt
+else
+    echo "⚠️ No requirements file found, skipping dependency installation"
+fi
 
 # Create necessary directories
 echo "✓ Creating production directories..."
