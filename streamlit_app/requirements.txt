@@ -5,7 +5,7 @@
 # For local development with full ML, use requirements-academic.txt
 
 # Core Streamlit (st.switch_page requires >= 1.30.0)
-streamlit==1.51.0
+streamlit>=1.50.0
 pandas>=2.2.0
 numpy==1.26.4
 
