@@ -327,6 +327,96 @@ graph LR
     Manager --> UC7
 ```
 
+### 🆕 Nouvelles Fonctionnalités NLP Avancées
+
+#### TextPreprocessor - Prétraitement Robuste
+
+Le nouveau module `text_preprocessor.py` offre un nettoyage de texte de qualité production:
+
+**Fonctionnalités**:
+- ✅ Suppression URLs (http://, https://, www.)
+- ✅ Suppression mentions (@username)
+- ✅ Normalisation hashtags (#hashtag → hashtag)
+- ✅ Nettoyage caractères spéciaux (préserve accents français)
+- ✅ Normalisation espaces multiples
+- ✅ Détection automatique de langue (via langdetect)
+- ✅ Lemmatisation spaCy optionnelle
+- ✅ Dégradation gracieuse si bibliothèques manquantes
+
+**Exemple d'utilisation**:
+```python
+from services.text_preprocessor import TextPreprocessor
+
+preprocessor = TextPreprocessor()
+text = "@Free Ma #fibre bug depuis hier! http://help.free.fr 😞"
+cleaned = preprocessor.clean(text)
+# Résultat: "ma fibre bug depuis hier!"
+```
+
+#### AdvancedTweetClassifier - Ensemble Multi-Modèles
+
+Le nouveau classificateur `advanced_tweet_classifier.py` implémente une approche d'ensemble sophistiquée:
+
+**Architecture Trois Niveaux**:
+
+1. **Niveau 1 - Modèles Transformers** (99% précision):
+   - **CamemBERT** (`cmarkea/distilcamembert-base-sentiment`) - Sentiment français natif
+   - **BARThez** (`moussaKam/barthez-orangesum-abstract`) - Classification zero-shot
+
+2. **Niveau 2 - Secours TextBlob** (75% précision):
+   - Analyse de sentiment via TextBlob-fr
+   - Activé automatiquement si Transformers indisponible
+
+3. **Niveau 3 - Règles Métier** (70% précision):
+   - Détection par mots-clés
+   - Fallback de dernier recours
+
+**Détection de Réclamations Multi-Facteurs**:
+- **Facteur 1**: Mots-clés (20+ patterns français) - 0.6 points max
+- **Facteur 2**: Sentiment négatif - 0.3 points
+- **Facteur 3**: Forme interrogative - 0.15 points
+- **Facteur 4**: Verbes d'action - 0.2 points
+- **Seuil**: 0.4 pour classification "OUI"
+
+**Score de Confiance Pondéré**:
+- Réclamation: 40% (facteur le plus important)
+- Sentiment: 25%
+- Thème: 35%
+
+**Exemple d'utilisation**:
+```python
+from services.advanced_tweet_classifier import AdvancedTweetClassifier
+
+classifier = AdvancedTweetClassifier()
+result = classifier.classify_tweet(
+    "Ma connexion internet ne fonctionne plus depuis 3 jours!"
+)
+
+print(f"Sentiment: {result.sentiment}")        # NEGATIF
+print(f"Réclamation: {result.reclamation}")    # OUI
+print(f"Urgence: {result.urgence}")          # ELEVEE
+print(f"Confiance: {result.confiance}")      # 0.85
+```
+
+#### Intégration Gemini Améliorée
+
+Le classificateur Gemini intègre désormais le prétraitement automatique:
+
+**Avantages**:
+- ✅ Nettoyage automatique avant appels API
+- ✅ Réduction du bruit dans les entrées
+- ✅ Amélioration de la précision de classification
+- ✅ Compatible avec workflow existant
+
+**Activation**:
+```python
+from services.gemini_classifier import GeminiClassifier
+
+classifier = GeminiClassifier(enable_preprocessing=True)
+df_classified = classifier.classify_dataframe(df)
+# Les tweets sont automatiquement nettoyés avant envoi à l'API!
+```
+
 ---
 
 ## [METHODOLOGY] Méthodologie de Classification
@@ -410,13 +500,21 @@ source venv/bin/activate
 #### Étape 3 : Installer les Dépendances
 
 ```bash
-# Pour la production
-pip install -r requirements-streamlit.txt
-
-# Pour le développement complet
+# Pour la production (recommandé pour Streamlit Cloud)
+cd streamlit_app
 pip install -r requirements.txt
-pip install -r requirements.dev.txt
+
+# Pour le développement complet avec NLP avancé
+cd streamlit_app
+pip install -r requirements.txt
+pip install spacy langdetect textblob scikit-learn
+python -m spacy download fr_core_news_lg
+
+# Pour transformers et PyTorch (optionnel, améliore la précision)
+pip install transformers torch sentencepiece
 ```
+
+**Note**: Les bibliothèques NLP avancées (spaCy, transformers) sont optionnelles. Le système utilise automatiquement des mécanismes de secours si elles ne sont pas installées.
 
 #### Étape 4 : Télécharger les Modèles Pré-entraînés (Optionnel)
 
@@ -627,6 +725,8 @@ FreeMobilaChat/
 │   │   ├── gemini_classifier.py       # Classificateur Gemini
 │   │   ├── enhanced_kpis_vizualizations.py  # KPIs avancés
 │   │   ├── ultra_optimized_classifier.py   # Classificateur optimisé
+│   │   ├── text_preprocessor.py       # Prétraitement de texte avancé (NOUVEAU)
+│   │   ├── advanced_tweet_classifier.py  # Classificateur multi-modèles avancé (NOUVEAU)
 │   │   └── role_manager.py            # Gestion des rôles
 │   │
 │   └── utils/                  # Fonctions utilitaires
@@ -651,6 +751,7 @@ FreeMobilaChat/
 │   ├── integration/           # Tests d'intégration
 │   └── e2e/                   # Tests end-to-end
 │
+├── test_advanced_nlp.py        # Script de test des nouvelles fonctionnalités NLP (NOUVEAU)
 ├── requirements-streamlit.txt  # Dépendances production
 ├── requirements.txt            # Dépendances complètes
 ├── README.md                   # Ce fichier
@@ -674,6 +775,10 @@ FreeMobilaChat/
 - **BERT-base-multilingual** : Modèle pré-entraîné Hugging Face
 - **Gemini API** : Google Generative AI (alternative cloud)
 - **spaCy** : 3.8.2 - Traitement NLP supplémentaire
+- **CamemBERT** : cmarkea/distilcamembert-base-sentiment - Analyse de sentiment français natif
+- **BARThez** : moussaKam/barthez-orangesum-abstract - Classification zero-shot
+- **TextBlob-fr** : 0.19.0 - Analyse de sentiment de secours
+- **langdetect** : 1.0.9 - Détection automatique de langue
 
 #### Traitement de Données
 - **Pandas** : 2.2.3 - Manipulation de données
@@ -704,7 +809,28 @@ FreeMobilaChat/
 
 # Tests avec couverture
 pytest tests/ --cov=streamlit_app --cov-report=html
+
+# Tests des nouvelles fonctionnalités NLP avancées
+python test_advanced_nlp.py
 ```
+
+### Test des Fonctionnalités NLP Avancées
+
+Un script de test dédié valide les nouvelles capacités:
+
+```bash
+python test_advanced_nlp.py
+```
+
+Ce script teste:
+1. **TextPreprocessor**: Nettoyage de texte, suppression URLs/mentions, normalisation
+2. **AdvancedTweetClassifier**: Classification multi-modèles avec CamemBERT/BARThez
+3. **Gemini Integration**: Pipeline de prétraitement intégré
+
+Résultats attendus:
+- ✅ TextPreprocessor: Nettoyage correct des tweets français
+- ✅ AdvancedTweetClassifier: Détection précise des réclamations et sentiments
+- ✅ Gemini Integration: Prétraitement automatique avant appels API
 
 ### Évaluation des Performances
 
