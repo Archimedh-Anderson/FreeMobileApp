@@ -15,17 +15,21 @@ plotly==5.17.0
 # Text Processing
 emoji==2.8.0
 unidecode==1.4.0
-# NLP Advanced Libraries (from PROMPT CURSOR.txt)
-# Transformers for CamemBERT sentiment analysis
+
+# NLP Advanced Libraries (OPTIMIZED FOR STREAMLIT CLOUD)
+# NOTE: Heavy ML libs commented out to fit 1GB memory limit
+# For full ML features, uncomment torch and use fr-core-news-lg
+
 transformers>=4.35.0
-torch>=2.0.0
+# torch>=2.0.0  # DISABLED: 900MB+ - exceeds Streamlit Cloud limits
 sentencepiece>=0.1.99
 protobuf>=4.25.0
 accelerate>=0.20.0
 
-# spaCy for French text preprocessing
+# spaCy - USING SMALL MODEL (43MB instead of 571MB)
 spacy>=3.7.0
-fr-core-news-lg @ https://github.com/explosion/spacy-models/releases/download/fr_core_news_lg-3.7.0/fr_core_news_lg-3.7.0-py3-none-any.whl
+# fr-core-news-lg @ https://github.com/explosion/spacy-models/releases/download/fr_core_news_lg-3.7.0/fr_core_news_lg-3.7.0-py3-none-any.whl
+fr-core-news-sm @ https://github.com/explosion/spacy-models/releases/download/fr_core_news_sm-3.7.0/fr_core_news_sm-3.7.0-py3-none-any.whl
 
 # TextBlob for sentiment fallback
 textblob>=0.17.1

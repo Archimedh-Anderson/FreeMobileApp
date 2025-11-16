@@ -8,6 +8,13 @@ import streamlit as st
 import sys
 import os
 import html
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+logger.info("🚀 Starting FreeMobilaChat...")
 
 # Add current directory to path for imports
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -16,21 +23,50 @@ if current_dir not in sys.path:
 
 # Robust import with error handling
 try:
+    logger.info("📦 Loading auth services...")
     from services.auth_service import AuthService
     from components.auth_forms import render_auth_page
+    logger.info("✅ Auth services loaded")
 except ImportError as e:
-    st.error(f"Erreur d'importation critique: {str(e)}")
-    st.error("Veuillez vous assurer que toutes les dépendances sont installées correctement.")
-    st.code("pip install -r requirements-streamlit.txt", language="bash")
-    st.stop()
+    logger.warning(f"⚠️ Auth unavailable: {e}")
+    # Provide minimal fallback
+    class AuthService:
+        @staticmethod
+        def init_session_state():
+            pass
+        @staticmethod
+        def is_authenticated():
+            return False
+        @staticmethod
+        def get_current_user():
+            return None
+        @staticmethod
+        def get_role_icon(role):
+            return "👤"
+        @staticmethod
+        def get_role_display_name(role):
+            return "User"
+        @staticmethod
+        def logout():
+            pass
+    
+    def render_auth_page():
+        col1, col2, col3 = st.columns([1, 1, 1])
+        with col2:
+            if st.button("Start Analysis", type="primary", use_container_width=True):
+                st.switch_page("pages/Classification_Mistral.py")
 
-# Configuration
-st.set_page_config(
-    page_title="FreeMobilaChat - AI Analysis",
-    page_icon="chart_with_upwards_trend",
-    layout="wide",
-    initial_sidebar_state="collapsed"
-)
+try:
+    # Configuration
+    st.set_page_config(
+        page_title="FreeMobilaChat - AI Analysis",
+        page_icon="chart_with_upwards_trend",
+        layout="wide",
+        initial_sidebar_state="collapsed"
+    )
+    logger.info("✅ Page configured")
+except Exception as e:
+    logger.error(f"❌ Config error: {e}")
 
 # Initialize authentication
 AuthService.init_session_state()
