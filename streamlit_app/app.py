@@ -10,6 +10,14 @@ import os
 import html
 import logging
 
+# CRITICAL: Must be first Streamlit command
+st.set_page_config(
+    page_title="FreeMobilaChat - AI Analysis",
+    page_icon="📊",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -56,17 +64,6 @@ except ImportError as e:
             if st.button("Start Analysis", type="primary", use_container_width=True):
                 st.switch_page("pages/Classification_Mistral.py")
 
-try:
-    # Configuration
-    st.set_page_config(
-        page_title="FreeMobilaChat - AI Analysis",
-        page_icon="chart_with_upwards_trend",
-        layout="wide",
-        initial_sidebar_state="collapsed"
-    )
-    logger.info("✅ Page configured")
-except Exception as e:
-    logger.error(f"❌ Config error: {e}")
 
 # Initialize authentication
 AuthService.init_session_state()
