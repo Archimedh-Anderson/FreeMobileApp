@@ -2956,7 +2956,7 @@ def _render_analytics_visualizations(df):
                 xaxis=dict(
                     title="Thème principal",
                     showgrid=False,
-                    titlefont=dict(size=12, color='#4a5568'),
+                    title_font=dict(size=12, color='#4a5568'),
                     tickangle=-45,
                     tickfont=dict(size=10)
                 ),
@@ -2964,7 +2964,7 @@ def _render_analytics_visualizations(df):
                     title="Nombre de Tweets",
                     showgrid=True,
                     gridcolor='rgba(0,0,0,0.08)',
-                    titlefont=dict(size=12, color='#4a5568'),
+                    title_font=dict(size=12, color='#4a5568'),
                     range=[0, theme_counts.max() * 1.15]
                 ),
                 height=500,
@@ -3026,14 +3026,14 @@ def _render_analytics_visualizations(df):
                     title="Nombre de Tweets",
                     showgrid=True,
                     gridcolor='rgba(0,0,0,0.08)',
-                    titlefont=dict(size=12, color='#4a5568'),
+                    title_font=dict(size=12, color='#4a5568'),
                     range=[0, incident_counts.max() * 1.25]
                 ),
                 yaxis=dict(
                     title="Type d'Incident",
                     showgrid=False,
                     categoryorder='total ascending',
-                    titlefont=dict(size=12, color='#4a5568'),
+                    title_font=dict(size=12, color='#4a5568'),
                     tickfont=dict(size=10)
                 ),
                 height=500,
