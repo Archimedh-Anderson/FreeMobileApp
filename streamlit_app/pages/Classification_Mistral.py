@@ -2820,8 +2820,9 @@ def _section_results():
     
     st.markdown("---")
     
-    # TOUS LES ONGLETS DE VISUALISATION (RESTAURÉS)
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+    # TOUS LES ONGLETS DE VISUALISATION (RESTAURÉS + NOUVEAU TAB ANALYTICS)
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+        "📊 Visualisations Analytiques",
         "Sentiment",
         "Réclamations",
         "Urgence",
@@ -2831,21 +2832,24 @@ def _section_results():
     ])
     
     with tab1:
-        _render_sentiment_chart(df)
+        _render_analytics_visualizations(df)
     
     with tab2:
-        _render_reclamations_chart(df)  # CORRECTION: réclamations
+        _render_sentiment_chart(df)
     
     with tab3:
-        _render_urgence_chart(df)
+        _render_reclamations_chart(df)  # CORRECTION: réclamations
     
     with tab4:
-        _render_topics_chart(df)
+        _render_urgence_chart(df)
     
     with tab5:
-        _render_incidents_chart(df)
+        _render_topics_chart(df)
     
     with tab6:
+        _render_incidents_chart(df)
+    
+    with tab7:
         st.markdown("### Tableau Détaillé")
         display_cols = ['text_cleaned', 'sentiment', 'is_claim', 'urgence', 'topics', 'incident', 'confidence']
         available_cols = [col for col in display_cols if col in df.columns]
@@ -2860,6 +2864,317 @@ def _section_results():
     
     # Export avec permissions
     _render_export_section(df, report)
+
+def _render_analytics_visualizations(df):
+    """
+    Visualisations Analytiques - Graphiques interactifs pour analyser les tendances et patterns
+    Matching exact style from screenshots provided by user
+    """
+    # En-tête moderne
+    st.markdown("""
+    <div style="text-align: center; margin: 1rem 0 2rem 0; padding: 1.5rem; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-radius: 12px;">
+        <h2 style="font-size: 2rem; font-weight: 700; color: #1a202c; margin: 0;">
+            📊 Visualisations Analytiques
+        </h2>
+        <p style="color: #4a5568; font-size: 1rem; margin-top: 0.5rem; font-weight: 500;">
+            Graphiques interactifs pour analyser les tendances et patterns
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # SECTION 1: Distribution des Thèmes et Incidents (cote à cote)
+    st.markdown("### Distribution des Thèmes")
+    
+    col1, col2 = st.columns(2, gap="large")
+    
+    with col1:
+        st.markdown("#### Top 10 Thème principal")
+        
+        if 'topics' in df.columns:
+            # Calculer les top 10 themes avec percentages
+            theme_counts = df['topics'].value_counts().head(10)
+            total = len(df)
+            percentages = (theme_counts / total * 100).round(2)
+            
+            # Couleurs gradient rouge (du plus foncé au plus clair)
+            colors = [
+                '#8B0000',  # Dark red (le plus fréquent)
+                '#A52A2A',  # Brown red  
+                '#CD5C5C',  # Indian red
+                '#DC143C',  # Crimson
+                '#F08080',  # Light coral
+                '#FA8072',  # Salmon
+                '#FFA07A',  # Light salmon
+                '#FFB6C1',  # Light pink
+                '#FFC0CB',  # Pink
+                '#FFE4E1'   # Misty rose (le moins fréquent)
+            ][:len(theme_counts)]
+            
+            # Créer labels avec count et pourcentage
+            text_labels = [f"{count}<br>({pct}%)" for count, pct in zip(theme_counts.values, percentages)]
+            
+            fig = go.Figure(data=[
+                go.Bar(
+                    x=theme_counts.index,
+                    y=theme_counts.values,
+                    marker=dict(
+                        color=colors,
+                        line=dict(color='white', width=1.5)
+                    ),
+                    text=text_labels,
+                    textposition='outside',
+                    textfont=dict(size=11, color='#1a202c', family='Arial, sans-serif'),
+                    hovertemplate="<b>%{x}</b><br>Nombre: %{y:,}<br>Pourcentage: %{customdata:.2f}%<extra></extra>",
+                    customdata=percentages,
+                    showlegend=False
+                )
+            ])
+            
+            # Ajouter colorbar à droite
+            fig.add_trace(go.Scatter(
+                x=[None],
+                y=[None],
+                mode='markers',
+                marker=dict(
+                    colorscale=[[0, '#8B0000'], [1, '#FFE4E1']],
+                    showscale=True,
+                    cmin=0,
+                    cmax=theme_counts.max(),
+                    colorbar=dict(
+                        title="Nombre",
+                        titleside="right",
+                        tickmode="linear",
+                        thickness=15,
+                        len=0.7,
+                        x=1.12
+                    )
+                ),
+                hoverinfo='skip',
+                showlegend=False
+            ))
+            
+            fig.update_layout(
+                xaxis=dict(
+                    title="Thème principal",
+                    showgrid=False,
+                    titlefont=dict(size=12, color='#4a5568'),
+                    tickangle=-45,
+                    tickfont=dict(size=10)
+                ),
+                yaxis=dict(
+                    title="Nombre de Tweets",
+                    showgrid=True,
+                    gridcolor='rgba(0,0,0,0.08)',
+                    titlefont=dict(size=12, color='#4a5568'),
+                    range=[0, theme_counts.max() * 1.15]
+                ),
+                height=500,
+                template="plotly_white",
+                margin=dict(l=80, r=150, t=60, b=120),
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                hovermode='closest'
+            )
+            
+            st.plotly_chart(fig, use_container_width=True, key='analytics_theme_dist')
+        else:
+            st.info("⚠️ Aucune donnée de thèmes disponible")
+    
+    with col2:
+        st.markdown("#### Distribution des Incidents Principaux")
+        
+        if 'incident' in df.columns:
+            # Calculer tous les incidents avec percentages
+            incident_counts = df['incident'].value_counts()
+            total = len(df)
+            percentages = (incident_counts / total * 100).round(2)
+            
+            # Couleurs sémantiques par type d'incident
+            def get_incident_color(incident_name):
+                incident_lower = str(incident_name).lower()
+                if 'aucun' in incident_lower or 'non' in incident_lower:
+                    return '#28a745'  # Vert pour "aucun"
+                elif 'information' in incident_lower:
+                    return '#17a2b8'  # Bleu pour "information"
+                else:
+                    return '#dc3545'  # Rouge pour incidents réels
+            
+            colors = [get_incident_color(inc) for inc in incident_counts.index]
+            
+            # Labels avec count et pourcentage
+            text_labels = [f"{count} ({pct}%)" for count, pct in zip(incident_counts.values, percentages)]
+            
+            fig = go.Figure(data=[
+                go.Bar(
+                    y=incident_counts.index,  # Horizontal bars
+                    x=incident_counts.values,
+                    orientation='h',
+                    marker=dict(
+                        color=colors,
+                        line=dict(color='white', width=1.5)
+                    ),
+                    text=text_labels,
+                    textposition='outside',
+                    textfont=dict(size=11, color='#1a202c', family='Arial, sans-serif'),
+                    hovertemplate="<b>%{y}</b><br>Nombre: %{x:,}<br>Pourcentage: %{customdata:.2f}%<extra></extra>",
+                    customdata=percentages,
+                    showlegend=False
+                )
+            ])
+            
+            fig.update_layout(
+                xaxis=dict(
+                    title="Nombre de Tweets",
+                    showgrid=True,
+                    gridcolor='rgba(0,0,0,0.08)',
+                    titlefont=dict(size=12, color='#4a5568'),
+                    range=[0, incident_counts.max() * 1.25]
+                ),
+                yaxis=dict(
+                    title="Type d'Incident",
+                    showgrid=False,
+                    categoryorder='total ascending',
+                    titlefont=dict(size=12, color='#4a5568'),
+                    tickfont=dict(size=10)
+                ),
+                height=500,
+                template="plotly_white",
+                margin=dict(l=180, r=120, t=60, b=60),
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                hovermode='closest'
+            )
+            
+            st.plotly_chart(fig, use_container_width=True, key='analytics_incident_dist')
+        else:
+            st.info("⚠️ Aucune donnée d'incidents disponible")
+    
+    st.markdown("---")
+    
+    # SECTION 2: Distribution des Sentiments (donut chart)
+    st.markdown("### Distribution des Sentiments")
+    
+    if 'sentiment' in df.columns:
+        # Calculer les sentiments
+        sentiment_counts = df['sentiment'].value_counts()
+        total = len(df)
+        percentages = (sentiment_counts / total * 100).round(1)
+        
+        # Mapping couleurs exact depuis screenshot
+        color_map = {
+            'negative': '#e74c3c',  # Rouge
+            'negatif': '#e74c3c',
+            'négatif': '#e74c3c',
+            'neg': '#e74c3c',
+            'neutral': '#6c757d',  # Gris
+            'neutre': '#6c757d',
+            'neu': '#6c757d',
+            'positive': '#28a745',  # Vert
+            'positif': '#28a745',
+            'pos': '#28a745'
+        }
+        
+        # Mapping labels pour affichage
+        label_map = {
+            'negative': 'Negative',
+            'negatif': 'Negative',
+            'négatif': 'Negative',
+            'neg': 'Negative',
+            'neutral': 'Neutral',
+            'neutre': 'Neutral', 
+            'neu': 'Neutral',
+            'positive': 'Positive',
+            'positif': 'Positive',
+            'pos': 'Positive'
+        }
+        
+        labels = [label_map.get(str(s).lower(), str(s)) for s in sentiment_counts.index]
+        colors = [color_map.get(str(s).lower(), '#95a5a6') for s in sentiment_counts.index]
+        
+        # Créer le donut chart avec style exact du screenshot
+        fig = go.Figure(data=[
+            go.Pie(
+                labels=labels,
+                values=sentiment_counts.values,
+                hole=0.5,  # Donut
+                marker=dict(
+                    colors=colors,
+                    line=dict(color='white', width=3)
+                ),
+                textinfo='label+percent',
+                textfont=dict(size=14, family='Arial, sans-serif', color='white', weight='bold'),
+                textposition='inside',
+                hovertemplate="<b>%{label}</b><br>Tweets: %{value:,}<br>Pourcentage: %{percent}<extra></extra>"
+            )
+        ])
+        
+        fig.update_layout(
+            title=dict(
+                text="<b>Distribution des Sentiments</b>",
+                font=dict(size=20, family='Arial, sans-serif', color='#1a202c', weight='bold'),
+                x=0.5,
+                xanchor='center',
+                y=0.98,
+                yanchor='top'
+            ),
+            height=550,
+            template="plotly_white",
+            showlegend=True,
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=-0.1,
+                xanchor="center",
+                x=0.5,
+                font=dict(size=12),
+                bgcolor="rgba(255,255,255,0.9)",
+                bordercolor="#e2e8f0",
+                borderwidth=1
+            ),
+            margin=dict(t=80, b=80, l=40, r=40),
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)'
+        )
+        
+        # Centrer le graphique
+        col_left, col_center, col_right = st.columns([1, 2, 1])
+        with col_center:
+            st.plotly_chart(fig, use_container_width=True, key='analytics_sentiment_donut')
+        
+        # Statistiques en dessous
+        stat_col1, stat_col2, stat_col3 = st.columns(3)
+        
+        with stat_col1:
+            neg_count = sentiment_counts.get('negatif', sentiment_counts.get('negative', sentiment_counts.get('négatif', 0)))
+            neg_pct = (neg_count / total * 100) if total > 0 else 0
+            st.markdown(f"""
+            <div style="text-align: center; padding: 1rem; background: #ffe5e5; border-radius: 8px;">
+                <h3 style="color: #e74c3c; margin: 0;">{neg_count:,}</h3>
+                <p style="color: #4a5568; margin: 0.5rem 0 0 0;">Négatif ({neg_pct:.1f}%)</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with stat_col2:
+            neu_count = sentiment_counts.get('neutre', sentiment_counts.get('neutral', sentiment_counts.get('neu', 0)))
+            neu_pct = (neu_count / total * 100) if total > 0 else 0
+            st.markdown(f"""
+            <div style="text-align: center; padding: 1rem; background: #e9ecef; border-radius: 8px;">
+                <h3 style="color: #6c757d; margin: 0;">{neu_count:,}</h3>
+                <p style="color: #4a5568; margin: 0.5rem 0 0 0;">Neutre ({neu_pct:.1f}%)</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with stat_col3:
+            pos_count = sentiment_counts.get('positif', sentiment_counts.get('positive', sentiment_counts.get('pos', 0)))
+            pos_pct = (pos_count / total * 100) if total > 0 else 0
+            st.markdown(f"""
+            <div style="text-align: center; padding: 1rem; background: #d4edda; border-radius: 8px;">
+                <h3 style="color: #28a745; margin: 0;">{pos_count:,}</h3>
+                <p style="color: #4a5568; margin: 0.5rem 0 0 0;">Positif ({pos_pct:.1f}%)</p>
+            </div>
+            """, unsafe_allow_html=True)
+    else:
+        st.info("⚠️ Aucune donnée de sentiment disponible")
 
 def _render_sentiment_chart(df):
     """Graphique de distribution des sentiments"""

@@ -32,6 +32,48 @@
 
 ---
 
+## 🆕 Nouvelles Fonctionnalités - Visualisations Analytiques
+
+### 📊 Onglet Visualisations Analytiques
+
+Nouveau tableau de bord interactif ajouté avec des graphiques professionnels :
+
+#### 1. Distribution des Thèmes (Top 10)
+- **Type** : Graphique à barres verticales avec gradient de couleurs
+- **Fonctionnalités** :
+  - Affichage des 10 thèmes les plus fréquents
+  - Pourcentages dynamiques calculés en temps réel
+  - Colorbar gradient (rouge foncé → rose clair)
+  - Labels avec nombre et pourcentage
+  - Hover interactif avec détails complets
+
+#### 2. Distribution des Incidents Principaux
+- **Type** : Graphique à barres horizontales avec couleurs sémantiques
+- **Fonctionnalités** :
+  - Couleurs intelligentes (vert=aucun, bleu=information, rouge=incidents)
+  - Tri automatique par fréquence
+  - Pourcentages dynamiques
+  - Responsive design
+
+#### 3. Distribution des Sentiments
+- **Type** : Donut chart (graphique en anneau)
+- **Fonctionnalités** :
+  - Couleurs exactes : Rouge (Négatif), Gris (Neutre), Vert (Positif)
+  - Pourcentages affichés sur le graphique
+  - Légende horizontale centrée
+  - Statistiques détaillées en dessous (3 cartes colorées)
+  - Hover avec nombre total de tweets
+
+### 🎯 Caractéristiques Techniques
+
+- **Mise à jour dynamique** : Toutes les données se mettent à jour automatiquement lors du filtrage
+- **Design responsive** : S'adapte à toutes les tailles d'écran
+- **Performance optimisée** : Calculs vectorisés avec pandas pour traitement rapide
+- **Style moderne** : Gradients, ombres, animations au survol
+- **Accessibilité** : Couleurs contrastées et labels clairs
+
+---
+
 ## [OVERVIEW] Vue d'ensemble du Projet
 
 **FreeMobilaChat** est une plateforme intelligente d'analyse de sentiment conçue spécifiquement pour l'industrie des télécommunications. Ce projet de mémoire de Master démontre l'application de techniques avancées de Traitement du Langage Naturel (NLP) et d'Apprentissage Automatique (ML) pour analyser les retours clients provenant des interactions sur les réseaux sociaux.
@@ -851,19 +893,35 @@ python scripts/generate_report.py
 Créez un fichier `.env` à la racine du projet :
 
 ```env
-# Configuration Mistral/Ollama
-OLLAMA_BASE_URL=http://localhost:11434
+# Gemini API Configuration
+API_GEMINI_KEY=your_gemini_api_key_here
+
+# Mistral/Ollama Configuration (local LLM)
+OLLAMA_HOST=http://localhost:11434
 MISTRAL_MODEL=mistral:latest
 
-# Configuration Gemini API (Optionnel)
-GEMINI_API_KEY=your_gemini_api_key_here
-
-# Configuration Application
+# Application Configuration
+STREAMLIT_PORT=8503
 ENVIRONMENT=production
-DEBUG=false
+
+# Advanced NLP Features
+ENABLE_TRANSFORMERS=true
+ENABLE_SPACY=true
+ENABLE_TEXTBLOB_FALLBACK=true
+
+# Logging
 LOG_LEVEL=INFO
-BACKEND_URL=http://localhost:8000
 ```
+
+### Obtenir votre Clé API Gemini
+
+1. Visitez [Google AI Studio](https://aistudio.google.com/app/apikey)
+2. Connectez-vous avec votre compte Google
+3. Cliquez sur "Create API Key"
+4. Copiez la clé générée (format: AIzaSyXXXXXXXXXXXXXXXXXXX)
+5. Ajoutez-la dans le fichier `.env` après `API_GEMINI_KEY=`
+
+**Note** : Le fichier `.env` est ignoré par Git pour des raisons de sécurité. Ne partagez jamais vos clés API publiquement.
 
 ### Configuration Streamlit
 
