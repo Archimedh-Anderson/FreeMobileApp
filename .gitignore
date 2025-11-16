@@ -38,10 +38,18 @@ env/
 
 # Streamlit
 .streamlit/secrets.toml
+.streamlit/config.toml
 
-# Environment
+# Environment & Secrets (CRITIQUE - Ne jamais committer!)
 .env
 .env.local
+.env.production
+.env.*.local
+*.pem
+*.key
+*.cert
+secrets/
+config/secrets.yml
 
 # Cache
 .cache/

@@ -1,23 +1,125 @@
-name: Deploy to Streamlit Cloud
+name: Deploy to AWS EC2
 
+# Déclenchement automatique sur push vers la branche main
 on:
   push:
     branches:
       - main
+  # Permet également un déclenchement manuel depuis l'interface GitHub
   workflow_dispatch:
 
 jobs:
   deploy:
+    name: Déploiement sur EC2
     runs-on: ubuntu-latest
+    
     steps:
-      - uses: actions/checkout@v4
-      
-      - name: Validate Streamlit app
+      # 1. Récupération du code source
+      - name: 📥 Checkout du code
+        uses: actions/checkout@v4
+        
+      # 2. Vérification de la syntaxe Python (optionnel mais recommandé)
+      - name: 🐍 Configuration Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          
+      - name: ✅ Vérification de la syntaxe
         run: |
-          pip install streamlit
-          python -m streamlit.cli run streamlit_app/app.py --server.headless true &
-          sleep 10
-          curl -f http://localhost:8501 || exit 1
+          python -m py_compile streamlit_app/app.py
+          echo "✅ Syntaxe Python validée"
       
-      - name: Notify deployment
-        run: echo "✅ App ready for Streamlit Cloud"
+      # 3. Connexion SSH et déploiement sur EC2
+      - name: 🚀 Déploiement via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
+          script_stop: true  # Arrête si une commande échoue
+          script: |
+            echo "=================================================="
+            echo "🚀 DÉMARRAGE DU DÉPLOIEMENT - $(date)"
+            echo "=================================================="
+            
+            # Navigation vers le répertoire de l'application
+            cd /home/ec2-user/FreeMobileApp
+            
+            # Sauvegarde de l'état actuel
+            echo "📦 Sauvegarde de l'état actuel..."
+            git stash
+            
+            # Récupération des dernières modifications
+            echo "⬇️  Récupération des modifications..."
+            git fetch origin main
+            git reset --hard origin/main
+            
+            # Vérification de la version
+            echo "📌 Version déployée: $(git rev-parse --short HEAD)"
+            
+            # Installation/mise à jour des dépendances
+            echo "📦 Installation des dépendances..."
+            cd streamlit_app
+            python3 -m pip install --upgrade pip --quiet
+            python3 -m pip install -r requirements.txt --quiet
+            
+            # Vérification de la configuration
+            if [ ! -f .env ]; then
+              echo "⚠️  Fichier .env manquant - utilisation des valeurs par défaut"
+            fi
+            
+            # Redémarrage du service Streamlit avec journalisation
+            echo "🔄 Redémarrage du service Streamlit..."
+            sudo systemctl restart streamlit.service
+            
+            # Attente du démarrage (5 secondes)
+            sleep 5
+            
+            # Vérification du statut du service
+            if sudo systemctl is-active --quiet streamlit.service; then
+              echo "✅ Service Streamlit démarré avec succès"
+              sudo systemctl status streamlit.service --no-pager
+            else
+              echo "❌ ERREUR: Le service Streamlit n'a pas démarré correctement"
+              sudo journalctl -u streamlit.service -n 50 --no-pager
+              exit 1
+            fi
+            
+            # Affichage des dernières lignes de log
+            echo "📋 Dernières lignes de log:"
+            sudo tail -n 20 /var/log/streamlit.log || echo "⚠️  Fichier de log non accessible"
+            
+            echo "=================================================="
+            echo "✅ DÉPLOIEMENT TERMINÉ AVEC SUCCÈS - $(date)"
+            echo "=================================================="
+      
+      # 4. Notification en cas de succès
+      - name: ✅ Notification de succès
+        if: success()
+        run: |
+          echo "::notice::🎉 Déploiement réussi sur EC2 (13.37.186.191)"
+          
+      # 5. Notification en cas d'échec
+      - name: ❌ Notification d'échec
+        if: failure()
+        run: |
+          echo "::error::💥 Échec du déploiement - Vérifiez les logs ci-dessus"
+
+# NOTES IMPORTANTES:
+# 
+# SECRETS GITHUB À CONFIGURER:
+# - EC2_HOST: 13.37.186.191
+# - EC2_USERNAME: ec2-user
+# - EC2_SSH_KEY: Votre clé privée SSH complète (incluant -----BEGIN RSA PRIVATE KEY-----)
+#
+# PRÉREQUIS SUR EC2:
+# - Git installé
+# - Python 3.11+ installé
+# - Service systemd streamlit.service configuré
+# - Permissions sudo sans mot de passe pour: systemctl restart streamlit.service
+#
+# COMMANDES UTILES:
+# - Voir les logs GitHub Actions: onglet "Actions" du repository
+# - Voir les logs EC2: sudo journalctl -u streamlit.service -f
+# - Tester manuellement: cd /home/ec2-user && bash deploy.sh
