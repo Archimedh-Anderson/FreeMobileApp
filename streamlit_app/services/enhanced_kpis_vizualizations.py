@@ -815,7 +815,7 @@ def create_category_comparison_chart(df: pd.DataFrame, category_col: str = 'cate
         xaxis=dict(
             title="Thème principal",
             showgrid=False,
-            titlefont=dict(size=12, color='#4a5568'),
+            title_font=dict(size=12, color='#4a5568'),
             tickangle=-45,
             tickfont=dict(size=10)
         ),
@@ -823,7 +823,7 @@ def create_category_comparison_chart(df: pd.DataFrame, category_col: str = 'cate
             title="Nombre de Tweets",
             showgrid=True,
             gridcolor='rgba(0,0,0,0.1)',
-            titlefont=dict(size=12, color='#4a5568'),
+            title_font=dict(size=12, color='#4a5568'),
             range=[0, category_counts.max() * 1.15]  # Extra space for labels
         ),
         height=450,
@@ -936,14 +936,14 @@ def create_incident_distribution_chart(df: pd.DataFrame) -> go.Figure:
             title="Nombre de Tweets",
             showgrid=True,
             gridcolor='rgba(0,0,0,0.1)',
-            titlefont=dict(size=12, color='#4a5568'),
+            title_font=dict(size=12, color='#4a5568'),
             range=[0, incident_counts.max() * 1.2]  # Extra space for labels
         ),
         yaxis=dict(
             title="Type d'Incident",
             showgrid=False,
             categoryorder='total ascending',
-            titlefont=dict(size=12, color='#4a5568'),
+            title_font=dict(size=12, color='#4a5568'),
             tickfont=dict(size=10)
         ),
         height=450,
