@@ -22,7 +22,7 @@ transformers>=4.35.0
 torch>=2.0.0
 sentencepiece>=0.1.99
 protobuf>=4.25.0
-accelerators>=0.20.0
+accelerate>=0.20.0
 
 # spaCy for French text preprocessing
 spacy>=3.7.0
