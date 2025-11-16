@@ -2657,20 +2657,44 @@ def _calculate_metrics(df: pd.DataFrame) -> Dict[str, Any]:
     Calcule les métriques de réclamations, sentiments, urgence, topics et incidents
     à partir du DataFrame classifié.
     
+    Utilise un matching robuste case-insensitive pour gérer tous les formats de valeurs.
+    
     Args:
         df: DataFrame contenant les données classifiées
         
     Returns:
         Dictionnaire contenant toutes les métriques calculées
     """
+    # Fonction helper pour matching robuste case-insensitive
+    def count_matches(df, column, values):
+        """Compte les occurrences en ignorant la casse"""
+        if column not in df.columns:
+            return 0
+        # Normaliser la colonne en lowercase pour comparaison
+        normalized = df[column].astype(str).str.lower().str.strip()
+        # Normaliser les valeurs de recherche en lowercase
+        values_lower = [str(v).lower().strip() for v in values]
+        return int(normalized.isin(values_lower).sum())
+    
+    total = len(df)
+    
+    # Réclamations: supporter 'oui', 'OUI', 'yes', 'YES', '1', 'true', 'TRUE'
+    reclamations_count = count_matches(df, 'is_claim', ['oui', 'yes', '1', 'true'])
+    
+    # Sentiments négatifs: supporter 'negatif', 'NEGATIF', 'negative', 'NEGATIVE', 'neg', 'NEG'
+    negative_count = count_matches(df, 'sentiment', ['negatif', 'negative', 'neg'])
+    
+    # Urgence haute: supporter 'haute', 'HAUTE', 'high', 'HIGH', 'elevee', 'ELEVEE', 'critique', 'CRITIQUE'
+    urgence_haute_count = count_matches(df, 'urgence', ['haute', 'high', 'elevee', 'élevée', 'critique', 'critical'])
+    
     return {
-        'total_tweets': len(df),
-        'reclamations_count': len(df[df['is_claim'] == 'oui']) if 'is_claim' in df.columns else 0,
-        'reclamations_percentage': (len(df[df['is_claim'] == 'oui']) / len(df) * 100) if 'is_claim' in df.columns and len(df) > 0 else 0,
-        'negative_count': len(df[df['sentiment'] == 'negatif']) if 'sentiment' in df.columns else 0,
-        'negative_percentage': (len(df[df['sentiment'] == 'negatif']) / len(df) * 100) if 'sentiment' in df.columns and len(df) > 0 else 0,
-        'urgence_haute_count': len(df[df['urgence'] == 'haute']) if 'urgence' in df.columns else 0,
-        'urgence_haute_percentage': (len(df[df['urgence'] == 'haute']) / len(df) * 100) if 'urgence' in df.columns and len(df) > 0 else 0,
+        'total_tweets': total,
+        'reclamations_count': reclamations_count,
+        'reclamations_percentage': (reclamations_count / total * 100) if total > 0 else 0,
+        'negative_count': negative_count,
+        'negative_percentage': (negative_count / total * 100) if total > 0 else 0,
+        'urgence_haute_count': urgence_haute_count,
+        'urgence_haute_percentage': (urgence_haute_count / total * 100) if total > 0 else 0,
         'confidence_avg': df['confidence'].mean() if 'confidence' in df.columns else 0,
         'sentiment_dist': df['sentiment'].value_counts() if 'sentiment' in df.columns else pd.Series(),
         'urgence_dist': df['urgence'].value_counts() if 'urgence' in df.columns else pd.Series(),
@@ -3022,7 +3046,9 @@ def _display_business_dashboard_mistral(df, report):
             
             with col2:
                 if 'is_claim' in df.columns:
-                    claims = len(df[df['is_claim'] == 'oui'])
+                    # Matching robuste case-insensitive pour is_claim
+                    claims_normalized = df['is_claim'].astype(str).str.lower().str.strip()
+                    claims = int(claims_normalized.isin(['oui', 'yes', '1', 'true']).sum())
                     claims_pct = (claims / len(df) * 100) if len(df) > 0 else 0
                     st.metric(
                         "Réclamations",
@@ -3032,7 +3058,9 @@ def _display_business_dashboard_mistral(df, report):
             
             with col3:
                 if 'sentiment' in df.columns:
-                    neg = len(df[df['sentiment'].isin(['negatif', 'negative', 'neg'])])
+                    # Matching robuste case-insensitive pour sentiment négatif
+                    sentiment_normalized = df['sentiment'].astype(str).str.lower().str.strip()
+                    neg = int(sentiment_normalized.isin(['negatif', 'negative', 'neg']).sum())
                     neg_pct = (neg / len(df) * 100) if len(df) > 0 else 0
                     st.metric(
                         "Sentiments Négatifs",
@@ -3042,7 +3070,9 @@ def _display_business_dashboard_mistral(df, report):
             
             with col4:
                 if 'urgence' in df.columns:
-                    urgent = len(df[df['urgence'] == 'haute'])
+                    # Matching robuste case-insensitive pour urgence haute
+                    urgence_normalized = df['urgence'].astype(str).str.lower().str.strip()
+                    urgent = int(urgence_normalized.isin(['haute', 'high', 'elevee', 'élevée', 'critique', 'critical']).sum())
                     urgent_pct = (urgent / len(df) * 100) if len(df) > 0 else 0
                     st.metric(
                         "Urgence Haute",
