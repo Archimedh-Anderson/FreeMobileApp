@@ -1,0 +1,391 @@
+================================================================================
+FreeMobilaChat - Deployment Guide
+================================================================================
+Version: 2.0.0
+Last Updated: November 16, 2025
+================================================================================
+
+TABLE OF CONTENTS
+-----------------
+1. Quick Start Guide
+2. Local Development Setup
+3. Streamlit Cloud Deployment
+4. Configuration Files Reference
+5. Environment Variables
+6. Troubleshooting
+
+================================================================================
+1. QUICK START GUIDE
+================================================================================
+
+For Local Development (Windows):
+---------------------------------
+1. Install Python 3.10 or higher
+2. Clone the repository
+3. Run: start_application.bat
+4. Access: http://localhost:8502
+
+For Local Development (Linux/Mac):
+-----------------------------------
+1. Install Python 3.10 or higher
+2. Clone the repository
+3. Run: chmod +x start_application.sh && ./start_application.sh
+4. Access: http://localhost:8502
+
+For Streamlit Cloud:
+--------------------
+See STREAMLIT_CLOUD_SETUP.txt for detailed instructions
+
+================================================================================
+2. LOCAL DEVELOPMENT SETUP
+================================================================================
+
+Prerequisites:
+--------------
+- Python 3.10+ installed
+- Git installed
+- 4GB+ RAM recommended
+- Internet connection for Gemini API (optional)
+
+Step-by-Step Setup:
+-------------------
+1. Clone Repository:
+   git clone https://github.com/Anderson-Archimede/FreeMobilaChat.git
+   cd FreeMobilaChat
+
+2. Create Virtual Environment:
+   python -m venv venv
+   
+3. Activate Virtual Environment:
+   Windows: venv\Scripts\activate
+   Linux/Mac: source venv/bin/activate
+
+4. Install Dependencies:
+   pip install -r requirements.txt
+
+5. Configure Environment (Optional):
+   Copy .env.example to .env
+   Edit .env with your API keys
+
+6. Run Application:
+   Windows: start_application.bat
+   Linux/Mac: ./start_application.sh
+   Manual: python -m streamlit run streamlit_app/app.py --server.port 8502
+
+================================================================================
+3. STREAMLIT CLOUD DEPLOYMENT
+================================================================================
+
+See STREAMLIT_CLOUD_SETUP.txt for complete instructions.
+
+Quick Summary:
+--------------
+1. Push code to GitHub
+2. Go to https://share.streamlit.io
+3. Create new app pointing to: streamlit_app/app.py
+4. Configure secrets (see secrets.toml.example)
+5. Deploy!
+
+Critical Note:
+--------------
+Streamlit Cloud has memory/CPU limitations.
+Only Gemini API and rule-based classification work in cloud.
+Local models (Mistral/BERT) require local deployment.
+
+================================================================================
+4. CONFIGURATION FILES REFERENCE
+================================================================================
+
+.env.example
+------------
+Template for environment variables
+Required for Gemini API configuration
+Copy to .env and customize
+
+secrets.toml.example
+--------------------
+Template for Streamlit Cloud secrets
+Configure in Streamlit Cloud dashboard
+DO NOT commit secrets.toml to Git
+
+params.yaml
+-----------
+DVC (Data Version Control) parameters
+Model training hyperparameters
+Dataset split ratios
+
+dvc.yaml
+--------
+DVC pipeline configuration
+Data processing stages
+Model training workflow
+
+================================================================================
+5. ENVIRONMENT VARIABLES
+================================================================================
+
+Essential Variables:
+--------------------
+GEMINI_API_KEY=your_api_key_here
+  - Required for Gemini API classification
+  - Get key from: https://makersuite.google.com/app/apikey
+  - Optional if using only local models
+
+GEMINI_MODEL=gemini-2.0-flash-exp
+  - Gemini model version to use
+  - Default: gemini-2.0-flash-exp
+
+GEMINI_TEMPERATURE=0.3
+  - Controls response randomness (0.0-1.0)
+  - Lower = more deterministic
+  - Default: 0.3
+
+GEMINI_MAX_TOKENS=4096
+  - Maximum tokens per response
+  - Default: 4096
+
+Optional Variables:
+-------------------
+ENVIRONMENT=production
+  - Deployment environment
+  - Values: development, production
+  - Default: development
+
+DEBUG=false
+  - Enable debug logging
+  - Values: true, false
+  - Default: false
+
+OFFLINE_MODE=false
+  - Disable API calls (local only)
+  - Values: true, false
+  - Default: false
+
+BATCH_SIZE=50
+  - Tweets per classification batch
+  - Adjust based on available memory
+  - Default: 50
+
+MAX_RETRIES=3
+  - API retry attempts
+  - Default: 3
+
+RETRY_DELAY_SECONDS=2
+  - Delay between retries
+  - Default: 2
+
+MIN_CONFIDENCE_THRESHOLD=0.5
+  - Minimum confidence score
+  - Range: 0.0-1.0
+  - Default: 0.5
+
+TIMEOUT_SECONDS=60
+  - API request timeout
+  - Default: 60
+
+LOG_LEVEL=INFO
+  - Logging verbosity
+  - Values: DEBUG, INFO, WARNING, ERROR
+  - Default: INFO
+
+JWT_SECRET_KEY=your_secret_key_here
+  - CHANGE IN PRODUCTION!
+  - Used for authentication tokens
+  - Generate: python -c "import secrets; print(secrets.token_urlsafe(32))"
+
+JWT_ALGORITHM=HS256
+  - JWT signing algorithm
+  - Default: HS256
+
+ACCESS_TOKEN_EXPIRE_MINUTES=60
+  - Token validity duration
+  - Default: 60 minutes
+
+================================================================================
+6. TROUBLESHOOTING
+================================================================================
+
+Problem: Application won't start
+---------------------------------
+Solution:
+1. Check Python version: python --version (must be 3.10+)
+2. Reinstall dependencies: pip install -r requirements.txt --force-reinstall
+3. Clear cache: Remove .classifier_cache folder
+4. Check port 8502 is available: netstat -ano | findstr :8502
+
+Problem: Gemini API not working
+--------------------------------
+Solution:
+1. Verify API key in .env file
+2. Check API key is valid at https://makersuite.google.com
+3. Ensure GEMINI_API_KEY has no extra spaces/quotes
+4. Check internet connection
+5. Review logs for specific error messages
+
+Problem: Ollama/Mistral not available
+--------------------------------------
+Solution:
+1. Install Ollama: https://ollama.ai/download
+2. Start Ollama service
+3. Pull Mistral model: ollama pull mistral
+4. Verify: ollama list
+5. Check Ollama is running on http://localhost:11434
+
+Problem: Out of memory errors
+------------------------------
+Solution:
+1. Reduce BATCH_SIZE in .env (try 25 or 10)
+2. Close other applications
+3. Restart application
+4. Use Gemini API instead of local models
+
+Problem: Import errors
+----------------------
+Solution:
+1. Activate virtual environment
+2. Update pip: pip install --upgrade pip
+3. Reinstall requirements: pip install -r requirements.txt
+4. Check Python path includes streamlit_app/
+
+Problem: Port 8502 already in use
+----------------------------------
+Solution:
+Windows:
+  netstat -ano | findstr :8502
+  taskkill /PID <process_id> /F
+
+Linux/Mac:
+  lsof -i :8502
+  kill -9 <process_id>
+
+Or use different port:
+  streamlit run streamlit_app/app.py --server.port 8503
+
+Problem: Streamlit Cloud deployment fails
+------------------------------------------
+Solution:
+1. Verify requirements.txt contains all dependencies
+2. Check secrets are configured in Streamlit Cloud dashboard
+3. Ensure app path is: streamlit_app/app.py
+4. Review deployment logs in Streamlit Cloud
+5. Check repository is public or Streamlit has access
+
+Problem: Classification results incorrect
+------------------------------------------
+Solution:
+1. Check provider selection (Gemini vs Mistral)
+2. Verify confidence thresholds
+3. Review input data format
+4. Check for special characters in text
+5. Clear classification cache: .classifier_cache
+
+================================================================================
+SUPPORT & RESOURCES
+================================================================================
+
+GitHub Repository:
+https://github.com/Anderson-Archimede/FreeMobilaChat
+
+Streamlit Documentation:
+https://docs.streamlit.io
+
+Gemini API Documentation:
+https://ai.google.dev/docs
+
+Ollama Documentation:
+https://github.com/ollama/ollama
+
+================================================================================
+FILE DESCRIPTIONS
+================================================================================
+
+start_application.bat
+  Windows startup script
+  Automatically creates venv, installs deps, runs app
+
+start_application.sh
+  Linux/Mac startup script
+  Bash version of above
+
+start.ps1
+  PowerShell startup script
+  Alternative Windows script with enhanced features
+
+deploy_production.bat
+  Windows production deployment script
+  Includes validation and git operations
+
+deploy_production.sh
+  Linux/Mac production deployment script
+  Bash version for Unix systems
+
+deploy.sh
+  Comprehensive deployment automation
+  Code validation, testing, git push, cloud deploy
+
+STREAMLIT_CLOUD_SETUP.txt
+  Detailed Streamlit Cloud deployment guide
+  Step-by-step instructions with screenshots
+
+.env.example
+  Environment variables template
+  Copy to .env and customize
+
+secrets.toml.example
+  Streamlit secrets template
+  For Streamlit Cloud configuration
+
+params.yaml
+  DVC parameters
+  Model training configuration
+
+dvc.yaml
+  DVC pipeline
+  Data processing workflow
+
+================================================================================
+DEPLOYMENT CHECKLIST
+================================================================================
+
+Before Deployment:
+------------------
+☐ All tests passing
+☐ Code committed to Git
+☐ .env configured (for local)
+☐ Secrets configured (for cloud)
+☐ requirements.txt up to date
+☐ __pycache__ cleaned
+☐ No sensitive data in code
+
+Local Deployment:
+-----------------
+☐ Python 3.10+ installed
+☐ Virtual environment created
+☐ Dependencies installed
+☐ Port 8502 available
+☐ Application starts successfully
+☐ Can upload and process data
+
+Cloud Deployment:
+-----------------
+☐ Code pushed to GitHub
+☐ Streamlit Cloud app created
+☐ App path set to streamlit_app/app.py
+☐ Python version set to 3.10
+☐ Secrets configured
+☐ GEMINI_API_KEY configured
+☐ Application builds successfully
+☐ No build errors in logs
+
+Post-Deployment:
+----------------
+☐ Test file upload functionality
+☐ Test classification with sample data
+☐ Verify provider selection works
+☐ Check visualization rendering
+☐ Test export functionality
+☐ Monitor performance and logs
+
+================================================================================
+END OF DEPLOYMENT GUIDE
+================================================================================

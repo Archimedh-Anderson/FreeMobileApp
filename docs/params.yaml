@@ -1,0 +1,109 @@
+# Paramètres de configuration pour pipeline DVC FreeMobilaChat
+
+# ============================================
+# COLLECTE DE DONNÉES
+# ============================================
+data_collection:
+  max_tweets: 150000
+  date_range:
+    start: "2023-01-01"
+    end: "2024-12-31"
+  keywords:
+    - "free mobile"
+    - "@free"
+    - "#freemobile"
+  language: "fr"
+
+# ============================================
+# PRÉTRAITEMENT
+# ============================================
+preprocessing:
+  remove_duplicates: true
+  min_length: 10
+  max_length: 500
+  language_filter: "fr"
+  cleaning_steps:
+    - normalize_unicode
+    - remove_urls
+    - clean_mentions
+    - clean_hashtags
+    - convert_emojis
+    - deduplicate
+    - validate_quality
+
+# ============================================
+# ANNOTATION
+# ============================================
+annotation:
+  sample_size: 5000
+  annotators_count: 3
+  min_agreement: 0.7  # Cohen's Kappa
+  dimensions:
+    - intention
+    - sentiment
+    - theme
+    - urgency
+
+# ============================================
+# SPLIT DATASET
+# ============================================
+split:
+  train_ratio: 0.70
+  val_ratio: 0.15
+  test_ratio: 0.15
+  stratify: true
+  random_seed: 42
+
+# ============================================
+# MODÈLES - CLASSIFICATION PAR RÈGLES
+# ============================================
+models:
+  rule_based:
+    patterns:
+      intention_threshold: 0.6
+      sentiment_threshold: 0.5
+      theme_min_frequency: 5
+    thresholds:
+      confidence_min: 0.3
+      
+  # ============================================
+  # MODÈLES - LLM
+  # ============================================
+  llm:
+    base_model: "mistral-7b-instruct-v0.2"
+    epochs: 3
+    batch_size: 8
+    learning_rate: 0.0001
+    max_tokens: 512
+    temperature: 0.3
+    lora:
+      enabled: true
+      rank: 16
+      alpha: 32
+      dropout: 0.1
+
+# ============================================
+# ÉVALUATION
+# ============================================
+evaluation:
+  metrics:
+    - precision
+    - recall
+    - f1_score
+    - accuracy
+    - confusion_matrix
+  confidence_threshold: 0.5
+  
+# ============================================
+# FAIRNESS/BIAS
+# ============================================
+fairness:
+  protected_attributes:
+    - gender
+    - region
+    - price_mention
+  fairness_metrics:
+    - demographic_parity
+    - equalized_odds
+    - variance_threshold
+  max_variance: 0.05  # 5%

@@ -1,0 +1,224 @@
+# Pipeline DVC pour FreeMobilaChat
+# Définit les étapes de traitement des données et d'entraînement
+
+stages:
+  # ============================================
+  # ÉTAPE 1: COLLECTE DES DONNÉES
+  # ============================================
+  collect_data:
+    cmd: python scripts/collect_tweets.py
+    deps:
+      - scripts/collect_tweets.py
+    params:
+      - data_collection.max_tweets
+      - data_collection.date_range
+    outs:
+      - data/raw/tweets_raw.csv
+    metrics:
+      - data/raw/collection_stats.json:
+          cache: false
+    desc: "Collecte des tweets Free Mobile via API Twitter/scraping"
+
+  # ============================================
+  # ÉTAPE 2: NETTOYAGE DES DONNÉES
+  # ============================================
+  clean_data:
+    cmd: python scripts/clean_tweets.py
+    deps:
+      - scripts/clean_tweets.py
+      - streamlit_app/services/tweet_cleaner.py
+      - data/raw/tweets_raw.csv
+    params:
+      - preprocessing.remove_duplicates
+      - preprocessing.min_length
+      - preprocessing.language_filter
+    outs:
+      - data/processed/tweets_cleaned.csv
+    metrics:
+      - data/processed/cleaning_report.json:
+          cache: false
+    plots:
+      - data/processed/quality_distribution.csv:
+          x: quality_score
+          y: count
+    desc: "Nettoyage 7-étapes: Unicode, URLs, mentions, hashtags, emojis, duplicats"
+
+  # ============================================
+  # ÉTAPE 3: ANNOTATION ET LABELLISATION
+  # ============================================
+  annotate_data:
+    cmd: python scripts/annotate_dataset.py
+    deps:
+      - scripts/annotate_dataset.py
+      - data/processed/tweets_cleaned.csv
+    params:
+      - annotation.sample_size
+      - annotation.annotators_count
+      - annotation.min_agreement
+    outs:
+      - data/annotated/tweets_labeled.csv
+    metrics:
+      - data/annotated/inter_annotator_agreement.json:
+          cache: false
+    desc: "Annotation manuelle avec validation inter-annotateurs (κ > 0.7)"
+
+  # ============================================
+  # ÉTAPE 4: CRÉATION DES SPLITS
+  # ============================================
+  split_dataset:
+    cmd: python scripts/split_dataset.py
+    deps:
+      - scripts/split_dataset.py
+      - data/annotated/tweets_labeled.csv
+    params:
+      - split.train_ratio
+      - split.val_ratio
+      - split.test_ratio
+      - split.stratify
+    outs:
+      - data/splits/train.csv
+      - data/splits/validation.csv
+      - data/splits/test.csv
+    metrics:
+      - data/splits/split_statistics.json:
+          cache: false
+    desc: "Split stratifié 70/15/15 avec balance des classes"
+
+  # ============================================
+  # ÉTAPE 5: ENTRAÎNEMENT CLASSIFIEUR RÈGLES
+  # ============================================
+  train_rule_classifier:
+    cmd: python scripts/train_rule_classifier.py
+    deps:
+      - scripts/train_rule_classifier.py
+      - streamlit_app/services/dynamic_classifier.py
+      - data/splits/train.csv
+    params:
+      - models.rule_based.patterns
+      - models.rule_based.thresholds
+    outs:
+      - models/rule_classifier/patterns.json
+      - models/rule_classifier/vocabulary.pkl
+    metrics:
+      - models/rule_classifier/training_metrics.json:
+          cache: false
+    desc: "Entraînement classifieur par règles adaptatives"
+
+  # ============================================
+  # ÉTAPE 6: FINE-TUNING MODÈLE LLM (optionnel)
+  # ============================================
+  finetune_llm:
+    cmd: python scripts/finetune_mistral.py
+    matrix:
+      epochs: [3]
+      batch_size: [8]
+    deps:
+      - scripts/finetune_mistral.py
+      - data/splits/train.csv
+      - data/splits/validation.csv
+    params:
+      - models.llm.base_model
+      - models.llm.epochs
+      - models.llm.batch_size
+      - models.llm.learning_rate
+    outs:
+      - models/llm/mistral_finetuned/
+    metrics:
+      - models/llm/training_metrics.json:
+          cache: false
+    plots:
+      - models/llm/training_curves.csv:
+          x: epoch
+          y: train_loss
+      - models/llm/training_curves.csv:
+          x: epoch
+          y: val_loss
+      - models/llm/training_curves.csv:
+          x: epoch
+          y: f1_score
+    desc: "Fine-tuning Mistral 7B sur domaine télécoms (optionnel)"
+
+  # ============================================
+  # ÉTAPE 7: ÉVALUATION MODÈLES
+  # ============================================
+  evaluate_models:
+    cmd: python scripts/evaluate_all_models.py
+    deps:
+      - scripts/evaluate_all_models.py
+      - models/rule_classifier/patterns.json
+      - models/llm/mistral_finetuned/
+      - data/splits/test.csv
+    params:
+      - evaluation.metrics
+      - evaluation.confidence_threshold
+    outs:
+      - results/evaluation_report.json
+      - results/confusion_matrices/
+    metrics:
+      - results/model_comparison.json:
+          cache: false
+    plots:
+      - results/precision_recall_curve.csv:
+          x: recall
+          y: precision
+      - results/roc_curves.csv:
+          x: fpr
+          y: tpr
+    desc: "Évaluation complète: précision, rappel, F1, confusion matrices"
+
+  # ============================================
+  # ÉTAPE 8: VALIDATION FAIRNESS/BIAS
+  # ============================================
+  fairness_check:
+    cmd: python scripts/check_fairness.py
+    deps:
+      - scripts/check_fairness.py
+      - models/rule_classifier/patterns.json
+      - models/llm/mistral_finetuned/
+      - data/splits/test.csv
+    params:
+      - fairness.protected_attributes
+      - fairness.fairness_metrics
+    outs:
+      - results/fairness_report.json
+    metrics:
+      - results/bias_detection.json:
+          cache: false
+    desc: "Tests d'équité: genre, région, prix (variance <5%)"
+
+  # ============================================
+  # ÉTAPE 9: PACKAGING MODÈLES
+  # ============================================
+  package_models:
+    cmd: python scripts/package_models.py
+    deps:
+      - scripts/package_models.py
+      - models/rule_classifier/
+      - models/llm/mistral_finetuned/
+      - results/evaluation_report.json
+    outs:
+      - artifacts/production_models.tar.gz
+      - artifacts/model_registry.json
+    desc: "Packaging modèles pour déploiement production"
+
+# ============================================
+# MÉTRIQUES GLOBALES
+# ============================================
+metrics:
+  - results/model_comparison.json
+  - results/bias_detection.json
+  - data/processed/cleaning_report.json
+
+# ============================================
+# GRAPHIQUES GLOBAUX
+# ============================================
+plots:
+  - results/precision_recall_curve.csv
+  - results/roc_curves.csv
+  - models/llm/training_curves.csv
+
+# ============================================
+# PARAMÈTRES GLOBAUX
+# ============================================
+params:
+  - params.yaml
