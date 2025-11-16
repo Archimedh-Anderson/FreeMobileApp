@@ -18,7 +18,7 @@ Fonctionnalités principales:
 - Interface utilisateur professionnelle avec Font Awesome
 - Export des résultats en multiples formats
 
-Version: 4.5 - Production Ready
+Version: 2.0.0 - Production Ready
 """
 
 import streamlit as st
@@ -915,7 +915,7 @@ Temps: {detail['time']}
         
         # Footer compact
         st.markdown("---")
-        st.caption(f"<i class='fas fa-code'></i> Version 4.5 | {datetime.now().strftime('%Y-%m-%d')}", unsafe_allow_html=True)
+        st.caption(f"💻 FreeMobilaChat v2.0 | {datetime.now().strftime('%Y-%m-%d')}")
         
         # Afficher la modal de configuration si nécessaire
         if PROVIDER_MANAGER_AVAILABLE and render_provider_configuration_modal:
@@ -1533,39 +1533,61 @@ def _render_classifiers_tab():
 
 def _render_system_info_tab():
     """
-    Affiche les informations système et de performance (version simplifiée).
-    
-    Présente les détails techniques du modèle BERT chargé, notamment
-    le device utilisé (CPU/GPU), la taille des batches et le nom du modèle.
+    Affiche les informations système de manière simple et moderne.
     """
     try:
+        import sys
+        import platform
+        
+        # Version Python
+        st.markdown("**🐍 Environnement Python**")
+        st.caption(f"Version: {sys.version.split()[0]}")
+        st.caption(f"Plateforme: {platform.system()} {platform.release()}")
+        
+        # Modules de classification
         modules = _load_classification_modules()
-        if modules.get('available'):
-            # Vérifier si BERT est disponible
-            if 'BERTClassifier' in modules.get('modules', {}):
-                BERTClassifier = modules.get('modules', {}).get('BERTClassifier')
-                if BERTClassifier:
-                    bert = BERTClassifier(use_gpu=False)
-                    info = bert.get_model_info()
-                    
-                    st.markdown("**<i class='fas fa-brain'></i> Modèle BERT**", unsafe_allow_html=True)
-                    
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        device_icon = "<i class='fas fa-microchip'></i>" if info['device'].upper() == "CPU" else "<i class='fas fa-server'></i>"
-                        st.caption(f"{device_icon} **Device:** {info['device'].upper()}", unsafe_allow_html=True)
-                        st.caption(f"<i class='fas fa-layer-group'></i> **Batch:** {info['batch_size']}", unsafe_allow_html=True)
-                    with col2:
-                        model_short = info['model_name'].split('/')[-1][:25]
-                        st.caption(f"<i class='fas fa-cube'></i> **Modèle:** {model_short}", unsafe_allow_html=True)
-                else:
-                    st.info("BERT Classifier non disponible (PyTorch requis)")
+        modules_dict = modules.get('modules', {})
+        
+        st.markdown("---")
+        st.markdown("**🤖 Modules Chargés**")
+        
+        # Afficher statut simple des modules
+        module_names = {
+            'TweetCleaner': '✓ Nettoyage de texte',
+            'EnhancedRuleClassifier': '✓ Classification par règles',
+            'BERTClassifier': '✓ BERT (Deep Learning)',
+            'MistralClassifier': '✓ Mistral AI (LLM)',
+            'GeminiClassifier': '✓ Gemini API',
+            'MultiModelOrchestrator': '✓ Orchestrateur'
+        }
+        
+        available_count = 0
+        for key, label in module_names.items():
+            if key in modules_dict:
+                st.caption(label)
+                available_count += 1
             else:
-                st.info("BERT Classifier non disponible (PyTorch requis)")
-                st.caption("Installez PyTorch avec: `pip install torch transformers`")
+                st.caption(label.replace('✓', '✗'))
+        
+        st.markdown("---")
+        st.caption(f"📊 {available_count}/{len(module_names)} modules disponibles")
+        
+        # Info BERT si disponible
+        if 'BERTClassifier' in modules_dict:
+            try:
+                BERTClassifier = modules_dict['BERTClassifier']
+                bert = BERTClassifier(use_gpu=False)
+                info = bert.get_model_info()
+                
+                st.markdown("---")
+                st.markdown("**🧠 Configuration BERT**")
+                st.caption(f"Device: {info['device'].upper()}")
+                st.caption(f"Batch size: {info['batch_size']}")
+            except:
+                pass
             
     except Exception as e:
-        st.warning(f"Informations système non disponibles: {str(e)[:100]}")
+        st.error(f"Erreur: {str(e)[:80]}")
 
 def _render_role_management_tab():
     """
