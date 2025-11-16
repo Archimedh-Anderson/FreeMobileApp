@@ -58,6 +58,15 @@ except ImportError:
     GEMINI_AVAILABLE = False  # Désactivation si le module n'est pas installé
     logger.warning("Module google-generativeai non disponible. Installation requise: pip install google-generativeai")
 
+# Import du préprocesseur de texte avancé (PROMPT CURSOR.txt spec)
+try:
+    from .text_preprocessor import TextPreprocessor
+    PREPROCESSOR_AVAILABLE = True
+    logger.info("✓ TextPreprocessor available")
+except ImportError:
+    PREPROCESSOR_AVAILABLE = False
+    logger.warning("⚠️ TextPreprocessor not available (advanced text cleaning disabled)")
+
 
 class GeminiClassifier:
     """
@@ -73,7 +82,8 @@ class GeminiClassifier:
                  model_name: str = 'gemini-2.0-flash-exp',
                  batch_size: int = BATCH_SIZE,
                  temperature: float = 0.3,
-                 max_retries: int = MAX_RETRIES):
+                 max_retries: int = MAX_RETRIES,
+                 enable_preprocessing: bool = True):
         """
         Initialise le classificateur Gemini avec les paramètres de configuration
         
@@ -83,6 +93,7 @@ class GeminiClassifier:
             batch_size: Taille des lots pour le traitement par batch
             temperature: Paramètre de créativité du modèle (0.0 = déterministe, 1.0 = créatif)
             max_retries: Nombre maximal de tentatives en cas d'échec de requête
+            enable_preprocessing: Activer le préprocesseur de texte avancé
         """
         # Récupération de la clé API depuis les variables d'environnement si non fournie
         if api_key is None:
@@ -94,6 +105,18 @@ class GeminiClassifier:
         self.batch_size = batch_size  # Définition de la taille des lots de traitement
         self.temperature = temperature  # Contrôle de la variabilité des réponses du modèle
         self.max_retries = max_retries  # Configuration de la résilience face aux erreurs
+        
+        # Initialiser le préprocesseur de texte avancé (PROMPT CURSOR.txt spec)
+        self.preprocessor = None
+        if enable_preprocessing and PREPROCESSOR_AVAILABLE:
+            try:
+                self.preprocessor = TextPreprocessor(
+                    use_spacy=False,  # Désactivé pour performance (optionnel)
+                    enable_language_detection=False  # Assume French
+                )
+                logger.info("✓ Advanced text preprocessing enabled")
+            except Exception as e:
+                logger.warning(f"Could not initialize preprocessor: {e}")
         
         # Si pas de clé API, afficher un avertissement mais ne pas lever d'exception
         if not api_key or api_key.strip() == "":
@@ -821,7 +844,19 @@ IMPORTANT: Le nombre de résultats DOIT être exactement {len(tweets)} (un par t
         
         # Préparation
         tweets = df[text_column].tolist()
-        total_batches = (len(tweets) + self.batch_size - 1) // self.batch_size
+        
+        # Pré-traitement optionnel avec TextPreprocessor (PROMPT CURSOR.txt spec)
+        if self.preprocessor is not None:
+            logger.info("Applying advanced text preprocessing...")
+            # Clean tweets before sending to Gemini for better results
+            # Note: Keep original tweets in df, only clean for API input
+            preprocessed_tweets = [self.preprocessor.clean(t, preserve_case=False) for t in tweets]
+            # Use preprocessed for API, but keep original for reference
+            tweets_for_api = preprocessed_tweets
+        else:
+            tweets_for_api = tweets
+        
+        total_batches = (len(tweets_for_api) + self.batch_size - 1) // self.batch_size
         all_results = []
         
         # Progress bar Streamlit
@@ -832,8 +867,8 @@ IMPORTANT: Le nombre de résultats DOIT être exactement {len(tweets)} (un par t
         # Traitement par lots
         for batch_idx in range(total_batches):
             start_idx = batch_idx * self.batch_size
-            end_idx = min(start_idx + self.batch_size, len(tweets))
-            batch_tweets = tweets[start_idx:end_idx]
+            end_idx = min(start_idx + self.batch_size, len(tweets_for_api))
+            batch_tweets = tweets_for_api[start_idx:end_idx]
             
             # Mise à jour progress
             if show_progress:
