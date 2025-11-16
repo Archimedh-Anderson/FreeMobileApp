@@ -24,6 +24,7 @@ jobs:
         script: |
           cd /home/ec2-user/FreeMobileApp/streamlit_app
           git pull origin main
-          pip3 install -r requirements.txt --user --upgrade
+          source venv/bin/activate
+          pip install -r requirements.txt --upgrade
           sudo systemctl restart streamlit
           sudo systemctl is-active streamlit && echo "✅ Déploiement réussi!" || echo "❌ Échec du déploiement"
