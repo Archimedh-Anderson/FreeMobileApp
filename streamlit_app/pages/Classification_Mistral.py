@@ -2780,7 +2780,39 @@ def _section_results():
                 )
         
         with col6:
-            if not report.get('incident_dist', pd.Series()).empty:
+            if 'incident' in df.columns:
+                # Compter les incidents avec case-insensitive matching
+                incident_normalized = df['incident'].astype(str).str.lower().str.strip()
+                
+                # Filtrer les incidents réels (exclure "aucun", "non", etc.)
+                non_incidents = ['aucun', 'non', 'none', 'n/a', 'na', '']
+                incidents_reels = incident_normalized[~incident_normalized.isin(non_incidents)]
+                
+                if len(incidents_reels) > 0:
+                    # Obtenir l'incident le plus fréquent (hors "aucun")
+                    top_incident_raw = incidents_reels.value_counts().index[0]
+                    top_incident_count = incidents_reels.value_counts().iloc[0]
+                    
+                    # Capitaliser pour affichage
+                    top_incident_display = str(top_incident_raw).capitalize()
+                    if len(top_incident_display) > 15:
+                        top_incident_display = top_incident_display[:15] + "..."
+                    
+                    st.metric(
+                        "Incident Principal",
+                        top_incident_display,
+                        delta=f"{top_incident_count:,} tweets"
+                    )
+                else:
+                    # Aucun incident réel détecté
+                    total_aucun = len(df) - len(incidents_reels)
+                    st.metric(
+                        "Incident Principal",
+                        "aucun",
+                        delta=f"{total_aucun:,} tweets"
+                    )
+            elif not report.get('incident_dist', pd.Series()).empty:
+                # Fallback vers le rapport si disponible
                 top_incident = report['incident_dist'].index[0]
                 top_incident_count = report['incident_dist'].iloc[0]
                 st.metric(
@@ -3252,25 +3284,102 @@ def _render_reclamations_chart(df):
         st.info("⚠️ Aucune donnée de réclamations disponible")
 
 def _render_urgence_chart(df):
-    """Graphique de distribution des niveaux d'urgence"""
-    st.markdown("#### Niveaux d'Urgence")
+    """Graphique de distribution des niveaux d'urgence - Style exact du screenshot"""
+    st.markdown("### Niveaux d'Urgence")
     
     if 'urgence' in df.columns:
-        counts = df['urgence'].value_counts()
+        # Normalisation case-insensitive pour compter correctement
+        urgence_normalized = df['urgence'].astype(str).str.lower().str.strip()
         
-        fig = px.bar(
-            x=counts.index,
-            y=counts.values,
-            title="",
-            color=counts.values,
-            color_continuous_scale='Reds',
-            text=counts.values
+        # Mapping vers catégories standard
+        urgence_map = {
+            'faible': 'FAIBLE',
+            'low': 'FAIBLE',
+            'basse': 'FAIBLE',
+            'haute': 'HAUTE',
+            'high': 'HAUTE',
+            'elevee': 'HAUTE',
+            'élevée': 'HAUTE',
+            'critique': 'HAUTE',
+            'critical': 'HAUTE',
+            'moyenne': 'MOYENNE',
+            'medium': 'MOYENNE',
+            'modérée': 'MOYENNE',
+            'moderee': 'MOYENNE'
+        }
+        
+        # Appliquer le mapping
+        urgence_categorized = urgence_normalized.map(lambda x: urgence_map.get(x, 'FAIBLE'))
+        
+        # Compter les catégories
+        counts = urgence_categorized.value_counts()
+        
+        # S'assurer que toutes les catégories sont présentes (même avec 0)
+        all_categories = ['FAIBLE', 'HAUTE', 'MOYENNE']
+        for cat in all_categories:
+            if cat not in counts:
+                counts[cat] = 0
+        
+        # Réordonner pour correspondre au screenshot (FAIBLE, HAUTE, MOYENNE)
+        counts = counts.reindex(all_categories)
+        
+        # Couleurs gradient rouge (du plus foncé au plus clair) selon valeurs
+        max_val = counts.max()
+        colors_map = {
+            'FAIBLE': '#8B0000',   # Dark red (généralement le plus élevé)
+            'HAUTE': '#FA8072',    # Salmon (moyen)
+            'MOYENNE': '#FFB6C1'   # Light pink (le plus faible)
+        }
+        
+        # Utiliser gradient proportionnel aux valeurs
+        colors = [colors_map[cat] for cat in counts.index]
+        
+        # Créer le graphique à barres verticales
+        fig = go.Figure(data=[
+            go.Bar(
+                x=counts.index,
+                y=counts.values,
+                marker=dict(
+                    color=colors,
+                    line=dict(color='white', width=1.5),
+                    colorscale='Reds',
+                    showscale=False
+                ),
+                text=counts.values,
+                textposition='outside',
+                textfont=dict(size=13, color='#1a202c', family='Arial, sans-serif'),
+                hovertemplate="<b>%{x}</b><br>Nombre: %{y:,}<extra></extra>",
+                showlegend=False
+            )
+        ])
+        
+        fig.update_layout(
+            xaxis=dict(
+                title="x",
+                showgrid=False,
+                title_font=dict(size=12, color='#4a5568'),
+                tickfont=dict(size=11)
+            ),
+            yaxis=dict(
+                title="y",
+                showgrid=True,
+                gridcolor='rgba(0,0,0,0.08)',
+                title_font=dict(size=12, color='#4a5568'),
+                range=[0, max(counts.values) * 1.15] if max(counts.values) > 0 else [0, 10]
+            ),
+            height=450,
+            template="plotly_white",
+            margin=dict(l=60, r=40, t=40, b=60),
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            showlegend=False
         )
-        fig.update_traces(texttemplate='%{text}', textposition='outside')
-        fig.update_layout(height=400, showlegend=False)
-        st.plotly_chart(fig, use_container_width=True)
+        
+        st.plotly_chart(fig, use_container_width=True, key='urgence_chart')
         
         st.caption(f"<i class='fas fa-info-circle'></i> Distribution sur {len(df)} tweets", unsafe_allow_html=True)
+    else:
+        st.info("⚠️ Aucune donnée d'urgence disponible")
 
 def _render_topics_chart(df):
     """Graphique de distribution des thèmes"""
