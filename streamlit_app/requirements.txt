@@ -14,8 +14,7 @@ plotly==5.17.0
 
 # Text Processing
 emoji==2.8.0
-unidecode==1.3.0
-
+unidecode==1.4.0
 # NLP Advanced Libraries (from PROMPT CURSOR.txt)
 # Transformers for CamemBERT sentiment analysis
 transformers>=4.35.0
