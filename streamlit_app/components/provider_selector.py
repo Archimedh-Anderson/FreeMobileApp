@@ -87,7 +87,7 @@ def render_provider_selector():
         ):
             if mistral_available:
                 st.session_state.selected_provider = mistral_status.name
-                st.success("Mistral sélectionné", icon="✓")
+                st.success("Mistral sélectionné", icon="✅")
                 st.rerun()
             else:
                 st.session_state.show_provider_config_modal = True
@@ -116,7 +116,7 @@ def render_provider_selector():
         ):
             if gemini_available:
                 st.session_state.selected_provider = gemini_status.name
-                st.success("Gemini sélectionné", icon="✓")
+                st.success("Gemini sélectionné", icon="✅")
                 st.rerun()
             else:
                 st.session_state.show_provider_config_modal = True
