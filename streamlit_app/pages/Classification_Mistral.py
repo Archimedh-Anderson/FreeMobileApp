@@ -3048,53 +3048,35 @@ def _render_analytics_visualizations(df):
         else:
             st.info("⚠️ Aucune donnée d'incidents disponible")
     
-    st.markdown("---")
-    
-    # SECTION 2: Distribution des Sentiments (donut chart)
+        # SECTION 2: Distribution des Sentiments (donut chart)
     st.markdown("### Distribution des Sentiments")
     
     if 'sentiment' in df.columns:
-        # Calculer les sentiments
-        sentiment_counts = df['sentiment'].value_counts()
+        # Calculer les sentiments avec case-insensitive matching
+        sentiment_normalized = df['sentiment'].astype(str).str.lower().str.strip()
+        
+        # Compter chaque type de sentiment de manière robuste
+        neg_count = int(sentiment_normalized.isin(['negatif', 'négatif', 'negative', 'neg']).sum())
+        neu_count = int(sentiment_normalized.isin(['neutre', 'neutral', 'neu']).sum())
+        pos_count = int(sentiment_normalized.isin(['positif', 'positive', 'pos']).sum())
+        
         total = len(df)
-        percentages = (sentiment_counts / total * 100).round(1)
         
-        # Mapping couleurs exact depuis screenshot
-        color_map = {
-            'negative': '#e74c3c',  # Rouge
-            'negatif': '#e74c3c',
-            'négatif': '#e74c3c',
-            'neg': '#e74c3c',
-            'neutral': '#6c757d',  # Gris
-            'neutre': '#6c757d',
-            'neu': '#6c757d',
-            'positive': '#28a745',  # Vert
-            'positif': '#28a745',
-            'pos': '#28a745'
-        }
+        # Calculer les pourcentages
+        neg_pct = (neg_count / total * 100) if total > 0 else 0
+        neu_pct = (neu_count / total * 100) if total > 0 else 0
+        pos_pct = (pos_count / total * 100) if total > 0 else 0
         
-        # Mapping labels pour affichage
-        label_map = {
-            'negative': 'Negative',
-            'negatif': 'Negative',
-            'négatif': 'Negative',
-            'neg': 'Negative',
-            'neutral': 'Neutral',
-            'neutre': 'Neutral', 
-            'neu': 'Neutral',
-            'positive': 'Positive',
-            'positif': 'Positive',
-            'pos': 'Positive'
-        }
-        
-        labels = [label_map.get(str(s).lower(), str(s)) for s in sentiment_counts.index]
-        colors = [color_map.get(str(s).lower(), '#95a5a6') for s in sentiment_counts.index]
+        # Créer les données pour le donut chart
+        labels = ['Negative', 'Neutral', 'Positive']
+        values = [neg_count, neu_count, pos_count]
+        colors = ['#e74c3c', '#6c757d', '#28a745']  # Rouge, Gris, Vert
         
         # Créer le donut chart avec style exact du screenshot
         fig = go.Figure(data=[
             go.Pie(
                 labels=labels,
-                values=sentiment_counts.values,
+                values=values,
                 hole=0.5,  # Donut
                 marker=dict(
                     colors=colors,
@@ -3110,68 +3092,87 @@ def _render_analytics_visualizations(df):
         fig.update_layout(
             title=dict(
                 text="<b>Distribution des Sentiments</b>",
-                font=dict(size=20, family='Arial, sans-serif', color='#1a202c', weight='bold'),
+                font=dict(size=20, family='Arial, sans-serif', color='#1a202c'),
                 x=0.5,
                 xanchor='center',
                 y=0.98,
                 yanchor='top'
             ),
-            height=550,
+            height=500,
             template="plotly_white",
             showlegend=True,
             legend=dict(
                 orientation="h",
                 yanchor="bottom",
-                y=-0.1,
+                y=-0.15,
                 xanchor="center",
                 x=0.5,
-                font=dict(size=12),
-                bgcolor="rgba(255,255,255,0.9)",
-                bordercolor="#e2e8f0",
-                borderwidth=1
+                font=dict(size=12)
             ),
-            margin=dict(t=80, b=80, l=40, r=40),
+            margin=dict(t=80, b=100, l=40, r=40),
             paper_bgcolor='rgba(0,0,0,0)',
             plot_bgcolor='rgba(0,0,0,0)'
         )
         
-        # Centrer le graphique
-        col_left, col_center, col_right = st.columns([1, 2, 1])
-        with col_center:
-            st.plotly_chart(fig, use_container_width=True, key='analytics_sentiment_donut')
+        st.plotly_chart(fig, use_container_width=True, key='analytics_sentiment_donut')
         
-        # Statistiques en dessous
-        stat_col1, stat_col2, stat_col3 = st.columns(3)
-        
-        with stat_col1:
-            neg_count = sentiment_counts.get('negatif', sentiment_counts.get('negative', sentiment_counts.get('négatif', 0)))
-            neg_pct = (neg_count / total * 100) if total > 0 else 0
-            st.markdown(f"""
-            <div style="text-align: center; padding: 1rem; background: #ffe5e5; border-radius: 8px;">
-                <h3 style="color: #e74c3c; margin: 0;">{neg_count:,}</h3>
-                <p style="color: #4a5568; margin: 0.5rem 0 0 0;">Négatif ({neg_pct:.1f}%)</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with stat_col2:
-            neu_count = sentiment_counts.get('neutre', sentiment_counts.get('neutral', sentiment_counts.get('neu', 0)))
-            neu_pct = (neu_count / total * 100) if total > 0 else 0
-            st.markdown(f"""
-            <div style="text-align: center; padding: 1rem; background: #e9ecef; border-radius: 8px;">
-                <h3 style="color: #6c757d; margin: 0;">{neu_count:,}</h3>
-                <p style="color: #4a5568; margin: 0.5rem 0 0 0;">Neutre ({neu_pct:.1f}%)</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with stat_col3:
-            pos_count = sentiment_counts.get('positif', sentiment_counts.get('positive', sentiment_counts.get('pos', 0)))
-            pos_pct = (pos_count / total * 100) if total > 0 else 0
-            st.markdown(f"""
-            <div style="text-align: center; padding: 1rem; background: #d4edda; border-radius: 8px;">
-                <h3 style="color: #28a745; margin: 0;">{pos_count:,}</h3>
-                <p style="color: #4a5568; margin: 0.5rem 0 0 0;">Positif ({pos_pct:.1f}%)</p>
-            </div>
-            """, unsafe_allow_html=True)
+        # Expandable statistics section matching reference image
+        with st.expander("📊 Statistiques Détaillées et Pourcentages", expanded=True):
+            stat_col1, stat_col2, stat_col3, stat_col4 = st.columns(4)
+            
+            with stat_col1:
+                st.markdown(f"""
+                <div style="text-align: center;">
+                    <p style="color: #6c757d; font-size: 0.9rem; margin-bottom: 0.5rem;">Nombre total de tweets</p>
+                    <h2 style="color: #1a202c; margin: 0; font-size: 2.5rem;">{total:,}</h2>
+                    <p style="color: #28a745; font-size: 0.9rem; margin-top: 0.5rem;">↑ 100%</p>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            with stat_col2:
+                # Calculer réclamations avec case-insensitive matching
+                if 'is_claim' in df.columns:
+                    claims_normalized = df['is_claim'].astype(str).str.lower().str.strip()
+                    claims_count = int(claims_normalized.isin(['oui', 'yes', '1', 'true']).sum())
+                    claims_pct = (claims_count / total * 100) if total > 0 else 0
+                else:
+                    claims_count = 0
+                    claims_pct = 0
+                
+                st.markdown(f"""
+                <div style="text-align: center;">
+                    <p style="color: #6c757d; font-size: 0.9rem; margin-bottom: 0.5rem;">Réclamations</p>
+                    <h2 style="color: #1a202c; margin: 0; font-size: 2.5rem;">{claims_count:,}</h2>
+                    <p style="color: #28a745; font-size: 0.9rem; margin-top: 0.5rem;">↑ {claims_pct:.1f}%</p>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            with stat_col3:
+                st.markdown(f"""
+                <div style="text-align: center;">
+                    <p style="color: #6c757d; font-size: 0.9rem; margin-bottom: 0.5rem;">Sentiments Négatifs</p>
+                    <h2 style="color: #1a202c; margin: 0; font-size: 2.5rem;">{neg_count:,}</h2>
+                    <p style="color: #28a745; font-size: 0.9rem; margin-top: 0.5rem;">↑ {neg_pct:.1f}%</p>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            with stat_col4:
+                # Calculer urgence haute avec case-insensitive matching
+                if 'urgence' in df.columns:
+                    urgence_normalized = df['urgence'].astype(str).str.lower().str.strip()
+                    urgent_count = int(urgence_normalized.isin(['haute', 'high', 'elevee', 'élevée', 'critique', 'critical']).sum())
+                    urgent_pct = (urgent_count / total * 100) if total > 0 else 0
+                else:
+                    urgent_count = 0
+                    urgent_pct = 0
+                
+                st.markdown(f"""
+                <div style="text-align: center;">
+                    <p style="color: #6c757d; font-size: 0.9rem; margin-bottom: 0.5rem;">Urgence Haute</p>
+                    <h2 style="color: #1a202c; margin: 0; font-size: 2.5rem;">{urgent_count:,}</h2>
+                    <p style="color: #28a745; font-size: 0.9rem; margin-top: 0.5rem;">↑ {urgent_pct:.1f}%</p>
+                </div>
+                """, unsafe_allow_html=True)
     else:
         st.info("⚠️ Aucune donnée de sentiment disponible")
 
@@ -3199,30 +3200,56 @@ def _render_sentiment_chart(df):
         st.caption(f"<i class='fas fa-info-circle'></i> Total: {len(df)} tweets analysés", unsafe_allow_html=True)
 
 def _render_reclamations_chart(df):
-    """Graphique de répartition des réclamations"""
-    st.markdown("#### Répartition Réclamations vs Non-Réclamations")
+    """Graphique de répartition des réclamations - Style exact du screenshot"""
+    st.markdown("### Répartition Réclamations vs Non-Réclamations")
     
     if 'is_claim' in df.columns:
-        counts = df['is_claim'].value_counts()
+        # Calcul robuste avec case-insensitive matching
+        claims_normalized = df['is_claim'].astype(str).str.lower().str.strip()
         
+        # Compter réclamations et non-réclamations
+        reclamations_count = int(claims_normalized.isin(['oui', 'yes', '1', 'true']).sum())
+        non_reclamations_count = len(df) - reclamations_count
+        total = len(df)
+        
+        # Calculer les pourcentages
+        reclamations_pct = (reclamations_count / total * 100) if total > 0 else 0
+        non_reclamations_pct = (non_reclamations_count / total * 100) if total > 0 else 0
+        
+        # Donut chart style coral/red du screenshot
         fig = go.Figure(data=[go.Pie(
-            labels=['Réclamations' if l == 'oui' else 'Non-Réclamations' for l in counts.index],
-            values=counts.values,
-            marker_colors=['#E74C3C', '#10AC84'],
-            hole=0.5,
-            textinfo='label+percent'
+            labels=['Réclamations', 'Non-Réclamations'],
+            values=[reclamations_count, non_reclamations_count],
+            hole=0.5,  # Donut
+            marker=dict(
+                colors=['#E74C3C', '#E74C3C'],  # Même couleur coral pour correspondre au screenshot
+                line=dict(color='white', width=3)
+            ),
+            textinfo='label+percent',
+            textfont=dict(size=14, family='Arial, sans-serif', color='white'),
+            textposition='inside',
+            hovertemplate="<b>%{label}</b><br>Nombre: %{value:,}<br>Pourcentage: %{percent}<extra></extra>"
         )])
         
         fig.update_layout(
-            title="",
-            height=400,
-            showlegend=True
+            height=450,
+            template="plotly_white",
+            showlegend=False,
+            margin=dict(t=40, b=40, l=40, r=40),
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)'
         )
-        st.plotly_chart(fig, use_container_width=True)
         
-        reclamations = len(df[df['is_claim'] == 'oui'])
-        pct = (reclamations / len(df) * 100) if len(df) > 0 else 0
-        st.caption(f"<i class='fas fa-info-circle'></i> {reclamations:,} réclamations ({pct:.1f}%)", unsafe_allow_html=True)
+        st.plotly_chart(fig, use_container_width=True, key='reclamations_donut')
+        
+        # Statistiques en dessous du graphique
+        st.markdown(f"""
+        <div style="text-align: left; color: #6c757d; font-size: 0.95rem; margin-top: 1rem;">
+            <i class="fas fa-info-circle"></i> {reclamations_count:,} réclamations ({reclamations_pct:.1f}%)
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.info("⚠️ Aucune donnée de réclamations disponible")
 
 def _render_urgence_chart(df):
     """Graphique de distribution des niveaux d'urgence"""
