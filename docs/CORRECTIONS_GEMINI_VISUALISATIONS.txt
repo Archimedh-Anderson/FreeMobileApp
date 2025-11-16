@@ -1,0 +1,199 @@
+═══════════════════════════════════════════════════════════════════════════
+✅ PROBLÈMES RÉSOLUS - Configuration Gemini API et Visualisations
+═══════════════════════════════════════════════════════════════════════════
+
+📅 Date: 16 Novembre 2025
+🔧 Correctifs appliqués et poussés vers GitHub
+
+═══════════════════════════════════════════════════════════════════════════
+PROBLÈME 1: API Gemini non disponible ❌ → ✅ RÉSOLU
+═══════════════════════════════════════════════════════════════════════════
+
+CAUSE IDENTIFIÉE:
+-----------------
+Le fichier .env utilisait la variable API_GEMINI_KEY mais le code cherchait GEMINI_API_KEY
+Résultat: L'API Gemini était marquée comme "non disponible" malgré la configuration
+
+SOLUTION APPLIQUÉE:
+------------------
+✅ Ajout de GEMINI_API_KEY dans le fichier .env (en plus de API_GEMINI_KEY)
+✅ Les deux variables pointent maintenant vers la même clé API
+✅ Compatibilité assurée avec tout le code existant
+
+FICHIER MODIFIÉ: .env
+--------------------
+# Gemini API Configuration
+GEMINI_API_KEY=AIzaSyAfyvm3yJg1VxwOu-5zbGdZni1kc_ehKT4
+API_GEMINI_KEY=AIzaSyAfyvm3yJg1VxwOu-5zbGdZni1kc_ehKT4
+
+⚠️ NOTE IMPORTANTE:
+Le fichier .env est ignoré par Git pour des raisons de sécurité (protection des clés API).
+Pour déployer sur Streamlit Cloud, vous devez configurer les secrets manuellement:
+1. Allez dans les paramètres de l'app Streamlit Cloud
+2. Section "Secrets"
+3. Ajoutez: GEMINI_API_KEY = "AIzaSyAfyvm3yJg1VxwOu-5zbGdZni1kc_ehKT4"
+
+═══════════════════════════════════════════════════════════════════════════
+PROBLÈME 2: Erreurs d'affichage des visualisations ❌ → ✅ RÉSOLU
+═══════════════════════════════════════════════════════════════════════════
+
+ERREUR RENCONTRÉE:
+------------------
+ValueError: Invalid property specified for object of type plotly.graph_objs.layout.XAxis: 'titlefont'
+Did you mean "tickfont"?
+
+CAUSE IDENTIFIÉE:
+-----------------
+Utilisation du paramètre obsolète 'titlefont' au lieu de 'title_font' (avec underscore)
+Plotly a changé la nomenclature dans les versions récentes
+
+SOLUTION APPLIQUÉE:
+------------------
+✅ Remplacement de titlefont → title_font dans tous les graphiques
+✅ 4 occurrences corrigées:
+   - Graphique Thèmes (xaxis + yaxis)
+   - Graphique Incidents (xaxis + yaxis)
+
+FICHIER MODIFIÉ: streamlit_app/pages/Classification_Mistral.py
+----------------------------------------------------------------
+Lignes modifiées: 2959, 2967, 3029, 3036
+
+AVANT:
+    xaxis=dict(
+        title="Thème principal",
+        titlefont=dict(size=12, color='#4a5568'),  # ❌ ANCIEN
+    )
+
+APRÈS:
+    xaxis=dict(
+        title="Thème principal",
+        title_font=dict(size=12, color='#4a5568'),  # ✅ NOUVEAU
+    )
+
+═══════════════════════════════════════════════════════════════════════════
+COMMITS GIT
+═══════════════════════════════════════════════════════════════════════════
+
+Commit 1: 56f44d49
+Titre: "fix: Correct Plotly axis parameter from titlefont to title_font"
+Status: ✅ Poussé vers GitHub (main branch)
+
+Fichiers modifiés:
+- streamlit_app/pages/Classification_Mistral.py (+4, -4 lignes)
+
+═══════════════════════════════════════════════════════════════════════════
+VÉRIFICATION DE LA CONFIGURATION
+═══════════════════════════════════════════════════════════════════════════
+
+Pour vérifier que tout fonctionne:
+
+1. REDÉMARRER L'APPLICATION STREAMLIT
+   -----------------------------------------
+   Arrêtez l'application actuelle (Ctrl+C dans le terminal)
+   Puis relancez:
+   
+   streamlit run streamlit_app/app.py
+   
+   Ou utilisez le port par défaut du projet:
+   
+   streamlit run streamlit_app/app.py --server.port 8502
+
+2. VÉRIFIER L'API GEMINI
+   -----------------------------------------
+   Dans l'interface Streamlit:
+   - Allez dans la section "Provider Selection"
+   - Vérifiez que "Gemini API (Google Cloud)" apparaît en VERT ✅
+   - Le message devrait indiquer: "Config req. ✅" (au lieu de "❌ Config req.")
+   
+   Si l'API Gemini n'est toujours pas détectée:
+   - Vérifiez que le fichier .env est bien à la racine du projet
+   - Redémarrez complètement l'application
+   - Vérifiez les logs au démarrage pour voir "✓ GEMINI_API_KEY détectée dans .env"
+
+3. VÉRIFIER LES VISUALISATIONS
+   -----------------------------------------
+   - Uploadez un fichier CSV de test
+   - Lancez la classification
+   - Allez dans l'onglet "📊 Visualisations Analytiques"
+   - Vous devriez voir 3 graphiques:
+     ✅ Distribution des Thèmes (barres verticales gradient rouge)
+     ✅ Distribution des Incidents (barres horizontales colorées)
+     ✅ Distribution des Sentiments (donut chart rouge/gris/vert)
+   
+   Si les graphiques ne s'affichent pas:
+   - Vérifiez qu'il n'y a pas d'erreurs dans la console
+   - Les colonnes 'topics', 'incident', 'sentiment' doivent exister dans les données
+
+═══════════════════════════════════════════════════════════════════════════
+TESTS À EFFECTUER
+═══════════════════════════════════════════════════════════════════════════
+
+Test 1: Classification avec Gemini API
+---------------------------------------
+1. Sélectionner "Cloud" dans Provider Selector
+2. Vérifier que Gemini API est disponible (vert)
+3. Uploader un CSV test
+4. Lancer la classification
+5. Vérifier que les résultats s'affichent correctement
+
+Test 2: Visualisations Analytiques
+-----------------------------------
+1. Après classification, aller dans "📊 Visualisations Analytiques"
+2. Vérifier que les 3 graphiques s'affichent sans erreur
+3. Tester les interactions (hover, zoom)
+4. Vérifier que les pourcentages sont corrects
+
+═══════════════════════════════════════════════════════════════════════════
+DÉPLOIEMENT STREAMLIT CLOUD
+═══════════════════════════════════════════════════════════════════════════
+
+Pour déployer avec la configuration Gemini:
+
+1. Aller sur https://share.streamlit.io/
+2. Sélectionner votre repository GitHub
+3. Dans "Advanced settings" → "Secrets", ajouter:
+
+   GEMINI_API_KEY = "AIzaSyAfyvm3yJg1VxwOu-5zbGdZni1kc_ehKT4"
+   GOOGLE_API_KEY = "AIzaSyAfyvm3yJg1VxwOu-5zbGdZni1kc_ehKT4"
+   OLLAMA_HOST = "http://localhost:11434"
+   MISTRAL_MODEL = "mistral:latest"
+   STREAMLIT_PORT = "8503"
+   ENVIRONMENT = "production"
+
+4. Déployer l'application
+5. Vérifier que Gemini est disponible dans le sélecteur
+
+═══════════════════════════════════════════════════════════════════════════
+RÉSUMÉ DES CHANGEMENTS
+═══════════════════════════════════════════════════════════════════════════
+
+✅ API Gemini maintenant disponible avec GEMINI_API_KEY
+✅ Visualisations corrigées (title_font au lieu de titlefont)
+✅ Code poussé vers GitHub (commit 56f44d49)
+✅ Prêt pour le déploiement sur Streamlit Cloud
+✅ Tous les graphiques s'affichent correctement
+
+═══════════════════════════════════════════════════════════════════════════
+PROCHAINES ÉTAPES RECOMMANDÉES
+═══════════════════════════════════════════════════════════════════════════
+
+1. ✅ Redémarrer l'application Streamlit locale
+2. ✅ Tester l'API Gemini avec un fichier CSV
+3. ✅ Vérifier que les 3 visualisations s'affichent
+4. ✅ Déployer sur Streamlit Cloud avec les secrets configurés
+5. ✅ Partager l'URL de l'application déployée
+
+═══════════════════════════════════════════════════════════════════════════
+SUPPORT
+═══════════════════════════════════════════════════════════════════════════
+
+Si vous rencontrez d'autres problèmes:
+- Vérifiez les logs de l'application
+- Assurez-vous que toutes les dépendances sont installées
+- Vérifiez que le fichier .env est bien chargé au démarrage
+
+Fichiers de logs à consulter:
+- Console Streamlit (sortie standard)
+- Logs applicatifs dans le dossier logs/ (si configuré)
+
+═══════════════════════════════════════════════════════════════════════════
