@@ -2942,7 +2942,6 @@ def _render_analytics_visualizations(df):
                     cmax=theme_counts.max(),
                     colorbar=dict(
                         title="Nombre",
-                        titleside="right",
                         tickmode="linear",
                         thickness=15,
                         len=0.7,
