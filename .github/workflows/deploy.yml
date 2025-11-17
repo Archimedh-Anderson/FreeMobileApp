@@ -11,33 +11,87 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-    
-    - name: Deploy to EC2
-      uses: appleboy/ssh-action@master
-      with:
-        host: ${{ secrets.EC2_HOST }}
-        username: ${{ secrets.EC2_USERNAME }}
-        key: ${{ secrets.EC2_SSH_KEY }}
-        port: 22
-        script: |
-          cd /home/ec2-user/FreeMobileApp
-          git pull origin main
-          cd streamlit_app
-          source venv/bin/activate
-          pip install -r requirements.txt --upgrade
-          sudo systemctl restart streamlit
-          sudo systemctl is-active streamlit && echo "✅ Déploiement réussi!" || echo "❌ Échec du déploiement"
-    
-    - name: Verify deployment
-      if: success()
-      uses: appleboy/ssh-action@master
-      with:
-        host: ${{ secrets.EC2_HOST }}
-        username: ${{ secrets.EC2_USERNAME }}
-        key: ${{ secrets.EC2_SSH_KEY }}
-        port: 22
-        script: |
-          sudo systemctl status streamlit --no-pager
-          curl -f http://localhost:8502 > /dev/null 2>&1 && echo "✅ Application accessible" || echo "⚠️ Application non accessible"
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
+          command_timeout: 30m
+          script: |
+            set -e
+            echo "=== Starting deployment ==="
+            
+            # Navigate to app directory
+            cd /home/ec2-user/FreeMobileApp
+            
+            # Pull latest code
+            echo "Pulling latest code..."
+            git pull origin main
+            
+            # Navigate to streamlit_app
+            cd streamlit_app
+            
+            # Create venv if it doesn't exist
+            if [ ! -d "venv" ]; then
+              echo "Creating virtual environment..."
+              python3 -m venv venv
+            fi
+            
+            # Activate venv
+            echo "Activating virtual environment..."
+            source venv/bin/activate
+            
+            # Upgrade pip
+            echo "Upgrading pip..."
+            python3 -m pip install --upgrade pip
+            
+            # Install/update dependencies
+            echo "Installing dependencies..."
+            pip install -r requirements.txt --upgrade
+            
+            # Restart streamlit service
+            echo "Restarting Streamlit service..."
+            sudo systemctl restart streamlit
+            
+            # Wait for service to start
+            sleep 5
+            
+            # Check service status
+            if sudo systemctl is-active --quiet streamlit; then
+              echo "✅ Deployment successful! Service is running."
+            else
+              echo "❌ Deployment failed! Service is not running."
+              sudo systemctl status streamlit --no-pager
+              exit 1
+            fi
+      
+      - name: Verify deployment
+        if: success()
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
+          script: |
+            echo "=== Verifying deployment ==="
+            sudo systemctl status streamlit --no-pager
+            
+            # Test HTTP endpoint
+            if curl -f http://localhost:8502 > /dev/null 2>&1; then
+              echo "✅ Application accessible on port 8502"
+            else
+              echo "⚠️ Application not accessible via HTTP (may be normal if behind proxy)"
+            fi
+            
+            # Check for running processes
+            if pgrep -f "streamlit run" > /dev/null; then
+              echo "✅ Streamlit process is running"
+            else
+              echo "❌ No Streamlit process found"
+            fi
