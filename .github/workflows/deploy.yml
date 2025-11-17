@@ -28,8 +28,10 @@ jobs:
       - name: Setup SSH key for EC2
         run: |
           mkdir -p ~/.ssh
-          printf '%s\n' "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/deploy_key
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
+          # Add EC2 to known_hosts to avoid prompts
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
 
       - name: "🔍 Pre-Deployment Diagnostics"
         run: |
@@ -47,14 +49,17 @@ jobs:
       - name: "🔗 Test EC2 Connectivity"
         run: |
           echo "Testing SSH connection to EC2..."
-          ssh -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} "
+          ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 -i ~/.ssh/deploy_key ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} << 'ENDSSH'
             echo '✅ SSH Connection successful'
             echo '📊 System Info:'
             uname -a
             echo '💻 CPU & Memory:'
             free -h
-            df -h /
-          "
+            echo '💾 Disk Usage:'
+            df -h / | tail -1
+            echo '⏰ System Time:'
+            date
+          ENDSSH
 
       - name: "📦 Deploy Application to EC2"
         run: |
@@ -82,11 +87,23 @@ jobs:
             # Navigate to app directory
             echo ""
             echo "📂 Navigating to application directory..."
-            cd ${APP_DIR} || {
+            if [ ! -d "${APP_DIR}" ]; then
               echo "❌ Directory ${APP_DIR} not found"
+              echo "Creating directory..."
+              mkdir -p ${APP_DIR}
+              echo "Directory created, but repository needs to be cloned manually first"
               exit 1
-            }
+            fi
+            
+            cd ${APP_DIR}
             echo "✅ Current directory: $(pwd)"
+            
+            # Check if git repository exists
+            if [ ! -d ".git" ]; then
+              echo "❌ Not a git repository. Please clone the repository first:"
+              echo "   git clone https://github.com/Archimedh-Anderson/FreeMobileApp.git ${APP_DIR}"
+              exit 1
+            fi
             
             # Pull latest code
             echo ""
@@ -96,12 +113,16 @@ jobs:
             echo "📥 Fetching from origin..."
             git fetch origin main || {
               echo "❌ Failed to fetch from repository"
+              echo "Checking git remote configuration..."
+              git remote -v || true
               exit 1
             }
             
             echo "🔄 Pulling latest code..."
             git pull origin main || {
               echo "❌ Failed to pull code from repository"
+              echo "Current git status:"
+              git status || true
               exit 1
             }
             
@@ -189,18 +210,76 @@ jobs:
               echo "ℹ️  Service was not running"
             fi
             
+            # Check if service file exists, create if missing
+            echo ""
+            echo "=========================================="
+            echo "🔍 CHECKING/CREATING SERVICE FILE"
+            echo "=========================================="
+            if [ ! -f "/etc/systemd/system/${SERVICE_NAME}" ]; then
+              echo "⚠️ Service file /etc/systemd/system/${SERVICE_NAME} not found"
+              echo "Creating service file..."
+              
+              # Determine Python and Streamlit paths
+              PYTHON_PATH=$(which python3)
+              STREAMLIT_PATH=$(which streamlit)
+              if [ -z "$STREAMLIT_PATH" ] && [ -f "${APP_DIR}/streamlit_app/venv/bin/streamlit" ]; then
+                STREAMLIT_PATH="${APP_DIR}/streamlit_app/venv/bin/streamlit"
+              fi
+              
+              # Create service file
+              sudo tee /etc/systemd/system/${SERVICE_NAME} > /dev/null << EOF
+[Unit]
+Description=Streamlit FreeMobileApp
+After=network.target
+
+[Service]
+Type=simple
+User=ec2-user
+WorkingDirectory=${APP_DIR}/streamlit_app
+Environment="PATH=${APP_DIR}/streamlit_app/venv/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=${APP_DIR}/streamlit_app/venv/bin/streamlit run app.py --server.port 8502 --server.address 0.0.0.0
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+EOF
+              
+              echo "✅ Service file created"
+              sudo systemctl daemon-reload
+              # Enable service for auto-start
+              sudo systemctl enable ${SERVICE_NAME} || echo "⚠️ Failed to enable service (non-critical)"
+            else
+              echo "✅ Service file exists"
+            fi
+            
+            # Ensure service is enabled for auto-start
+            if ! sudo systemctl is-enabled ${SERVICE_NAME} --quiet 2>/dev/null; then
+              echo "Enabling service for auto-start..."
+              sudo systemctl enable ${SERVICE_NAME} || echo "⚠️ Failed to enable service (non-critical)"
+            fi
+            
             # Start streamlit service
             echo ""
             echo "=========================================="
             echo "▶️  STARTING STREAMLIT SERVICE"
             echo "=========================================="
-            if sudo systemctl start ${SERVICE_NAME}; then
+            if sudo systemctl start ${SERVICE_NAME} 2>&1; then
               echo "✅ Service start command executed"
             else
-              echo "❌ Failed to start service"
+              START_ERROR=$?
+              echo "❌ Failed to start service (exit code: $START_ERROR)"
+              echo ""
+              echo "=== Service file check ==="
+              sudo cat /etc/systemd/system/${SERVICE_NAME} 2>/dev/null || echo "Service file not readable"
               echo ""
               echo "=== Service logs ==="
               sudo journalctl -u ${SERVICE_NAME} -n 50 --no-pager || true
+              echo ""
+              echo "=== Systemd status ==="
+              sudo systemctl status ${SERVICE_NAME} --no-pager || true
               exit 1
             fi
             
