@@ -532,4 +532,4 @@ EOF
             echo "💻 System resources:"
             free -h
             df -h
-          ENDSSH
+          ENDSSH# Updated deployment workflow
