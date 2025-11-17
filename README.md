@@ -32,9 +32,9 @@
 
 ---
 
-## 🆕 Nouvelles Fonctionnalités - Visualisations Analytiques
+## [NEW] Nouvelles Fonctionnalités - Visualisations Analytiques
 
-### 📊 Onglet Visualisations Analytiques
+### [CHARTS] Onglet Visualisations Analytiques
 
 Nouveau tableau de bord interactif ajouté avec des graphiques professionnels :
 
@@ -64,7 +64,7 @@ Nouveau tableau de bord interactif ajouté avec des graphiques professionnels :
   - Statistiques détaillées en dessous (3 cartes colorées)
   - Hover avec nombre total de tweets
 
-### 🎯 Caractéristiques Techniques
+### [TARGET] Caractéristiques Techniques
 
 - **Mise à jour dynamique** : Toutes les données se mettent à jour automatiquement lors du filtrage
 - **Design responsive** : S'adapte à toutes les tailles d'écran
@@ -96,7 +96,7 @@ Nouveau tableau de bord interactif ajouté avec des graphiques professionnels :
 
 ---
 
-## 🔬 Contexte et Problématique
+## [RESEARCH] Contexte et Problématique
 
 ### Contexte Industriel
 
@@ -280,30 +280,30 @@ sequenceDiagram
 ```mermaid
 graph TB
     subgraph "Client Browser"
-        Browser[🌐 Navigateur Web]
+        Browser[Navigateur Web]
     end
     
     subgraph "Streamlit Cloud / Local Server"
-        Streamlit[📱 Streamlit App<br/>app.py]
-        Pages[📄 Pages<br/>Classification_Mistral.py]
+        Streamlit[Streamlit App<br/>app.py]
+        Pages[Pages<br/>Classification_Mistral.py]
     end
     
     subgraph "Services Backend"
-        Auth[🔐 AuthService]
-        Orchestrator[⚙️ MultiModelOrchestrator]
-        Cleaner[🧹 TweetCleaner]
+        Auth[AuthService]
+        Orchestrator[MultiModelOrchestrator]
+        Cleaner[TweetCleaner]
     end
     
     subgraph "Modèles de Classification"
-        BERT[🤖 BERT<br/>Hugging Face]
-        Mistral[🧠 Mistral AI<br/>Ollama Local]
-        Rules[📋 RuleClassifier]
-        Gemini[☁️ Gemini API<br/>Google Cloud]
+        BERT[BERT<br/>Hugging Face]
+        Mistral[Mistral AI<br/>Ollama Local]
+        Rules[RuleClassifier]
+        Gemini[Gemini API<br/>Google Cloud]
     end
     
     subgraph "Stockage & Cache"
-        Cache[💾 Cache<br/>Classification Results]
-        Models[📦 Modèles<br/>Pré-entraînés]
+        Cache[Cache<br/>Classification Results]
+        Models[Modèles<br/>Pré-entraînés]
     end
     
     Browser --> Streamlit
@@ -325,20 +325,20 @@ graph TB
 ```mermaid
 graph LR
     subgraph "Acteurs"
-        Client[👤 Client SAV]
-        Agent[🎧 Agent SAV]
-        Analyst[📊 Data Analyst]
-        Manager[👔 Manager]
+        Client[Client SAV]
+        Agent[Agent SAV]
+        Analyst[Data Analyst]
+        Manager[Manager]
     end
     
     subgraph "Cas d'Utilisation"
-        UC1[📤 Upload Données]
-        UC2[🧹 Nettoyer Données]
-        UC3[🤖 Classifier Tweets]
-        UC4[📊 Visualiser KPIs]
-        UC5[💾 Exporter Résultats]
-        UC6[⚙️ Configurer Modèles]
-        UC7[👥 Gérer Équipe]
+        UC1[Upload Données]
+        UC2[Nettoyer Données]
+        UC3[Classifier Tweets]
+        UC4[Visualiser KPIs]
+        UC5[Exporter Résultats]
+        UC6[Configurer Modèles]
+        UC7[Gérer Équipe]
     end
     
     Client --> UC1
@@ -369,21 +369,21 @@ graph LR
     Manager --> UC7
 ```
 
-### 🆕 Nouvelles Fonctionnalités NLP Avancées
+### [NEW] Nouvelles Fonctionnalités NLP Avancées
 
 #### TextPreprocessor - Prétraitement Robuste
 
 Le nouveau module `text_preprocessor.py` offre un nettoyage de texte de qualité production:
 
 **Fonctionnalités**:
-- ✅ Suppression URLs (http://, https://, www.)
-- ✅ Suppression mentions (@username)
-- ✅ Normalisation hashtags (#hashtag → hashtag)
-- ✅ Nettoyage caractères spéciaux (préserve accents français)
-- ✅ Normalisation espaces multiples
-- ✅ Détection automatique de langue (via langdetect)
-- ✅ Lemmatisation spaCy optionnelle
-- ✅ Dégradation gracieuse si bibliothèques manquantes
+- [✓] Suppression URLs (http://, https://, www.)
+- [✓] Suppression mentions (@username)
+- [✓] Normalisation hashtags (#hashtag → hashtag)
+- [✓] Nettoyage caractères spéciaux (préserve accents français)
+- [✓] Normalisation espaces multiples
+- [✓] Détection automatique de langue (via langdetect)
+- [✓] Lemmatisation spaCy optionnelle
+- [✓] Dégradation gracieuse si bibliothèques manquantes
 
 **Exemple d'utilisation**:
 ```python
@@ -445,10 +445,10 @@ print(f"Confiance: {result.confiance}")      # 0.85
 Le classificateur Gemini intègre désormais le prétraitement automatique:
 
 **Avantages**:
-- ✅ Nettoyage automatique avant appels API
-- ✅ Réduction du bruit dans les entrées
-- ✅ Amélioration de la précision de classification
-- ✅ Compatible avec workflow existant
+- [✓] Nettoyage automatique avant appels API
+- [✓] Réduction du bruit dans les entrées
+- [✓] Amélioration de la précision de classification
+- [✓] Compatible avec workflow existant
 
 **Activation**:
 ```python
@@ -625,7 +625,7 @@ chmod +x start_application.sh
 
 ---
 
-## 💻 Utilisation
+## [USAGE] Utilisation
 
 ### Démarrage Rapide
 
@@ -704,7 +704,7 @@ Après classification, vous obtiendrez :
 
 ---
 
-## 📊 Résultats et Métriques
+## [METRICS] Résultats et Métriques
 
 ### Performance des Modèles
 
@@ -739,7 +739,7 @@ Le système calcule automatiquement 10+ KPIs business :
 
 ---
 
-## 🔧 Documentation Technique
+## [TECHNICAL] Documentation Technique
 
 ### Structure du Projet
 
@@ -835,7 +835,7 @@ FreeMobilaChat/
 
 ---
 
-## 🧪 Tests
+## [TESTS] Tests
 
 ### Exécution des Tests
 
@@ -870,9 +870,9 @@ Ce script teste:
 3. **Gemini Integration**: Pipeline de prétraitement intégré
 
 Résultats attendus:
-- ✅ TextPreprocessor: Nettoyage correct des tweets français
-- ✅ AdvancedTweetClassifier: Détection précise des réclamations et sentiments
-- ✅ Gemini Integration: Prétraitement automatique avant appels API
+- [✓] TextPreprocessor: Nettoyage correct des tweets français
+- [✓] AdvancedTweetClassifier: Détection précise des réclamations et sentiments
+- [✓] Gemini Integration: Prétraitement automatique avant appels API
 
 ### Évaluation des Performances
 
@@ -886,7 +886,7 @@ python scripts/generate_report.py
 
 ---
 
-## ⚙️ Configuration
+## [CONFIG] Configuration
 
 ### Variables d'Environnement
 
@@ -942,7 +942,7 @@ secondaryBackgroundColor = "#f0f2f6"
 
 ---
 
-## 🤝 Contributions
+## [CONTRIBUTING] Contributions
 
 Les contributions sont les bienvenues ! N'hésitez pas à soumettre une Pull Request.
 
@@ -954,7 +954,7 @@ Les contributions sont les bienvenues ! N'hésitez pas à soumettre une Pull Req
 
 ---
 
-## 📄 Licence
+## [LICENSE] Licence
 
 Ce projet est sous licence MIT - voir le fichier [LICENSE](LICENSE) pour plus de détails.
 
@@ -974,7 +974,7 @@ Ce projet est soumis dans le cadre d'un mémoire de Master. Si vous utilisez ce 
 
 ---
 
-## 📞 Contact & Support
+## [CONTACT] Contact & Support
 
 **Auteur** : Anderson Archimed  
 **GitHub** : [@Archimedh-Anderson](https://github.com/Archimedh-Anderson)  
@@ -985,7 +985,7 @@ Pour les questions académiques ou opportunités de collaboration, contactez via
 
 ---
 
-## 🙏 Remerciements
+## [ACKNOWLEDGMENTS] Remerciements
 
 Remerciements spéciaux à :
 - **Hugging Face** pour les modèles transformer et l'infrastructure
@@ -1001,6 +1001,6 @@ Remerciements spéciaux à :
 **Version** : 2.0.0  
 **Statut** : Production Ready - Soumission Académique
 
-Fait avec ❤️ pour la communauté NLP/ML
+Fait avec passion pour la communauté NLP/ML
 
 </div>
