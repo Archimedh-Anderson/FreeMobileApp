@@ -4,94 +4,453 @@ on:
   push:
     branches:
       - main
+
   workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: false
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
 
 jobs:
   deploy:
+    name: Deploy to EC2
     runs-on: ubuntu-latest
-    
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-      
-      - name: Deploy to EC2
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USERNAME }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          port: 22
-          command_timeout: 30m
-          script: |
-            set -e
-            echo "=== Starting deployment ==="
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup SSH key for EC2
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+      - name: "🔍 Pre-Deployment Diagnostics"
+        run: |
+          echo "=========================================="
+          echo "🚀 DEPLOYMENT DIAGNOSTICS"
+          echo "=========================================="
+          echo "📅 Timestamp: $(date -u)"
+          echo "🔀 Branch: ${{ github.ref_name }}"
+          echo "💾 Commit: ${{ github.sha }}"
+          echo "👤 Author: ${{ github.actor }}"
+          echo "📝 Message: ${{ github.event.head_commit.message }}"
+          echo "🏷️  Trigger: ${{ github.event_name }}"
+          echo "=========================================="
+
+      - name: "🔗 Test EC2 Connectivity"
+        run: |
+          echo "Testing SSH connection to EC2..."
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} "
+            echo '✅ SSH Connection successful'
+            echo '📊 System Info:'
+            uname -a
+            echo '💻 CPU & Memory:'
+            free -h
+            df -h /
+          "
+
+      - name: "📦 Deploy Application to EC2"
+        run: |
+          echo "=========================================="
+          echo "🚀 STARTING DEPLOYMENT"
+          echo "=========================================="
+
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} << 'ENDSSH'
+            set -e  # Exit on any error
+            
+            # Configuration
+            APP_DIR="/home/ec2-user/FreeMobileApp"
+            SERVICE_NAME="streamlit.service"
+            
+            # Pre-deployment: Check current service status
+            echo "=========================================="
+            echo "🔍 PRE-DEPLOYMENT HEALTH CHECK"
+            echo "=========================================="
+            if sudo systemctl is-active --quiet ${SERVICE_NAME} 2>/dev/null; then
+              echo "✅ Service is currently running"
+            else
+              echo "⚠️ Service is not currently running (may be first deployment)"
+            fi
             
             # Navigate to app directory
-            cd /home/ec2-user/FreeMobileApp
+            echo ""
+            echo "📂 Navigating to application directory..."
+            cd ${APP_DIR} || {
+              echo "❌ Directory ${APP_DIR} not found"
+              exit 1
+            }
+            echo "✅ Current directory: $(pwd)"
             
             # Pull latest code
-            echo "Pulling latest code..."
-            git pull origin main
+            echo ""
+            echo "=========================================="
+            echo "📥 FETCHING LATEST CHANGES"
+            echo "=========================================="
+            echo "📥 Fetching from origin..."
+            git fetch origin main || {
+              echo "❌ Failed to fetch from repository"
+              exit 1
+            }
+            
+            echo "🔄 Pulling latest code..."
+            git pull origin main || {
+              echo "❌ Failed to pull code from repository"
+              exit 1
+            }
+            
+            echo ""
+            echo "📋 Current commit:"
+            git log -1 --oneline
             
             # Navigate to streamlit_app
-            cd streamlit_app
+            echo ""
+            echo "📂 Navigating to streamlit_app directory..."
+            cd streamlit_app || {
+              echo "❌ streamlit_app directory not found"
+              exit 1
+            }
             
             # Create venv if it doesn't exist
             if [ ! -d "venv" ]; then
-              echo "Creating virtual environment..."
+              echo ""
+              echo "=========================================="
+              echo "🐍 CREATING VIRTUAL ENVIRONMENT"
+              echo "=========================================="
               python3 -m venv venv
+              echo "✅ Virtual environment created"
+            else
+              echo "✅ Virtual environment already exists"
             fi
             
             # Activate venv
-            echo "Activating virtual environment..."
+            echo ""
+            echo "=========================================="
+            echo "🔌 ACTIVATING VIRTUAL ENVIRONMENT"
+            echo "=========================================="
             source venv/bin/activate
+            echo "✅ Virtual environment activated"
+            echo "Python version: $(python3 --version)"
+            echo "Pip version: $(pip --version)"
             
             # Upgrade pip
-            echo "Upgrading pip..."
-            python3 -m pip install --upgrade pip
+            echo ""
+            echo "=========================================="
+            echo "⬆️  UPGRADING PIP"
+            echo "=========================================="
+            python3 -m pip install --upgrade pip --quiet
+            echo "✅ Pip upgraded"
             
             # Install/update dependencies
-            echo "Installing dependencies..."
-            pip install -r requirements.txt --upgrade
+            echo ""
+            echo "=========================================="
+            echo "📦 INSTALLING DEPENDENCIES"
+            echo "=========================================="
+            if [ ! -f "requirements.txt" ]; then
+              echo "❌ requirements.txt not found in streamlit_app directory"
+              exit 1
+            fi
+            echo "Installing from requirements.txt..."
+            pip install -r requirements.txt --upgrade --no-cache-dir || {
+              echo "❌ Failed to install dependencies"
+              exit 1
+            }
+            echo "✅ Dependencies installed successfully"
             
-            # Restart streamlit service
-            echo "Restarting Streamlit service..."
-            sudo systemctl restart streamlit.service
+            # Reload systemd daemon (critical after service file changes)
+            echo ""
+            echo "=========================================="
+            echo "🔄 RELOADING SYSTEMD CONFIGURATION"
+            echo "=========================================="
+            sudo systemctl daemon-reload || {
+              echo "⚠️ Warning: daemon-reload failed (service may not exist yet)"
+            }
+            echo "✅ Systemd daemon reloaded"
             
-            # Wait for service to start
+            # Stop service before deployment (graceful shutdown)
+            echo ""
+            echo "=========================================="
+            echo "🛑 STOPPING STREAMLIT SERVICE"
+            echo "=========================================="
+            if sudo systemctl is-active --quiet ${SERVICE_NAME} 2>/dev/null; then
+              sudo systemctl stop ${SERVICE_NAME} || {
+                echo "⚠️ Warning: Failed to stop service (may not be running)"
+              }
+              echo "⏳ Waiting for graceful shutdown (2s)..."
+              sleep 2
+              echo "✅ Service stopped"
+            else
+              echo "ℹ️  Service was not running"
+            fi
+            
+            # Start streamlit service
+            echo ""
+            echo "=========================================="
+            echo "▶️  STARTING STREAMLIT SERVICE"
+            echo "=========================================="
+            if sudo systemctl start ${SERVICE_NAME}; then
+              echo "✅ Service start command executed"
+            else
+              echo "❌ Failed to start service"
+              echo ""
+              echo "=== Service logs ==="
+              sudo journalctl -u ${SERVICE_NAME} -n 50 --no-pager || true
+              exit 1
+            fi
+            
+            # Wait for service to fully start
+            echo ""
+            echo "⏳ Waiting for service to initialize (5s)..."
             sleep 5
             
-            # Check service status
-            if sudo systemctl is-active --quiet streamlit.service; then
-              echo "✅ Deployment successful! Service is running."
+            # Retry logic for service activation check
+            echo ""
+            echo "=========================================="
+            echo "🔍 VERIFYING SERVICE ACTIVATION"
+            echo "=========================================="
+            MAX_RETRIES=3
+            RETRY_COUNT=0
+            SERVICE_ACTIVE=false
+            
+            while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+              if sudo systemctl is-active --quiet ${SERVICE_NAME}; then
+                SERVICE_ACTIVE=true
+                break
+              fi
+              RETRY_COUNT=$((RETRY_COUNT + 1))
+              echo "⏳ Service not active yet, retry $RETRY_COUNT/$MAX_RETRIES..."
+              sleep 3
+            done
+            
+            # Final service status check
+            if [ "$SERVICE_ACTIVE" = true ]; then
+              echo "✅ Service is ACTIVE"
+              echo ""
+              echo "📊 Service status:"
+              sudo systemctl status ${SERVICE_NAME} --no-pager --lines=5
             else
-              echo "❌ Deployment failed! Service is not running."
+              echo "❌ Deployment failed! Service is not running after $MAX_RETRIES retries."
+              echo ""
+              echo "=== Service status ==="
+              sudo systemctl status ${SERVICE_NAME} --no-pager || true
+              echo ""
+              echo "=== Recent service logs ==="
+              sudo journalctl -u ${SERVICE_NAME} -n 50 --no-pager || true
+              exit 1
+            fi
+            
+            echo ""
+            echo "=========================================="
+            echo "🎉 DEPLOYMENT COMPLETED"
+            echo "=========================================="
+          ENDSSH
+
+          echo "=========================================="
+          echo "🎉 DEPLOYMENT COMPLETED"
+          echo "=========================================="
+
+      - name: "🔍 Monitor Service Status"
+        run: |
+          echo "=========================================="
+          echo "📊 SERVICE STATUS DIAGNOSTICS"
+          echo "=========================================="
+
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} << 'ENDSSH'
+            echo "🔍 Checking service active status..."
+            sudo systemctl is-active streamlit.service || echo "⚠️  Service not active"
+
+            echo ""
+            echo "📊 Full service status:"
+            sudo systemctl status streamlit.service --no-pager || true
+
+            echo ""
+            echo "📜 Recent service logs (last 30 lines):"
+            sudo journalctl -u streamlit.service -n 30 --no-pager || true
+
+            echo ""
+            echo "🔌 Port 8502 listening check:"
+            sudo netstat -tulpn | grep 8502 || echo "⚠️  Port 8502 not listening"
+
+            echo ""
+            echo "🔍 Process check:"
+            ps aux | grep streamlit | grep -v grep || echo "⚠️  No streamlit process found"
+          ENDSSH
+
+      - name: "✅ Verify Service is Running"
+        run: |
+          echo "=========================================="
+          echo "✅ VERIFYING SERVICE STATUS"
+          echo "=========================================="
+
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} << 'ENDSSH'
+            # Check if service is active
+            if sudo systemctl is-active --quiet streamlit.service; then
+              echo "✅ Service is ACTIVE"
+            else
+              echo "❌ Service is NOT active"
               sudo systemctl status streamlit.service --no-pager
               exit 1
             fi
-      
-      - name: Verify deployment
-        if: success()
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USERNAME }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          port: 22
-          script: |
-            echo "=== Verifying deployment ==="
-            sudo systemctl status streamlit.service --no-pager
-            
-            # Test HTTP endpoint
-            if curl -f http://localhost:8502 > /dev/null 2>&1; then
-              echo "✅ Application accessible on port 8502"
+
+            # Check if service is enabled
+            if sudo systemctl is-enabled --quiet streamlit.service; then
+              echo "✅ Service is ENABLED (will start on boot)"
             else
-              echo "⚠️ Application not accessible via HTTP (may be normal if behind proxy)"
+              echo "⚠️  Service is not enabled for auto-start"
             fi
-            
-            # Check for running processes
+
+            # Verify process is running
             if pgrep -f "streamlit run" > /dev/null; then
-              echo "✅ Streamlit process is running"
+              echo "✅ Streamlit process is RUNNING"
+              ps aux | grep "streamlit run" | grep -v grep
             else
               echo "❌ No Streamlit process found"
+              exit 1
             fi
+          ENDSSH
+
+      - name: "🏥 Health Check - Local (EC2)"
+        run: |
+          echo "=========================================="
+          echo "🏥 LOCAL HEALTH CHECK"
+          echo "=========================================="
+
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} << 'ENDSSH'
+            echo "⏳ Waiting for application to be fully ready (15s)..."
+            sleep 15
+
+            echo "🔍 Testing local endpoint (localhost:8502)..."
+
+            # Test with curl
+            if curl -f -s --max-time 10 http://localhost:8502 > /dev/null; then
+              echo "✅ Local endpoint is RESPONDING"
+
+              # Get response headers
+              echo ""
+              echo "📊 Response headers:"
+              curl -I -s http://localhost:8502 | head -n 10
+
+            else
+              echo "❌ Local endpoint NOT responding"
+              echo "Checking logs for errors:"
+              sudo journalctl -u streamlit.service -n 50 --no-pager
+              exit 1
+            fi
+          ENDSSH
+
+      - name: "🌐 Health Check - External (DuckDNS)"
+        run: |
+          echo "=========================================="
+          echo "🌐 EXTERNAL ACCESSIBILITY CHECK"
+          echo "=========================================="
+
+          DOMAIN_URL="http://freemobila.duckdns.org:8502/"
+
+          echo "🔍 Testing external domain: $DOMAIN_URL"
+          echo "⏳ Waiting for DNS propagation (10s)..."
+          sleep 10
+
+          # Test with curl from GitHub Actions runner (external)
+          MAX_RETRIES=5
+          RETRY_COUNT=0
+          DOMAIN_ACCESSIBLE=false
+          
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            if curl -f -s --max-time 30 "$DOMAIN_URL" > /dev/null 2>&1; then
+              DOMAIN_ACCESSIBLE=true
+              break
+            fi
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            echo "⏳ Domain not accessible, retry $RETRY_COUNT/$MAX_RETRIES..."
+            sleep 5
+          done
+          
+          if [ "$DOMAIN_ACCESSIBLE" = true ]; then
+            echo "✅ Domain is ACCESSIBLE from external network"
+            echo ""
+            echo "📊 Domain response info:"
+            curl -I -s --max-time 10 "$DOMAIN_URL" | head -n 10
+            echo ""
+            echo "✅ Application successfully deployed and accessible!"
+          else
+            echo "⚠️ Domain NOT accessible from external network after $MAX_RETRIES retries"
+            echo ""
+            echo "🔍 Debugging information:"
+            echo "1. DNS Resolution:"
+            nslookup freemobila.duckdns.org || dig freemobila.duckdns.org || true
+            echo ""
+            echo "⚠️  Possible issues:"
+            echo "   - Security group not allowing port 8502"
+            echo "   - DuckDNS IP not updated"
+            echo "   - Streamlit not binding to 0.0.0.0"
+            echo "   - Application still starting (may need more time)"
+            echo ""
+            echo "ℹ️  This is a warning, not a failure. Service may be accessible but behind firewall."
+          fi
+
+      - name: "⏱️ Service Stability Test (30s)"
+        run: |
+          echo "=========================================="
+          echo "⏱️  TESTING SERVICE STABILITY"
+          echo "=========================================="
+
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} << 'ENDSSH'
+            echo "⏳ Monitoring service for 30 seconds..."
+
+            for i in {1..6}; do
+              echo "🔍 Check $i/6 (${i}x5s)..."
+
+              if sudo systemctl is-active --quiet streamlit.service; then
+                echo "  ✅ Service still active"
+              else
+                echo "  ❌ Service stopped unexpectedly!"
+                sudo systemctl status streamlit.service --no-pager
+                sudo journalctl -u streamlit.service -n 50 --no-pager
+                exit 1
+              fi
+
+              sleep 5
+            done
+
+            echo "✅ Service remained stable for 30 seconds"
+          ENDSSH
+
+      - name: "📋 Deployment Summary"
+        if: always()
+        run: |
+          echo "=========================================="
+          echo "📋 DEPLOYMENT SUMMARY"
+          echo "=========================================="
+          echo "🎯 Target: http://freemobila.duckdns.org:8502/"
+          echo "📅 Completed: $(date -u)"
+          echo "🔀 Branch: ${{ github.ref_name }}"
+          echo "💾 Commit: ${{ github.sha }}"
+          echo "👤 Deployed by: ${{ github.actor }}"
+          echo "=========================================="
+
+      - name: "🚨 Deployment Failed - Collect Debug Info"
+        if: failure()
+        run: |
+          echo "=========================================="
+          echo "❌ DEPLOYMENT FAILED - DEBUG INFO"
+          echo "=========================================="
+
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} << 'ENDSSH' || true
+            echo "📜 Last 100 lines of service logs:"
+            sudo journalctl -u streamlit.service -n 100 --no-pager
+
+            echo ""
+            echo "🔍 Service status:"
+            sudo systemctl status streamlit.service --no-pager || true
+
+            echo ""
+            echo "💻 System resources:"
+            free -h
+            df -h
+          ENDSSH
