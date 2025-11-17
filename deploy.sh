@@ -214,8 +214,8 @@ health_check() {
     sleep 3
     
     # Test de connexion HTTP
-    if curl -f http://localhost:8503 > /dev/null 2>&1; then
-        log_success "Application accessible sur http://localhost:8503"
+    if curl -f http://localhost:8502 > /dev/null 2>&1; then
+        log_success "Application accessible sur http://localhost:8502"
     else
         log_warning "Application non accessible via HTTP (normal si derrière un proxy)"
     fi
@@ -282,7 +282,7 @@ main() {
     echo "   ✅ DÉPLOIEMENT TERMINÉ AVEC SUCCÈS"
     echo "=================================================================="
     echo ""
-    log_info "Application accessible sur: http://13.37.186.191:8503"
+    log_info "Application accessible sur: http://13.37.186.191:8502"
     log_info "Logs en temps réel: sudo journalctl -u ${SERVICE_NAME} -f"
     log_info "Logs applicatifs: sudo tail -f ${LOG_FILE}"
     echo ""
