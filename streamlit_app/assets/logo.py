@@ -2,6 +2,7 @@
 Logo FreeMobilaChat - Génération SVG moderne
 """
 
+
 def get_logo_svg(size="150", color="#CC0000"):
     """Génère le logo SVG FreeMobilaChat"""
     return f"""
@@ -46,6 +47,7 @@ def get_logo_svg(size="150", color="#CC0000"):
     </svg>
     """
 
+
 def get_logo_html(size="80", show_text=True):
     """Génère le HTML complet du logo avec texte"""
     return f"""
@@ -64,6 +66,7 @@ def get_logo_html(size="80", show_text=True):
     </div>
     """
 
+
 def get_favicon_svg():
     """Génère une version favicon du logo"""
     return """
@@ -76,4 +79,3 @@ def get_favicon_svg():
         <circle cx="100" cy="95" r="3" fill="#CC0000"/>
     </svg>
     """
-
