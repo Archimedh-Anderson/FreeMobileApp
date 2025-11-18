@@ -30,6 +30,19 @@ BATCH_SIZE = 50  # Nombre de tweets traités simultanément pour optimiser la pe
 MAX_RETRIES = 3  # Nombre maximal de tentatives en cas d'échec de classification
 RETRY_DELAY = 2  # Délai en secondes entre chaque tentative pour éviter la surcharge
 
+SENTIMENT_OPTIONS = ["positif", "negatif", "neutre"]
+CATEGORY_OPTIONS = ["produit", "service", "support", "promotion", "autre"]
+URGENCE_OPTIONS = ["haute", "moyenne", "faible"]
+CLAIM_OPTIONS = ["oui", "non"]
+INCIDENT_OPTIONS = [
+    "panne_connexion", "bug_freebox", "probleme_facturation", "probleme_mobile",
+    "retard_activation", "debit_insuffisant", "information", "aucun", "non_specifie"
+]
+TOPIC_OPTIONS = [
+    "fibre", "mobile", "reseau", "freebox", "wifi", "facture", "service_client",
+    "support_technique", "promotion", "autre"
+]
+
 # Import conditionnel d'Ollama avec gestion d'erreur gracieuse
 try:
     import ollama  # Bibliothèque cliente pour communiquer avec le serveur Ollama local
@@ -169,35 +182,41 @@ class MistralClassifier:
         # Construction du prompt avec instructions détaillées et taxonomie spécifique
         prompt = f"""Tu es un expert en analyse de tweets pour Free Mobile (opérateur télécoms français).
 
-Ta tâche: Classifier {len(tweets)} tweets selon ces critères:
+OBJECTIF: Classifier {len(tweets)} tweets et retourner TOUS les KPI suivants:
+- sentiment ∈ {SENTIMENT_OPTIONS}
+- categorie ∈ {CATEGORY_OPTIONS}
+- is_claim ∈ {CLAIM_OPTIONS}
+- urgence ∈ {URGENCE_OPTIONS}
+- score_confiance entre 0.0 et 1.0 (2 décimales max)
+- topics ∈ {TOPIC_OPTIONS}
+- incident ∈ {INCIDENT_OPTIONS}
 
-**SENTIMENT:**
-- positif: satisfaction, remerciements, compliments
-- negatif: insatisfaction, plaintes, critiques
-- neutre: questions, informations, demandes
+RAPPELS MÉTIERS:
+- is_claim = "oui" dès qu'un problème, panne, bug, facturation ou mécontentement est mentionné.
+- urgence = "haute" si panne totale, vocabulaire critique ("bloqué", "urgent", "impossible").
+- incident doit décrire le problème (panne_connexion, probleme_facturation, etc.). Utilise "non_specifie" uniquement si tu ne peux pas déterminer.
 
-**CATEGORIE:**
-- produit: fibre, mobile, box, forfait, débit, qualité réseau
-- service: SAV, support client, assistance, réponse
-- support: aide technique, dépannage, installation
-- promotion: offres, prix, réductions, nouveautés
-- autre: autres sujets
+CONTRAINTE: Chaque tweet DOIT avoir exactement un objet JSON complet avec toutes les clés ci-dessus.
 
-**SCORE_CONFIANCE:** 0.0 à 1.0 selon la clarté du tweet
-
-**TWEETS À CLASSIFIER:**
+TWEETS À CLASSIFIER:
 {tweets_text}
 
-**IMPORTANT:** Réponds UNIQUEMENT avec un JSON valide (pas de texte avant/après) au format:
+FORMAT STRICT (aucun texte avant/après):
 {{
     "results": [
-        {{"index": 0, "sentiment": "positif", "categorie": "produit", "score_confiance": 0.95}},
-        {{"index": 1, "sentiment": "negatif", "categorie": "service", "score_confiance": 0.88}},
-        ...
+        {{
+            "index": 0,
+            "sentiment": "negatif",
+            "categorie": "support",
+            "score_confiance": 0.94,
+            "is_claim": "oui",
+            "urgence": "haute",
+            "topics": "reseau",
+            "incident": "panne_connexion"
+        }}
     ]
 }}
-
-JSON:"""
+"""
         
         return prompt  # Retour du prompt complet prêt pour l'envoi au LLM
     
@@ -244,7 +263,7 @@ JSON:"""
             # Validation de la présence et de la cohérence des résultats
             if results:
                 logger.info(f"Classification réussie de {len(results)} tweets")
-                return results
+                return self._apply_quality_guards(tweets, results)
             else:
                 # Lève une exception pour déclencher le mécanisme de retry
                 raise ValueError("Réponse JSON invalide ou vide")
@@ -283,16 +302,14 @@ JSON:"""
                 data = json.loads(json_text)
                 
                 if 'results' in data and isinstance(data['results'], list):
-                    results = data['results']
+                    results = [self._validate_result(r) for r in data['results']]
                     
-                    # Validation
                     if len(results) == expected_count:
                         return results
                     else:
                         logger.warning(f"Nombre de résultats incorrect: {len(results)} vs {expected_count}")
-                        # Compléter ou tronquer si nécessaire
                         while len(results) < expected_count:
-                            results.append({"index": len(results), "sentiment": "neutre", "categorie": "autre", "score_confiance": 0.5})
+                            results.append(self._validate_result({"index": len(results)}))
                         return results[:expected_count]
             
             return None
@@ -300,6 +317,46 @@ JSON:"""
         except json.JSONDecodeError as e:
             logger.error(f"Erreur parsing JSON: {e}")
             return None
+    
+    def _validate_result(self, result: Dict[str, Any]) -> Dict[str, Any]:
+        """Normalise les champs renvoyés par Mistral pour alignement KPI."""
+        sentiment = str(result.get("sentiment", "neutre")).lower().strip()
+        if sentiment not in SENTIMENT_OPTIONS:
+            sentiment = "neutre"
+        
+        categorie = str(result.get("categorie", "autre")).lower().strip()
+        if categorie not in CATEGORY_OPTIONS:
+            categorie = "autre"
+        
+        score = float(result.get("score_confiance", result.get("confidence", 0.6)))
+        score = max(0.4, min(0.99, score))
+        
+        is_claim = str(result.get("is_claim", "oui" if sentiment == "negatif" else "non")).lower().strip()
+        if is_claim not in CLAIM_OPTIONS:
+            is_claim = "oui" if sentiment == "negatif" else "non"
+        
+        urgence = str(result.get("urgence", "faible")).lower().strip()
+        if urgence not in URGENCE_OPTIONS:
+            urgence = "moyenne" if is_claim == "oui" else "faible"
+        
+        topics = str(result.get("topics", categorie)).lower().strip()
+        if topics not in TOPIC_OPTIONS:
+            topics = categorie if categorie in TOPIC_OPTIONS else "autre"
+        
+        incident = str(result.get("incident", "aucun" if is_claim == "non" else "non_specifie")).lower().strip()
+        if incident not in INCIDENT_OPTIONS:
+            incident = "aucun" if is_claim == "non" else "non_specifie"
+        
+        return {
+            "index": int(result.get("index", 0)),
+            "sentiment": sentiment,
+            "categorie": categorie,
+            "score_confiance": round(score, 2),
+            "is_claim": is_claim,
+            "urgence": urgence,
+            "topics": topics,
+            "incident": incident
+        }
     
     def _classify_batch_fallback(self, tweets: List[str]) -> List[Dict]:
         """
@@ -340,13 +397,73 @@ JSON:"""
             # Confiance basée sur la clarté
             confidence = 0.75 if sentiment != 'neutre' or categorie != 'autre' else 0.50
             
+            is_claim = 'oui' if sentiment == 'negatif' or 'panne' in tweet_lower else 'non'
+            if 'urgent' in tweet_lower or 'impossible' in tweet_lower or 'bloque' in tweet_lower:
+                urgence = 'haute'
+            elif is_claim == 'oui':
+                urgence = 'moyenne'
+            else:
+                urgence = 'faible'
+            
+            if 'connexion' in tweet_lower or 'reseau' in tweet_lower:
+                incident = 'panne_connexion'
+            elif 'facture' in tweet_lower or 'paiement' in tweet_lower:
+                incident = 'probleme_facturation'
+            elif 'freebox' in tweet_lower:
+                incident = 'bug_freebox'
+            else:
+                incident = 'aucun' if is_claim == 'non' else 'non_specifie'
+            
             results.append({
                 'index': i,
                 'sentiment': sentiment,
                 'categorie': categorie,
-                'score_confiance': confidence
+                'score_confiance': confidence,
+                'is_claim': is_claim,
+                'urgence': urgence,
+                'topics': categorie if categorie != 'autre' else 'autre',
+                'incident': incident
             })
         
+        return results
+    
+    def _apply_quality_guards(self, tweets: List[str], results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Heuristiques supplémentaires similaires au classificateur Gemini."""
+        keywords_claim = [
+            "panne", "bug", "incident", "bloqué", "bloque", "erreur", "facture", "dysfonctionnement",
+            "plainte", "réclamation", "reclamation", "sav", "support", "service client",
+            "retard", "activation", "installation", "ticket", "remboursement"
+        ]
+        urgent_tokens = ["urgent", "criti", "impossible", "panne totale", "depuis plusieurs jours", "bloqué", "bloque", "vite", "heures"]
+        facture_tokens = ["facture", "facturation", "paiement", "prelevement", "prélèvement", "remboursement"]
+        mobile_tokens = ["4g", "5g", "mobile", "smartphone", "reseau", "réseau"]
+        service_tokens = ["sav", "service client", "support", "hotline", "assistance"]
+        
+        for idx, result in enumerate(results):
+            text = tweets[idx].lower()
+            if result.get('sentiment') == 'negatif':
+                result['is_claim'] = 'oui'
+                if result.get('urgence') == 'faible':
+                    result['urgence'] = 'moyenne'
+            if any(token in text for token in keywords_claim):
+                result['is_claim'] = 'oui'
+                if result['urgence'] == 'faible':
+                    result['urgence'] = 'moyenne'
+            if any(token in text for token in urgent_tokens):
+                result['urgence'] = 'haute'
+                result['is_claim'] = 'oui'
+            if any(tok in text for tok in facture_tokens):
+                result['topics'] = 'facture'
+                result['incident'] = 'probleme_facturation'
+            if any(tok in text for tok in mobile_tokens) or 'connexion' in text or 'wifi' in text:
+                result['topics'] = 'reseau'
+                if result['incident'] in ['aucun', 'non_specifie']:
+                    result['incident'] = 'panne_connexion'
+            if any(tok in text for tok in service_tokens):
+                result['topics'] = 'service_client'
+            if result['incident'] == 'aucun' and result['is_claim'] == 'oui' and ('freebox' in text or 'box' in text):
+                result['incident'] = 'bug_freebox'
+            result['score_confiance'] = max(0.4, min(0.99, result['score_confiance']))
         return results
     
     def classify_dataframe(self, 

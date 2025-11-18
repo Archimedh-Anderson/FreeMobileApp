@@ -6,9 +6,16 @@ Helpers génériques et fonctions communes
 import os
 import time
 import hashlib
+import io
+import json
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 from datetime import datetime, timedelta
+from urllib.parse import urlparse
+
 import pandas as pd
+import requests
+from requests import RequestException
 import streamlit as st
 
 def format_file_size(size_bytes: int) -> str:
@@ -258,3 +265,138 @@ def create_emoji_icon(icon_name: str) -> str:
         'confirm': ''
     }
     return icons.get(icon_name, '')
+
+
+class InMemoryUploadedFile(io.BytesIO):
+    """Objet mimant un UploadedFile Streamlit pour les imports distants."""
+
+    def __init__(self, content: bytes, name: str, mime_type: str = "text/csv"):
+        super().__init__(content)
+        self.name = name
+        self.type = mime_type
+        self.mime_type = mime_type
+        self.size = len(content)
+
+
+def fetch_remote_dataset(
+    url: str,
+    method: str = "GET",
+    headers: Optional[Dict[str, str]] = None,
+    payload: Optional[Union[str, Dict[str, Any]]] = None,
+    timeout: int = 15,
+    max_size_mb: int = 500,
+) -> Dict[str, Any]:
+    """
+    Récupère un fichier CSV distant (API/URL) et renvoie un fichier en mémoire.
+
+    Args:
+        url: Lien HTTP/HTTPS du fichier ou endpoint API.
+        method: Méthode HTTP (GET/POST).
+        headers: Headers personnalisés (ex: Authorization).
+        payload: Corps de requête pour POST (dict ou JSON string).
+        timeout: Timeout en secondes.
+        max_size_mb: Taille maximale autorisée.
+
+    Returns:
+        Dict contenant le contenu, le nom détecté et un objet InMemoryUploadedFile.
+
+    Raises:
+        ValueError / RequestException si la récupération échoue.
+    """
+
+    if not url:
+        raise ValueError("URL manquante.")
+
+    parsed = urlparse(url.strip())
+    if parsed.scheme not in ("http", "https"):
+        raise ValueError("Seuls les protocoles HTTP/HTTPS sont supportés.")
+
+    request_headers = headers.copy() if headers else {}
+    request_headers.setdefault("User-Agent", get_user_agent())
+
+    data = None
+    if payload:
+        if isinstance(payload, str):
+            payload = payload.strip()
+            if payload:
+                try:
+                    data = json.loads(payload)
+                except json.JSONDecodeError:
+                    data = payload
+        else:
+            data = payload
+
+    try:
+        response = requests.request(
+            method.upper(),
+            url.strip(),
+            headers=request_headers,
+            json=data if isinstance(data, dict) else None,
+            data=None if isinstance(data, dict) else data,
+            timeout=timeout,
+        )
+        response.raise_for_status()
+    except RequestException as exc:
+        raise ValueError(f"Erreur lors de l'appel distant: {exc}") from exc
+
+    content = response.content
+    size_mb = len(content) / (1024 * 1024)
+    if size_mb > max_size_mb:
+        raise ValueError(
+            f"Fichier trop volumineux ({size_mb:.1f} MB). Limite: {max_size_mb} MB."
+        )
+
+    content_type = response.headers.get("Content-Type", "text/csv").split(";")[0]
+    filename = os.path.basename(parsed.path) or "remote_dataset.csv"
+    if not filename.lower().endswith(".csv"):
+        filename = f"{filename}.csv"
+
+    memory_file = InMemoryUploadedFile(content, filename, content_type)
+    return {
+        "content": content,
+        "filename": filename,
+        "mime_type": content_type,
+        "size": len(content),
+        "uploaded_file": memory_file,
+        "source_url": url,
+    }
+
+
+def persist_remote_dataset(
+    dataset: Dict[str, Any],
+    base_dir: Union[str, Path] = "uploads/remote",
+) -> Path:
+    """
+    Persist a remotely fetched dataset to disk for audit trail purposes.
+
+    Args:
+        dataset: Dict returned by fetch_remote_dataset.
+        base_dir: Directory where files should be stored.
+
+    Returns:
+        Path to the saved CSV file.
+    """
+
+    base_path = Path(base_dir)
+    base_path.mkdir(parents=True, exist_ok=True)
+
+    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    filename = clean_filename(dataset.get("filename", "remote_dataset.csv"))
+    target_path = base_path / f"{timestamp}_{filename}"
+    content: bytes = dataset.get("content", b"")
+    target_path.write_bytes(content)
+
+    manifest_entry = {
+        "timestamp": timestamp,
+        "filename": filename,
+        "saved_path": str(target_path),
+        "size_bytes": len(content),
+        "source_url": dataset.get("source_url"),
+        "mime_type": dataset.get("mime_type"),
+    }
+
+    manifest_path = base_path / "imports_manifest.jsonl"
+    with manifest_path.open("a", encoding="utf-8") as log_file:
+        log_file.write(json.dumps(manifest_entry, ensure_ascii=False) + "\n")
+
+    return target_path

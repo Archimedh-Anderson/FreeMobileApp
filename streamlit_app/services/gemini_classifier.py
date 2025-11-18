@@ -15,6 +15,7 @@ Fonctionnalités:
 
 # Imports des bibliothèques tierces pour la manipulation de données
 from typing import List, Dict, Optional, Any  # Typage statique pour la validation
+from dataclasses import dataclass
 import pandas as pd  # Manipulation de DataFrame pour le traitement par lot
 import json  # Parsing des réponses JSON du modèle Gemini
 import re  # Expressions régulières pour l'extraction de données structurées
@@ -58,6 +59,32 @@ except ImportError:
     GEMINI_AVAILABLE = False  # Désactivation si le module n'est pas installé
     logger.warning("Module google-generativeai non disponible. Installation requise: pip install google-generativeai")
 
+# Taxonomie centralisée pour garantir la cohérence côté LLM + post-traitement
+SENTIMENT_OPTIONS = ["positif", "negatif", "neutre"]
+CATEGORY_OPTIONS = ["produit", "service", "support", "promotion", "autre"]
+URGENCE_OPTIONS = ["haute", "moyenne", "faible"]
+CLAIM_OPTIONS = ["oui", "non"]
+INCIDENT_OPTIONS = [
+    "panne_connexion", "bug_freebox", "probleme_facturation", "probleme_mobile",
+    "retard_activation", "debit_insuffisant", "information", "aucun", "non_specifie"
+]
+TOPIC_OPTIONS = [
+    "fibre", "mobile", "reseau", "freebox", "wifi", "facture", "service_client",
+    "support_technique", "promotion", "autre"
+]
+
+
+@dataclass
+class GeminiClassificationConfig:
+    """Configuration centralisée pour la classification KPI via Gemini."""
+    model_name: str = "gemini-2.0-flash-exp"
+    batch_size: int = BATCH_SIZE
+    temperature: float = 0.25
+    max_retries: int = MAX_RETRIES
+    enable_preprocessing: bool = True
+    response_timeout: int = TIMEOUT_SECONDS
+
+
 # Import du préprocesseur de texte avancé (PROMPT CURSOR.txt spec)
 try:
     from .text_preprocessor import TextPreprocessor
@@ -83,7 +110,8 @@ class GeminiClassifier:
                  batch_size: int = BATCH_SIZE,
                  temperature: float = 0.3,
                  max_retries: int = MAX_RETRIES,
-                 enable_preprocessing: bool = True):
+                 enable_preprocessing: bool = True,
+                 config: Optional[GeminiClassificationConfig] = None):
         """
         Initialise le classificateur Gemini avec les paramètres de configuration
         
@@ -95,20 +123,29 @@ class GeminiClassifier:
             max_retries: Nombre maximal de tentatives en cas d'échec de requête
             enable_preprocessing: Activer le préprocesseur de texte avancé
         """
+        # Harmonisation de la configuration (support legacy + dataclass)
+        self.config = config or GeminiClassificationConfig(
+            model_name=model_name,
+            batch_size=batch_size,
+            temperature=temperature,
+            max_retries=max_retries,
+            enable_preprocessing=enable_preprocessing
+        )
+        
         # Récupération de la clé API depuis les variables d'environnement si non fournie
         if api_key is None:
             api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
         
         # Stockage des paramètres de configuration dans les attributs d'instance
         self.api_key = api_key  # Clé API pour authentification
-        self.model_name = model_name  # Identification du modèle LLM à utiliser
-        self.batch_size = batch_size  # Définition de la taille des lots de traitement
-        self.temperature = temperature  # Contrôle de la variabilité des réponses du modèle
-        self.max_retries = max_retries  # Configuration de la résilience face aux erreurs
+        self.model_name = self.config.model_name  # Identification du modèle LLM à utiliser
+        self.batch_size = self.config.batch_size  # Définition de la taille des lots de traitement
+        self.temperature = self.config.temperature  # Contrôle de la variabilité des réponses du modèle
+        self.max_retries = self.config.max_retries  # Configuration de la résilience face aux erreurs
         
         # Initialiser le préprocesseur de texte avancé (PROMPT CURSOR.txt spec)
         self.preprocessor = None
-        if enable_preprocessing and PREPROCESSOR_AVAILABLE:
+        if self.config.enable_preprocessing and PREPROCESSOR_AVAILABLE:
             try:
                 self.preprocessor = TextPreprocessor(
                     use_spacy=False,  # Désactivé pour performance (optionnel)
@@ -301,6 +338,13 @@ Résultat: {"index": 4, "sentiment": "positif", "categorie": "promotion", "score
         # Construction du prompt avec Few-Shot prompting et instructions détaillées
         few_shot_examples = self._get_few_shot_examples()
         
+        sentiment_choices = ", ".join(f'"{s}"' for s in SENTIMENT_OPTIONS)
+        category_choices = ", ".join(f'"{c}"' for c in CATEGORY_OPTIONS)
+        claim_choices = ", ".join(f'"{c}"' for c in CLAIM_OPTIONS)
+        urgence_choices = ", ".join(f'"{c}"' for c in URGENCE_OPTIONS)
+        topic_choices = ", ".join(f'"{c}"' for c in TOPIC_OPTIONS)
+        incident_choices = ", ".join(f'"{c}"' for c in INCIDENT_OPTIONS)
+
         prompt = f"""Tu es un expert en analyse de tweets pour Free Mobile (opérateur télécoms français).
 
 CONTEXTE: Free Mobile est un opérateur télécoms français proposant des services fibre, mobile, TV et support client.
@@ -308,14 +352,14 @@ CONTEXTE: Free Mobile est un opérateur télécoms français proposant des servi
 TA TÂCHE: Classifier {len(tweets)} tweets selon ces critères STRICTS et EXACTS:
 
 ═══════════════════════════════════════════════════════════════
-**SENTIMENT (OBLIGATOIRE - un seul choix exact):**
+**SENTIMENT (OBLIGATOIRE - un seul choix exact): {sentiment_choices}**
 ═══════════════════════════════════════════════════════════════
 - "positif": satisfaction exprimée, remerciements, compliments, félicitations, éloges
 - "negatif": insatisfaction, plaintes, critiques, colère, frustration, mécontentement
 - "neutre": questions factuelles, demandes d'information, pas d'émotion claire, commentaires neutres
 
 ═══════════════════════════════════════════════════════════════
-**CATEGORIE (OBLIGATOIRE - un seul choix exact):**
+**CATEGORIE (OBLIGATOIRE - un seul choix exact): {category_choices}**
 ═══════════════════════════════════════════════════════════════
 - "produit": fibre, mobile, box, forfait, débit, qualité réseau, 4G, 5G, Freebox, connexion internet
 - "service": SAV, support client, assistance, réponse client, relation client, conseiller
@@ -324,7 +368,7 @@ TA TÂCHE: Classifier {len(tweets)} tweets selon ces critères STRICTS et EXACTS
 - "autre": autres sujets non liés aux catégories ci-dessus
 
 ═══════════════════════════════════════════════════════════════
-**IS_CLAIM (OBLIGATOIRE - réclamation détectée):**
+**IS_CLAIM (OBLIGATOIRE - réclamation détectée): {claim_choices}**
 ═══════════════════════════════════════════════════════════════
 - "oui": réclamation, plainte, problème signalé, demande d'intervention, dysfonctionnement mentionné
 - "non": pas de réclamation, simple question, commentaire positif, information neutre
@@ -335,7 +379,7 @@ RÈGLE: is_claim="oui" si ET SEULEMENT SI:
   • mention explicite de réclamation/plainte même avec sentiment neutre
 
 ═══════════════════════════════════════════════════════════════
-**URGENCE (OBLIGATOIRE - niveau de criticité):**
+**URGENCE (OBLIGATOIRE - niveau de criticité): {urgence_choices}**
 ═══════════════════════════════════════════════════════════════
 - "haute": problème critique, panne totale, impact majeur (travail bloqué), mention "urgent"/"critique"/"inadmissible"
 - "moyenne": problème modéré, gêne mais fonctionnement partiel, problème récurrent mais gérable
@@ -355,12 +399,12 @@ RÈGLE: urgence="haute" si ET SEULEMENT SI:
 - 0.0-0.5: très ambigu, difficile à classifier, contexte insuffisant
 
 ═══════════════════════════════════════════════════════════════
-**TOPICS (recommandé - thème principal):**
+**TOPICS (recommandé - thème principal): {topic_choices}**
 ═══════════════════════════════════════════════════════════════
 Extrait le thème principal: "fibre", "mobile", "reseau", "facture", "freebox", "service_client", "promotion", etc.
 
 ═══════════════════════════════════════════════════════════════
-**INCIDENT (recommandé - type d'incident):**
+**INCIDENT (recommandé - type d'incident): {incident_choices}**
 ═══════════════════════════════════════════════════════════════
 - "panne_connexion": panne de connexion internet/fibre
 - "bug_freebox": problème technique Freebox
@@ -450,7 +494,7 @@ IMPORTANT: Le nombre de résultats DOIT être exactement {len(tweets)} (un par t
                     # Structured Outputs via response_mime_type et response_schema
                     response_mime_type="application/json",
                     response_schema=self._get_structured_output_schema(),
-                    request_options={'timeout': TIMEOUT_SECONDS}  # Timeout explicite
+                    request_options={'timeout': self.config.response_timeout}  # Timeout explicite
                 )
             except Exception as e:
                 # Fallback si Structured Outputs non supporté
@@ -464,7 +508,7 @@ IMPORTANT: Le nombre de résultats DOIT être exactement {len(tweets)} (un par t
                         'top_k': 40,
                         'candidate_count': 1
                     },
-                    request_options={'timeout': TIMEOUT_SECONDS}
+                    request_options={'timeout': self.config.response_timeout}
                 )
             
             # Extraction du texte de réponse depuis la structure de données Gemini
@@ -476,7 +520,7 @@ IMPORTANT: Le nombre de résultats DOIT être exactement {len(tweets)} (un par t
             # Validation de la présence et de la cohérence des résultats
             if results:
                 logger.info(f"Classification réussie de {len(results)} tweets")
-                return results
+                return self._apply_quality_guards(tweets, results)
             else:
                 # Lève une exception pour déclencher le mécanisme de retry
                 raise ValueError("Réponse JSON invalide ou vide")
@@ -507,15 +551,9 @@ IMPORTANT: Le nombre de résultats DOIT être exactement {len(tweets)} (un par t
         Returns:
             Résultat validé et corrigé
         """
-        # Enum stricts
-        VALID_SENTIMENTS = ["positif", "negatif", "neutre"]
-        VALID_CATEGORIES = ["produit", "service", "support", "promotion", "autre"]
-        VALID_IS_CLAIM = ["oui", "non"]
-        VALID_URGENCE = ["haute", "moyenne", "faible"]
-        
         # Validation sentiment avec correction intelligente
         sentiment = str(result.get('sentiment', 'neutre')).lower().strip()
-        if sentiment not in VALID_SENTIMENTS:
+        if sentiment not in SENTIMENT_OPTIONS:
             # Correction automatique avec mapping étendu
             sentiment_mapping = {
                 'pos': 'positif', 'positive': 'positif', 'positif': 'positif',
@@ -529,7 +567,7 @@ IMPORTANT: Le nombre de résultats DOIT être exactement {len(tweets)} (un par t
         
         # Validation catégorie avec correction intelligente
         categorie = str(result.get('categorie', 'autre')).lower().strip()
-        if categorie not in VALID_CATEGORIES:
+        if categorie not in CATEGORY_OPTIONS:
             # Correction automatique avec mapping étendu
             categorie_mapping = {
                 'product': 'produit', 'produit': 'produit', 'produits': 'produit',
@@ -546,7 +584,7 @@ IMPORTANT: Le nombre de résultats DOIT être exactement {len(tweets)} (un par t
         
         # Validation is_claim avec inférence intelligente
         is_claim = str(result.get('is_claim', 'non')).lower().strip()
-        if is_claim not in VALID_IS_CLAIM:
+        if is_claim not in CLAIM_OPTIONS:
             # Inférence automatique améliorée
             is_claim_mapping = {
                 'yes': 'oui', 'y': 'oui', 'oui': 'oui', 'true': 'oui', '1': 'oui',
@@ -554,12 +592,12 @@ IMPORTANT: Le nombre de résultats DOIT être exactement {len(tweets)} (un par t
             }
             is_claim = is_claim_mapping.get(is_claim)
             # Si toujours invalide, inférer depuis sentiment
-            if is_claim not in VALID_IS_CLAIM:
+            if is_claim not in CLAIM_OPTIONS:
                 is_claim = 'oui' if sentiment == 'negatif' else 'non'
         
         # Validation urgence avec inférence intelligente
         urgence = str(result.get('urgence', 'faible')).lower().strip()
-        if urgence not in VALID_URGENCE:
+        if urgence not in URGENCE_OPTIONS:
             # Correction automatique avec mapping
             urgence_mapping = {
                 'high': 'haute', 'haute': 'haute', 'urgent': 'haute', 'critique': 'haute',
@@ -568,7 +606,7 @@ IMPORTANT: Le nombre de résultats DOIT être exactement {len(tweets)} (un par t
             }
             urgence = urgence_mapping.get(urgence)
             # Si toujours invalide, inférer depuis is_claim et sentiment
-            if urgence not in VALID_URGENCE:
+            if urgence not in URGENCE_OPTIONS:
                 if is_claim == 'oui' and sentiment == 'negatif':
                     urgence = 'haute'
                 elif is_claim == 'oui':
@@ -577,8 +615,13 @@ IMPORTANT: Le nombre de résultats DOIT être exactement {len(tweets)} (un par t
                     urgence = 'faible'
         
         # Topics et incident (optionnels mais recommandés)
-        topics = result.get('topics', categorie)  # Fallback sur categorie
-        incident = result.get('incident', 'aucun' if is_claim == 'non' else 'non_specifie')
+        topics = str(result.get('topics', categorie)).lower().strip()
+        if topics not in TOPIC_OPTIONS:
+            topics = categorie if categorie in TOPIC_OPTIONS else 'autre'
+        
+        incident = str(result.get('incident', 'aucun' if is_claim == 'non' else 'non_specifie')).lower().strip()
+        if incident not in INCIDENT_OPTIONS:
+            incident = 'aucun' if is_claim == 'non' else 'non_specifie'
         
         return {
             'index': int(result.get('index', 0)),
@@ -590,6 +633,70 @@ IMPORTANT: Le nombre de résultats DOIT être exactement {len(tweets)} (un par t
             'topics': str(topics),
             'incident': str(incident)
         }
+    
+    def _apply_quality_guards(self, tweets: List[str], results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Renforce la cohérence des KPI en croisant tweet brut + résultat LLM.
+        - Forcer is_claim quand vocabulaire critique détecté
+        - Rehausser l'urgence pour les incidents bloquants
+        - Calibrer les topics selon mots-clés métier
+        """
+        critical_keywords = [
+            "panne", "bug", "incident", "coupure", "bloque", "bloqué", "impossible",
+            "debit", "débit", "lenteur", "retard", "sav", "support", "service client",
+            "plainte", "réclamation", "reclamation", "ticket", "remboursement"
+        ]
+        urgent_tokens = ["urgent", "critique", "panne totale", "bloqué", "bloque", "impossible", "depuis", "heures", "jours"]
+        facture_tokens = ["facture", "facturation", "paiement", "prelevement", "prélèvement", "remboursement"]
+        mobile_tokens = ["4g", "5g", "mobile", "smartphone", "reseau", "réseau"]
+        service_tokens = ["sav", "service client", "support", "hotline", "assistance"]
+        
+        for idx, result in enumerate(results):
+            text = tweets[idx].lower()
+            
+            if result.get('sentiment') == 'negatif':
+                result['is_claim'] = 'oui'
+                if result.get('urgence') == 'faible':
+                    result['urgence'] = 'moyenne'
+            
+            # Claim detection boost
+            if any(token in text for token in critical_keywords):
+                result['is_claim'] = 'oui'
+                if result.get('urgence') == 'faible':
+                    result['urgence'] = 'moyenne'
+            
+            # Urgence boost
+            if any(token in text for token in urgent_tokens):
+                result['urgence'] = 'haute'
+                result['is_claim'] = 'oui'
+            
+            # Topics recalibration
+            if 'fibre' in text or 'fiber' in text:
+                result['topics'] = 'fibre'
+            elif 'freebox' in text or 'box' in text:
+                result['topics'] = 'freebox'
+            elif any(tok in text for tok in facture_tokens):
+                result['topics'] = 'facture'
+                if result['incident'] in ['aucun', 'non_specifie']:
+                    result['incident'] = 'probleme_facturation'
+            elif any(tok in text for tok in mobile_tokens):
+                result['topics'] = 'mobile'
+                if result['incident'] in ['aucun', 'non_specifie']:
+                    result['incident'] = 'probleme_mobile'
+            elif any(tok in text for tok in service_tokens):
+                result['topics'] = 'service_client'
+            
+            # Incident fallback
+            if result['incident'] == 'aucun' and result['is_claim'] == 'oui':
+                if 'connexion' in text or 'reseau' in text or 'wifi' in text:
+                    result['incident'] = 'panne_connexion'
+                elif 'freebox' in text or 'box' in text:
+                    result['incident'] = 'bug_freebox'
+            
+            # Confiance plancher/plafond
+            result['score_confiance'] = max(0.4, min(0.99, result['score_confiance']))
+        
+        return results
     
     def _parse_gemini_response(self, response_text: str, expected_count: int) -> List[Dict]:
         """
@@ -886,6 +993,9 @@ IMPORTANT: Le nombre de résultats DOIT être exactement {len(tweets)} (un par t
                 # Délai adaptatif: 0.3s pour petits batches (< 10), 0.5s pour moyens, 1s pour gros (> 50)
                 adaptive_delay = 0.3 if total_batches < 10 else (0.5 if total_batches < 50 else 1.0)
                 time.sleep(adaptive_delay)
+        
+        # Renforcer la cohérence des résultats avec le texte original (non nettoyé)
+        all_results = self._apply_quality_guards(tweets, all_results)
         
         # Nettoyage UI avec delay pour stabilité DOM
         if show_progress:

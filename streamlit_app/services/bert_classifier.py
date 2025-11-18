@@ -10,11 +10,20 @@ Performance:
 - CPU: 100+ tweets/s
 """
 
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Tuple
 import logging
 import pandas as pd
 
 logger = logging.getLogger(__name__)
+
+NEGATIVE_KEYWORDS = [
+    "panne", "bug", "incident", "bloque", "bloqué", "lent", "probleme", "problème",
+    "facture", "debit", "débit", "impossible", "erreur", "coupure", "sav"
+]
+POSITIVE_KEYWORDS = [
+    "merci", "bravo", "super", "génial", "rapide", "parfait", "satisfait", "content",
+    "excellent", "top", "formidable"
+]
 
 # Import conditionnel de PyTorch et Transformers avec gestion d'erreur gracieuse
 try:
@@ -189,6 +198,8 @@ class BERTClassifier:
             sentiment_detail = self.sentiment_map.get(pred_class, 'neutre')
             sentiment = self.simplified_map.get(sentiment_detail, 'neutre')
             
+            sentiment, confidence = self._calibrate_sentiment(sentiment, confidence, text)
+            
             return {
                 'sentiment': sentiment,
                 'sentiment_detail': sentiment_detail,
@@ -240,13 +251,19 @@ class BERTClassifier:
                 with torch.no_grad():
                     outputs = self.model(**inputs)
                     predictions = torch.argmax(outputs.logits, dim=1)
+                    scores = torch.softmax(outputs.logits, dim=1)
                 
                 # Convertir prédictions
-                for pred in predictions:
+                for idx, pred in enumerate(predictions):
                     pred_class = pred.item()
                     sentiment_detail = self.sentiment_map.get(pred_class, 'neutre')
                     sentiment = self.simplified_map.get(sentiment_detail, 'neutre')
-                    results.append(sentiment)
+                    calibrated_sentiment, _ = self._calibrate_sentiment(
+                        sentiment,
+                        scores[idx][pred_class].item(),
+                        batch[idx]
+                    )
+                    results.append(calibrated_sentiment)
                 
             except Exception as e:
                 logger.error(f"Erreur batch: {e}")
@@ -298,8 +315,14 @@ class BERTClassifier:
                     sentiment_detail = self.sentiment_map.get(pred_class, 'neutre')
                     sentiment = self.simplified_map.get(sentiment_detail, 'neutre')
                     
-                    all_sentiments.append(sentiment)
-                    all_confidences.append(float(confidence))
+                    calibrated, calibrated_conf = self._calibrate_sentiment(
+                        sentiment,
+                        confidence,
+                        batch[idx]
+                    )
+                    
+                    all_sentiments.append(calibrated)
+                    all_confidences.append(float(calibrated_conf))
                 
             except Exception as e:
                 logger.error(f"Erreur batch: {e}")
@@ -310,6 +333,29 @@ class BERTClassifier:
             'sentiment': all_sentiments,
             'sentiment_confidence': all_confidences
         })
+    
+    def _calibrate_sentiment(self, sentiment: str, confidence: float, text: str) -> Tuple[str, float]:
+        """
+        Ajuste le sentiment brut de BERT en utilisant des heuristiques métier.
+        - Détection de mots clés critiques pour renforcer les négatifs
+        - Lissage des scores pour réduire les faux positifs
+        """
+        lowered = (text or "").lower()
+        confidence = float(confidence)
+        
+        if any(token in lowered for token in NEGATIVE_KEYWORDS):
+            sentiment = 'negatif'
+            confidence = max(confidence, 0.75)
+        elif sentiment == 'neutre' and any(token in lowered for token in POSITIVE_KEYWORDS):
+            sentiment = 'positif'
+            confidence = max(confidence, 0.7)
+        elif sentiment == 'positif' and any(token in lowered for token in NEGATIVE_KEYWORDS):
+            # Contradiction → neutre
+            sentiment = 'neutre'
+            confidence = min(confidence, 0.6)
+        
+        confidence = max(0.4, min(0.99, confidence))
+        return sentiment, confidence
     
     def get_model_info(self) -> Dict[str, any]:
         """Retourne les informations du modèle"""

@@ -37,6 +37,12 @@ from typing import Dict, Any, Optional, List
 from pathlib import Path
 from dotenv import load_dotenv
 
+from utils.helpers import (
+    fetch_remote_dataset,
+    format_file_size,
+    persist_remote_dataset,
+)
+
 # Configuration du logging (doit être avant l'utilisation de logger)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -67,6 +73,10 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
 if parent_dir not in sys.path:
     sys.path.insert(0, parent_dir)
+
+ROOT_DIR = Path(__file__).resolve().parents[2]
+REMOTE_UPLOAD_DIR = ROOT_DIR / "uploads" / "remote"
+REMOTE_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 # Imports du ProviderManager et du composant provider_selector
 try:
@@ -1800,6 +1810,8 @@ def _section_upload():
     </div>
     """, unsafe_allow_html=True)
     
+    _render_remote_importer()
+    
     # FILE UPLOADER ROBUSTE
     try:
         uploaded_file = st.file_uploader(
@@ -1861,6 +1873,124 @@ def _section_upload():
     
     if uploaded_file:
         _handle_upload_robust(uploaded_file)
+
+
+def _render_remote_importer():
+    """Interface moderne pour importer un CSV via API/URL sécurisée."""
+    status = st.session_state.get("remote_import_status")
+    if status:
+        color = "#d1fae5" if status.get("type") == "success" else "#fee2e2"
+        border = "#10B981" if status.get("type") == "success" else "#EF4444"
+        icon = "fa-cloud-arrow-down" if status.get("type") == "success" else "fa-triangle-exclamation"
+        title = "Import distant réussi" if status.get("type") == "success" else "Import distant échoué"
+        detail = ""
+        if status.get("type") == "success":
+            meta = status.get("details", {})
+            detail = f"""
+            <div style="color:#065F46;font-size:0.9rem;margin-top:0.5rem;">
+                <strong>{meta.get('filename','')}</strong> • {meta.get('size','--')}
+                <div style="font-size:0.8rem;color:#047857;">Stocké: {meta.get('saved_path','')}</div>
+            </div>
+            """
+        st.markdown(f"""
+        <div style="background:{color};border-left:4px solid {border};border-radius:12px;
+                    padding:1rem 1.25rem;margin:0.5rem 0 1.25rem 0;">
+            <div style="display:flex;align-items:center;gap:0.5rem;color:{border};font-weight:600;">
+                <i class="fas {icon}"></i> {title}
+            </div>
+            <div style="color:#1F2937;font-size:0.9rem;margin-top:0.35rem;">
+                {status.get('message','')}
+            </div>
+            {detail}
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with st.expander("Importer via une API / un lien sécurisé", expanded=False):
+        remote_url = st.text_input(
+            "Lien API ou URL CSV",
+            key="remote_import_url",
+            placeholder="https://data.exemple.com/export.csv"
+        )
+        
+        col_method, col_timeout = st.columns([1, 1])
+        method = col_method.selectbox("Méthode", ["GET", "POST"], key="remote_import_method")
+        timeout = col_timeout.slider("Timeout (secondes)", min_value=5, max_value=60, value=15, key="remote_import_timeout")
+        
+        col_token, col_header = st.columns(2)
+        token = col_token.text_input("Token / API Key (optionnel)", type="password", key="remote_import_token")
+        header_name = col_header.text_input("Nom du header (ex: Authorization)", value="Authorization", key="remote_import_header")
+        
+        payload = ""
+        if method == "POST":
+            payload = st.text_area(
+                "Payload JSON (optionnel)",
+                key="remote_import_payload",
+                placeholder='{"filter": "last_30_days"}',
+                height=110
+            )
+        
+        max_size = st.slider(
+            "Taille maximale autorisée (MB)",
+            min_value=50,
+            max_value=500,
+            value=200,
+            step=10,
+            key="remote_import_size"
+        )
+        
+        fetching = st.session_state.get("remote_import_loading", False)
+        fetch_btn = st.button(
+            "Importer via l'API",
+            type="primary",
+            use_container_width=True,
+            disabled=fetching
+        )
+        
+        if fetch_btn:
+            if not remote_url:
+                st.warning("Merci de renseigner un lien valide.")
+                return
+            
+            st.session_state["remote_import_loading"] = True
+            headers = {}
+            if token:
+                header_key = (header_name or "Authorization").strip() or "Authorization"
+                header_value = token.strip()
+                if header_key.lower() == "authorization" and header_value and not header_value.lower().startswith("bearer"):
+                    header_value = f"Bearer {header_value}"
+                headers[header_key] = header_value
+            
+            try:
+                with st.spinner("Connexion à la source distante..."):
+                    dataset = fetch_remote_dataset(
+                        url=remote_url,
+                        method=method,
+                        headers=headers if headers else None,
+                        payload=payload if payload else None,
+                        timeout=timeout,
+                        max_size_mb=max_size,
+                    )
+                
+                st.session_state["remote_import_status"] = {
+                    "type": "success",
+                    "message": "Dataset importé depuis la source distante.",
+                    "details": {
+                        "filename": dataset.get("filename", "remote_dataset.csv"),
+                        "size": format_file_size(dataset.get("size", 0)),
+                    }
+                }
+                saved_path = persist_remote_dataset(dataset, base_dir=REMOTE_UPLOAD_DIR)
+                st.session_state["remote_import_status"]["details"]["saved_path"] = str(saved_path)
+                _handle_upload_robust(dataset["uploaded_file"])
+            except Exception as exc:
+                message = str(exc)
+                st.session_state["remote_import_status"] = {
+                    "type": "error",
+                    "message": message,
+                }
+                st.error(f"Impossible de récupérer le fichier distant: {message}")
+            finally:
+                st.session_state["remote_import_loading"] = False
 
 def _handle_upload_robust(uploaded_file):
     """
@@ -1926,7 +2056,7 @@ def _handle_upload_robust(uploaded_file):
             # Détection automatique d'encodage avec chardet (si disponible)
             detected_encoding = None
             try:
-                import chardet
+                import chardet  # type: ignore
                 # Lire un échantillon pour détecter l'encodage
                 sample = uploaded_file.read(10000)
                 uploaded_file.seek(0)  # Reset file pointer
@@ -2544,17 +2674,23 @@ def _normalize_kpi_fields(df: pd.DataFrame) -> pd.DataFrame:
                 df['sentiment'] = df[col]
                 break
         else:
-            df['sentiment'] = 'NEUTRE'
+            df['sentiment'] = 'neutre'
     else:
-        # Normaliser les valeurs de sentiment
-        df['sentiment'] = df['sentiment'].astype(str).str.upper().str.strip()
+        # Normaliser les valeurs de sentiment en LOWERCASE pour matching dynamique
+        df['sentiment'] = df['sentiment'].astype(str).str.lower().str.strip()
         df['sentiment'] = df['sentiment'].replace({
-            'POSITIVE': 'POSITIF',
-            'POS': 'POSITIF',
-            'NEGATIVE': 'NEGATIF',
-            'NEG': 'NEGATIF',
-            'NEUTRAL': 'NEUTRE',
-            'NEU': 'NEUTRE'
+            'positive': 'positif',
+            'pos': 'positif',
+            'good': 'positif',
+            'happy': 'positif',
+            'negative': 'negatif',
+            'neg': 'negatif',
+            'bad': 'negatif',
+            'angry': 'negatif',
+            'négatif': 'negatif',
+            'neutral': 'neutre',
+            'neu': 'neutre',
+            'ok': 'neutre'
         })
     
     # 2. Normaliser la colonne is_claim
@@ -2565,20 +2701,22 @@ def _normalize_kpi_fields(df: pd.DataFrame) -> pd.DataFrame:
                 df['is_claim'] = df[col]
                 break
         else:
-            df['is_claim'] = 'NON'
+            df['is_claim'] = 'non'
     else:
-        # Normaliser les valeurs (OUI/NON)
-        df['is_claim'] = df['is_claim'].astype(str).str.upper().str.strip()
+        # Normaliser les valeurs en LOWERCASE pour matching dynamique
+        df['is_claim'] = df['is_claim'].astype(str).str.lower().str.strip()
         df['is_claim'] = df['is_claim'].replace({
-            'YES': 'OUI',
-            'TRUE': 'OUI',
-            '1': 'OUI',
-            'NO': 'NON',
-            'FALSE': 'NON',
-            '0': 'NON'
+            'yes': 'oui',
+            'true': 'oui',
+            '1': 'oui',
+            'oui': 'oui',
+            'no': 'non',
+            'false': 'non',
+            '0': 'non',
+            'non': 'non'
         })
     
-    # 3. Normaliser la colonne urgence
+    # 3. Normaliser la colonne urgence (PRESERVER LOWERCASE POUR MATCHING DYNAMIQUE)
     if 'urgence' not in df.columns:
         # Chercher des colonnes alternatives
         for col in ['priority', 'urgence', 'urgency', 'Priority', 'Urgence']:
@@ -2586,20 +2724,52 @@ def _normalize_kpi_fields(df: pd.DataFrame) -> pd.DataFrame:
                 df['urgence'] = df[col]
                 break
         else:
-            df['urgence'] = 'FAIBLE'
+            df['urgence'] = 'faible'
     else:
-        # Normaliser les valeurs d'urgence
-        df['urgence'] = df['urgence'].astype(str).str.upper().str.strip()
+        # Normaliser les valeurs d'urgence en LOWERCASE pour matching dynamique
+        df['urgence'] = df['urgence'].astype(str).str.lower().str.strip()
+        # Mapping intelligent qui préserve les valeurs des classificateurs (lowercase)
         df['urgence'] = df['urgence'].replace({
-            'CRITICAL': 'CRITIQUE',
-            'HIGH': 'ELEVEE',
-            'MEDIUM': 'MOYENNE',
-            'LOW': 'FAIBLE',
-            'BASSE': 'FAIBLE',
-            'MOYEN': 'MOYENNE',
-            'ÉLEVÉE': 'ELEVEE',
-            'ÉLEVEE': 'ELEVEE'
+            'critical': 'haute',
+            'critique': 'haute',
+            'urgent': 'haute',
+            'très haute': 'haute',
+            'tres haute': 'haute',
+            'high': 'haute',
+            'elevee': 'haute',
+            'élevée': 'haute',
+            'élevée': 'haute',
+            'medium': 'moyenne',
+            'moyenne': 'moyenne',
+            'moderee': 'moyenne',
+            'modéré': 'moyenne',
+            'modéré': 'moyenne',
+            'low': 'faible',
+            'faible': 'faible',
+            'basse': 'faible',
+            'normale': 'faible'
         })
+        # Si valeur invalide, inférer depuis is_claim si disponible
+        invalid_mask = ~df['urgence'].isin(['haute', 'moyenne', 'faible'])
+        if invalid_mask.any() and 'is_claim' in df.columns:
+            is_claim_col = df['is_claim'].astype(str).str.lower().str.strip()
+            sentiment_col = df['sentiment'].astype(str).str.lower().str.strip() if 'sentiment' in df.columns else pd.Series()
+            
+            # Inférer urgence depuis is_claim et sentiment
+            for idx in df[invalid_mask].index:
+                if idx < len(is_claim_col):
+                    is_claim_val = is_claim_col.iloc[idx] if idx < len(is_claim_col) else 'non'
+                    sentiment_val = sentiment_col.iloc[idx] if 'sentiment' in df.columns and idx < len(sentiment_col) else 'neutre'
+                    
+                    if is_claim_val in ['oui', 'yes', '1', 'true'] and sentiment_val in ['negatif', 'negative', 'neg']:
+                        df.loc[idx, 'urgence'] = 'haute'
+                    elif is_claim_val in ['oui', 'yes', '1', 'true']:
+                        df.loc[idx, 'urgence'] = 'moyenne'
+                    else:
+                        df.loc[idx, 'urgence'] = 'faible'
+        else:
+            # Valeur par défaut pour valeurs invalides
+            df.loc[invalid_mask, 'urgence'] = 'faible'
     
     # 4. Normaliser la colonne theme/topic
     if 'theme' not in df.columns and 'topics' not in df.columns:
@@ -2611,7 +2781,7 @@ def _normalize_kpi_fields(df: pd.DataFrame) -> pd.DataFrame:
         else:
             df['theme'] = 'AUTRE'
     
-    # 5. Normaliser la colonne incident
+    # 5. Normaliser la colonne incident (PRESERVER LOWERCASE POUR MATCHING DYNAMIQUE)
     if 'incident' not in df.columns:
         # Chercher des colonnes alternatives
         for col in ['Incident principal', 'incident', 'incident_type', 'type_incident']:
@@ -2619,7 +2789,36 @@ def _normalize_kpi_fields(df: pd.DataFrame) -> pd.DataFrame:
                 df['incident'] = df[col]
                 break
         else:
-            df['incident'] = 'AUTRE'
+            df['incident'] = 'aucun'
+    else:
+        # Normaliser les valeurs d'incident en LOWERCASE pour matching dynamique
+        df['incident'] = df['incident'].astype(str).str.lower().str.strip()
+        # Préserver les valeurs des classificateurs (panne_connexion, bug_freebox, etc.)
+        # Ne remplacer que les valeurs vraiment invalides ou vides
+        valid_incidents = [
+            'panne_connexion', 'bug_freebox', 'probleme_facturation', 'probleme_mobile',
+            'retard_activation', 'debit_insuffisant', 'information', 'aucun', 'non_specifie',
+            'autre', 'incident_reseau', 'facturation', 'reseau', 'mobile'
+        ]
+        invalid_mask = ~df['incident'].isin(valid_incidents) & (df['incident'] != '') & (df['incident'] != 'nan')
+        
+        # Si incident invalide, inférer depuis is_claim si disponible
+        if invalid_mask.any() and 'is_claim' in df.columns:
+            is_claim_col = df['is_claim'].astype(str).str.lower().str.strip()
+            for idx in df[invalid_mask].index:
+                if idx < len(is_claim_col):
+                    is_claim_val = is_claim_col.iloc[idx] if idx < len(is_claim_col) else 'non'
+                    if is_claim_val in ['oui', 'yes', '1', 'true']:
+                        df.loc[idx, 'incident'] = 'non_specifie'
+                    else:
+                        df.loc[idx, 'incident'] = 'aucun'
+        else:
+            # Valeur par défaut pour valeurs invalides
+            df.loc[invalid_mask, 'incident'] = 'non_specifie'
+        
+        # Remplacer les valeurs vides ou NaN
+        df['incident'] = df['incident'].fillna('aucun')
+        df.loc[df['incident'].isin(['', 'nan', 'None']), 'incident'] = 'aucun'
     
     # 6. Normaliser la colonne confidence
     if 'confidence' not in df.columns:
@@ -2636,17 +2835,17 @@ def _normalize_kpi_fields(df: pd.DataFrame) -> pd.DataFrame:
         # Limiter entre 0 et 1
         df['confidence'] = df['confidence'].clip(0.0, 1.0)
     
-    # 7. Compléter les valeurs manquantes avec des valeurs par défaut appropriées
+    # 7. Compléter les valeurs manquantes avec des valeurs par défaut appropriées (LOWERCASE)
     if 'sentiment' in df.columns:
-        df['sentiment'] = df['sentiment'].fillna('NEUTRE')
+        df['sentiment'] = df['sentiment'].fillna('neutre')
     if 'is_claim' in df.columns:
-        df['is_claim'] = df['is_claim'].fillna('NON')
+        df['is_claim'] = df['is_claim'].fillna('non')
     if 'urgence' in df.columns:
-        df['urgence'] = df['urgence'].fillna('FAIBLE')
+        df['urgence'] = df['urgence'].fillna('faible')
     if 'theme' in df.columns:
-        df['theme'] = df['theme'].fillna('AUTRE')
+        df['theme'] = df['theme'].fillna('autre')
     if 'incident' in df.columns:
-        df['incident'] = df['incident'].fillna('AUTRE')
+        df['incident'] = df['incident'].fillna('aucun')
     
     return df
 
@@ -2732,6 +2931,7 @@ def _section_results():
     
     # KPIs principaux avec pourcentages
     st.markdown("### Indicateurs Clés de Performance")
+    _render_quality_summary(df, report)
     
     # CORRECTION: "Réclamations" au lieu de "Claims"
     if st.session_state.show_all_indicators:
@@ -2896,6 +3096,53 @@ def _section_results():
     
     # Export avec permissions
     _render_export_section(df, report)
+
+
+def _render_quality_summary(df: pd.DataFrame, report: Dict[str, Any]):
+    """Affiche un encart de qualité/couverture pour rassurer l'utilisateur."""
+    total = len(df)
+    claims = report.get('reclamations_count', 0)
+    sentiments_covered = len(df['sentiment'].dropna()) if 'sentiment' in df.columns else 0
+    
+    # Calcul des incidents critiques - MATCHING DYNAMIQUE ROBUSTE
+    incidents_detected = 0
+    if 'incident' in df.columns:
+        # Normaliser en lowercase pour matching
+        incident_normalized = df['incident'].astype(str).str.lower().str.strip()
+        # Liste des incidents critiques (lowercase pour matching)
+        critical_incidents = [
+            'panne_connexion', 'bug_freebox', 'probleme_facturation', 'probleme_mobile',
+            'retard_activation', 'debit_insuffisant', 'incident_reseau', 'facturation'
+        ]
+        # Filtrer les incidents critiques (exclure 'aucun', 'non_specifie', 'autre', 'information')
+        non_critical = ['aucun', 'non_specifie', 'autre', 'information', 'non_specifié', 'nan', 'none', '']
+        incidents_mask = incident_normalized.isin(critical_incidents) & ~incident_normalized.isin(non_critical)
+        incidents_detected = int(incidents_mask.sum())
+    
+    # Alternative : calculer depuis urgence haute + incident
+    if incidents_detected == 0 and 'urgence' in df.columns and 'incident' in df.columns:
+        # Compter les cas avec urgence haute ET incident réel
+        urgence_normalized = df['urgence'].astype(str).str.lower().str.strip()
+        incident_normalized = df['incident'].astype(str).str.lower().str.strip()
+        high_urgency_mask = urgence_normalized.isin(['haute', 'high', 'elevee', 'élevée', 'critique', 'critical'])
+        has_incident_mask = ~incident_normalized.isin(['aucun', 'non_specifie', 'autre', 'information', 'non_specifié', 'nan', 'none', ''])
+        incidents_detected = int((high_urgency_mask & has_incident_mask).sum())
+    
+    st.markdown("""
+    <div style="background: #f5f7ff; border: 1px solid #dbe0ff; border-radius: 12px; padding: 1rem 1.5rem; margin-bottom: 1.2rem;">
+        <strong>🛡️  Contrôle Qualité KPI</strong><br/>
+        Les compteurs ci-dessous permettent de vérifier rapidement la couverture obtenue.
+    </div>
+    """, unsafe_allow_html=True)
+    
+    col_q1, col_q2, col_q3 = st.columns(3)
+    with col_q1:
+        coverage = (claims / total * 100) if total else 0
+        st.metric("Couverture Réclamations", f"{coverage:.1f}%", f"{claims:,} détectées")
+    with col_q2:
+        st.metric("Tweets avec Sentiment", f"{(sentiments_covered/total*100 if total else 0):.1f}%", f"{sentiments_covered:,}/{total:,}")
+    with col_q3:
+        st.metric("Incidents critiques", f"{incidents_detected:,}", "pannes/facturation")
 
 def _render_analytics_visualizations(df):
     """
@@ -3081,56 +3328,39 @@ def _render_analytics_visualizations(df):
             st.info("⚠️ Aucune donnée d'incidents disponible")
     
         # SECTION 2: Distribution des Sentiments (donut chart)
-    st.markdown("### Distribution des Sentiments")
+    # Cette section est désormais affichée dans l'onglet "Sentiment" pour éviter les doublons.
+    st.caption("ℹ️ La répartition détaillée des sentiments est disponible dans l'onglet **Sentiment**.")
+
+def _render_sentiment_chart(df):
+    """Graphique de distribution des sentiments"""
+    st.markdown("#### Distribution des Sentiments")
     
     if 'sentiment' in df.columns:
-        # Calculer les sentiments avec case-insensitive matching
         sentiment_normalized = df['sentiment'].astype(str).str.lower().str.strip()
-        
-        # Compter chaque type de sentiment de manière robuste
         neg_count = int(sentiment_normalized.isin(['negatif', 'négatif', 'negative', 'neg']).sum())
         neu_count = int(sentiment_normalized.isin(['neutre', 'neutral', 'neu']).sum())
         pos_count = int(sentiment_normalized.isin(['positif', 'positive', 'pos']).sum())
-        
         total = len(df)
         
-        # Calculer les pourcentages
-        neg_pct = (neg_count / total * 100) if total > 0 else 0
-        neu_pct = (neu_count / total * 100) if total > 0 else 0
-        pos_pct = (pos_count / total * 100) if total > 0 else 0
-        
-        # Créer les données pour le donut chart
-        labels = ['Negative', 'Neutral', 'Positive']
+        labels = ['Négatif', 'Neutre', 'Positif']
         values = [neg_count, neu_count, pos_count]
-        colors = ['#e74c3c', '#6c757d', '#28a745']  # Rouge, Gris, Vert
+        colors = ['#E74C3C', '#95A5A6', '#10AC84']
         
-        # Créer le donut chart avec style exact du screenshot
         fig = go.Figure(data=[
             go.Pie(
                 labels=labels,
                 values=values,
-                hole=0.5,  # Donut
-                marker=dict(
-                    colors=colors,
-                    line=dict(color='white', width=3)
-                ),
+                hole=0.55,
+                marker=dict(colors=colors, line=dict(color='white', width=3)),
                 textinfo='label+percent',
-                textfont=dict(size=14, family='Arial, sans-serif', color='white', weight='bold'),
+                textfont=dict(size=14, color='white'),
                 textposition='inside',
                 hovertemplate="<b>%{label}</b><br>Tweets: %{value:,}<br>Pourcentage: %{percent}<extra></extra>"
             )
         ])
         
         fig.update_layout(
-            title=dict(
-                text="<b>Distribution des Sentiments</b>",
-                font=dict(size=20, family='Arial, sans-serif', color='#1a202c'),
-                x=0.5,
-                xanchor='center',
-                y=0.98,
-                yanchor='top'
-            ),
-            height=500,
+            height=450,
             template="plotly_white",
             showlegend=True,
             legend=dict(
@@ -3141,93 +3371,33 @@ def _render_analytics_visualizations(df):
                 x=0.5,
                 font=dict(size=12)
             ),
-            margin=dict(t=80, b=100, l=40, r=40),
+            margin=dict(t=20, b=100, l=40, r=40),
             paper_bgcolor='rgba(0,0,0,0)',
             plot_bgcolor='rgba(0,0,0,0)'
         )
         
-        st.plotly_chart(fig, use_container_width=True, key='analytics_sentiment_donut')
-        
-        # Expandable statistics section matching reference image
-        with st.expander("📊 Statistiques Détaillées et Pourcentages", expanded=True):
-            stat_col1, stat_col2, stat_col3, stat_col4 = st.columns(4)
-            
-            with stat_col1:
-                st.markdown(f"""
-                <div style="text-align: center;">
-                    <p style="color: #6c757d; font-size: 0.9rem; margin-bottom: 0.5rem;">Nombre total de tweets</p>
-                    <h2 style="color: #1a202c; margin: 0; font-size: 2.5rem;">{total:,}</h2>
-                    <p style="color: #28a745; font-size: 0.9rem; margin-top: 0.5rem;">↑ 100%</p>
-                </div>
-                """, unsafe_allow_html=True)
-            
-            with stat_col2:
-                # Calculer réclamations avec case-insensitive matching
-                if 'is_claim' in df.columns:
-                    claims_normalized = df['is_claim'].astype(str).str.lower().str.strip()
-                    claims_count = int(claims_normalized.isin(['oui', 'yes', '1', 'true']).sum())
-                    claims_pct = (claims_count / total * 100) if total > 0 else 0
-                else:
-                    claims_count = 0
-                    claims_pct = 0
-                
-                st.markdown(f"""
-                <div style="text-align: center;">
-                    <p style="color: #6c757d; font-size: 0.9rem; margin-bottom: 0.5rem;">Réclamations</p>
-                    <h2 style="color: #1a202c; margin: 0; font-size: 2.5rem;">{claims_count:,}</h2>
-                    <p style="color: #28a745; font-size: 0.9rem; margin-top: 0.5rem;">↑ {claims_pct:.1f}%</p>
-                </div>
-                """, unsafe_allow_html=True)
-            
-            with stat_col3:
-                st.markdown(f"""
-                <div style="text-align: center;">
-                    <p style="color: #6c757d; font-size: 0.9rem; margin-bottom: 0.5rem;">Sentiments Négatifs</p>
-                    <h2 style="color: #1a202c; margin: 0; font-size: 2.5rem;">{neg_count:,}</h2>
-                    <p style="color: #28a745; font-size: 0.9rem; margin-top: 0.5rem;">↑ {neg_pct:.1f}%</p>
-                </div>
-                """, unsafe_allow_html=True)
-            
-            with stat_col4:
-                # Calculer urgence haute avec case-insensitive matching
-                if 'urgence' in df.columns:
-                    urgence_normalized = df['urgence'].astype(str).str.lower().str.strip()
-                    urgent_count = int(urgence_normalized.isin(['haute', 'high', 'elevee', 'élevée', 'critique', 'critical']).sum())
-                    urgent_pct = (urgent_count / total * 100) if total > 0 else 0
-                else:
-                    urgent_count = 0
-                    urgent_pct = 0
-                
-                st.markdown(f"""
-                <div style="text-align: center;">
-                    <p style="color: #6c757d; font-size: 0.9rem; margin-bottom: 0.5rem;">Urgence Haute</p>
-                    <h2 style="color: #1a202c; margin: 0; font-size: 2.5rem;">{urgent_count:,}</h2>
-                    <p style="color: #28a745; font-size: 0.9rem; margin-top: 0.5rem;">↑ {urgent_pct:.1f}%</p>
-                </div>
-                """, unsafe_allow_html=True)
-    else:
-        st.info("⚠️ Aucune donnée de sentiment disponible")
-
-def _render_sentiment_chart(df):
-    """Graphique de distribution des sentiments"""
-    st.markdown("#### Distribution des Sentiments")
-    
-    if 'sentiment' in df.columns:
-        counts = df['sentiment'].value_counts()
-        
-        fig = px.pie(
-            values=counts.values,
-            names=counts.index,
-            title="",
-            color_discrete_map={
-                'positif': '#10AC84',
-                'neutre': '#95A5A6',
-                'negatif': '#E74C3C'
-            }
-        )
-        fig.update_traces(textinfo='label+percent', textfont_size=14)
-        fig.update_layout(height=400, showlegend=True)
         st.plotly_chart(fig, use_container_width=True)
+        
+        # Stats quick cards
+        stat_col1, stat_col2, stat_col3, stat_col4 = st.columns(4)
+        with stat_col1:
+            st.metric("Tweets analysés", f"{total:,}")
+        with stat_col2:
+            if 'is_claim' in df.columns:
+                claims_normalized = df['is_claim'].astype(str).str.lower().str.strip()
+                claims_count = int(claims_normalized.isin(['oui', 'yes', '1', 'true']).sum())
+                st.metric("Réclamations détectées", f"{claims_count:,}", f"{(claims_count/total*100 if total else 0):.1f}%")
+            else:
+                st.metric("Réclamations détectées", "0", "0%")
+        with stat_col3:
+            st.metric("Sentiments négatifs", f"{neg_count:,}", f"{(neg_count/total*100 if total else 0):.1f}%")
+        with stat_col4:
+            if 'urgence' in df.columns:
+                urgence_normalized = df['urgence'].astype(str).str.lower().str.strip()
+                urgent_count = int(urgence_normalized.isin(['haute', 'high', 'elevee', 'élevée', 'critique', 'critical']).sum())
+                st.metric("Urgence haute", f"{urgent_count:,}", f"{(urgent_count/total*100 if total else 0):.1f}%")
+            else:
+                st.metric("Urgence haute", "0", "0%")
         
         st.caption(f"<i class='fas fa-info-circle'></i> Total: {len(df)} tweets analysés", unsafe_allow_html=True)
 

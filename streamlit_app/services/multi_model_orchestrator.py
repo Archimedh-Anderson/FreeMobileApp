@@ -157,6 +157,16 @@ class MultiModelOrchestrator:
         
         start_time = time.time()
         results = df.copy()
+        
+        if text_column not in results.columns:
+            logger.warning(f"Colonne {text_column} absente, nettoyage à la volée...")
+            try:
+                from services.tweet_cleaner import TweetCleaner
+                cleaner = TweetCleaner()
+                results[text_column] = results['text'].fillna('').apply(cleaner.clean_text)
+            except Exception as exc:
+                logger.error(f"Impossible de nettoyer les tweets: {exc}")
+                raise
         total_tweets = len(df)
         
         logger.info(f" Classification de {total_tweets} tweets...")
@@ -286,6 +296,9 @@ class MultiModelOrchestrator:
         # Nettoyer colonnes temporaires
         results.drop(columns=['topics_preliminary', 'incident_preliminary'], errors='ignore', inplace=True)
         
+        # Enforcement final (cohérence KPI)
+        results = self._enforce_kpi_consistency(results, text_column)
+        
         # Statistiques finales
         total_time = time.time() - start_time
         logger.info(f"⏱️ Temps total: {total_time:.1f}s ({total_time/60:.1f}min)")
@@ -295,6 +308,75 @@ class MultiModelOrchestrator:
             progress_callback(f" Classification terminée! {total_tweets} tweets en {total_time:.1f}s", 1.0)
         
         return results
+    
+    def _enforce_kpi_consistency(self, df: pd.DataFrame, text_col: str) -> pd.DataFrame:
+        """
+        Harmonise les KPI issus des différents modèles via des heuristiques métier renforcées.
+        """
+        claim_tokens = [
+            'panne', 'bug', 'incident', 'bloque', 'bloqué', 'impossible', 'plainte',
+            'réclamation', 'reclamation', 'sav', 'support', 'service client', 'facture',
+            'facturation', 'remboursement', 'debit', 'débit', 'coupure', 'retard', 'activation'
+        ]
+        facture_tokens = ['facture', 'facturation', 'paiement', 'prelevement', 'prélèvement', 'remboursement']
+        mobile_tokens = ['4g', '5g', 'mobile', 'smartphone', 'reseau', 'réseau']
+        service_tokens = ['sav', 'service client', 'hotline', 'support', 'assistance']
+
+        if 'is_claim' in df.columns:
+            df['is_claim'] = (
+                df['is_claim']
+                .astype(str)
+                .str.lower()
+                .map({'1': 'oui', 'true': 'oui', 'yes': 'oui', 'oui': 'oui'})
+                .fillna('non')
+            )
+        
+        for idx, row in df.iterrows():
+            text = str(row.get(text_col, '')).lower()
+            if not text:
+                continue
+            
+            if 'is_claim' in df.columns:
+                if row['is_claim'] != 'oui' and (row.get('sentiment') == 'negatif' or any(token in text for token in claim_tokens)):
+                    df.at[idx, 'is_claim'] = 'oui'
+                elif df.at[idx, 'is_claim'] not in ['oui', 'non']:
+                    df.at[idx, 'is_claim'] = 'non'
+            
+            if 'urgence' in df.columns:
+                if any(token in text for token in ['urgent', 'bloque', 'bloqué', 'impossible', 'panne totale', 'depuis']):
+                    df.at[idx, 'urgence'] = 'haute'
+                elif df.at[idx, 'is_claim'] == 'oui' and df.at[idx, 'urgence'] == 'faible':
+                    df.at[idx, 'urgence'] = 'moyenne'
+            
+            if 'incident' in df.columns:
+                incident_value = str(df.at[idx, 'incident']).lower()
+                if incident_value in ['aucun', 'non_specifie', 'non', '']:
+                    if any(token in text for token in facture_tokens):
+                        df.at[idx, 'incident'] = 'probleme_facturation'
+                    elif any(token in text for token in ['connexion', 'reseau', 'réseau', 'wifi']):
+                        df.at[idx, 'incident'] = 'panne_connexion'
+                    elif 'freebox' in text or 'box' in text:
+                        df.at[idx, 'incident'] = 'bug_freebox'
+                    elif any(token in text for token in mobile_tokens):
+                        df.at[idx, 'incident'] = 'probleme_mobile'
+                    else:
+                        df.at[idx, 'incident'] = 'non_specifie' if df.at[idx, 'is_claim'] == 'oui' else 'aucun'
+            
+            if 'topics' in df.columns and df.at[idx, 'topics'] == 'autre':
+                if 'fibre' in text:
+                    df.at[idx, 'topics'] = 'fibre'
+                elif 'freebox' in text or 'box' in text:
+                    df.at[idx, 'topics'] = 'freebox'
+                elif any(token in text for token in mobile_tokens):
+                    df.at[idx, 'topics'] = 'mobile'
+                elif any(token in text for token in facture_tokens):
+                    df.at[idx, 'topics'] = 'facture'
+                elif any(token in text for token in service_tokens):
+                    df.at[idx, 'topics'] = 'service_client'
+        
+        if 'confidence' in df.columns:
+            df['confidence'] = df['confidence'].clip(0.4, 0.99)
+        return df
     
     def _select_strategic_sample(self, df: pd.DataFrame, ratio: float = 0.20) -> pd.DataFrame:
         """

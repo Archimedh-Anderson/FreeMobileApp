@@ -13,7 +13,7 @@ Fonctionnalités:
 """
 
 # Imports pour la manipulation de types et de données
-from typing import Tuple, Dict, List  # Annotations de types pour la clarté du code
+from typing import Tuple, Dict, List, Optional  # Annotations de types pour la clarté du code
 import pandas as pd  # Traitement de données tabulaires (DataFrames)
 import hashlib  # Génération de hash MD5 pour détection de doublons
 import re  # Expressions régulières pour le nettoyage de texte
@@ -32,6 +32,15 @@ PUNCTUATION_PATTERN = r'[^\w\s,.\?!]'  # Suppression ponctuation exceptée (gard
 WHITESPACE_PATTERN = r'\s+'  # Normalisation des espaces multiples en espace unique
 
 
+DEFAULT_DOMAIN_KEYWORDS = [
+    "free", "freebox", "free mobile", "freebox delta", "freebox pop",
+    "fibre", "fiber", "connexion", "connection", "reseau", "réseau",
+    "4g", "5g", "data", "debit", "débit", "facture", "facturation",
+    "reclamation", "réclamation", "incident", "panne", "bug", "sav",
+    "support", "service client", "assistance", "wifi", "box", "modem"
+]
+
+
 class TweetCleaner:
     """
     Nettoyage et déduplication de tweets
@@ -46,7 +55,10 @@ class TweetCleaner:
                  remove_mentions: bool = True,
                  remove_hashtags: bool = False,
                  convert_emojis: bool = True,
-                 normalize_unicode: bool = True):
+                 normalize_unicode: bool = True,
+                 lowercase: bool = True,
+                 preserve_domain_keywords: bool = True,
+                 extra_stopwords: Optional[List[str]] = None):
         """
         Initialise le nettoyeur de tweets
         
@@ -56,12 +68,19 @@ class TweetCleaner:
             remove_hashtags: Supprimer les hashtags #tag
             convert_emojis: Convertir les emojis en texte
             normalize_unicode: Normaliser les caractères unicode
+            lowercase: Forcer en minuscules pour homogénéité
+            preserve_domain_keywords: Conserver les mots-clés Free Mobile
+            extra_stopwords: Liste personnalisée de stopwords à supprimer
         """
         self.remove_urls = remove_urls
         self.remove_mentions = remove_mentions
         self.remove_hashtags = remove_hashtags
         self.convert_emojis = convert_emojis
         self.normalize_unicode = normalize_unicode
+        self.lowercase = lowercase
+        self.preserve_domain_keywords = preserve_domain_keywords
+        self.extra_stopwords = set(s.lower() for s in (extra_stopwords or []))
+        self.domain_keywords = set(DEFAULT_DOMAIN_KEYWORDS)
         
         logger.info(f"TweetCleaner initialisé avec options: URLs={remove_urls}, Mentions={remove_mentions}, Hashtags={remove_hashtags}")
     
@@ -130,6 +149,9 @@ class TweetCleaner:
         
         cleaned = text
         
+        if self.lowercase:
+            cleaned = cleaned.lower()
+        
         # 1. Suppression des URLs
         if self.remove_urls:
             cleaned = re.sub(URL_PATTERN, '', cleaned)
@@ -162,6 +184,23 @@ class TweetCleaner:
         # 7. Normalisation des espaces
         cleaned = re.sub(WHITESPACE_PATTERN, ' ', cleaned)
         cleaned = cleaned.strip()
+        
+        # 8. Suppression des stopwords supplémentaires
+        if self.extra_stopwords:
+            tokens = []
+            for token in cleaned.split():
+                if token not in self.extra_stopwords:
+                    tokens.append(token)
+            cleaned = " ".join(tokens)
+        
+        # 9. Optionnel: préserver mots-clés métiers (en les ré-injectant si supprimés)
+        if self.preserve_domain_keywords and cleaned:
+            preserved_tokens = []
+            for keyword in self.domain_keywords:
+                if keyword in text.lower() and keyword not in cleaned:
+                    preserved_tokens.append(keyword.replace(" ", "_"))
+            if preserved_tokens:
+                cleaned = f"{cleaned} {' '.join(preserved_tokens)}".strip()
         
         return cleaned
     
@@ -275,7 +314,8 @@ class TweetCleaner:
 def clean_tweet_text(text: str, 
                      remove_urls: bool = True,
                      remove_mentions: bool = True,
-                     remove_hashtags: bool = False) -> str:
+                     remove_hashtags: bool = False,
+                     lowercase: bool = True) -> str:
     """
     Fonction helper pour nettoyer un tweet unique
     
@@ -291,7 +331,8 @@ def clean_tweet_text(text: str,
     cleaner = TweetCleaner(
         remove_urls=remove_urls,
         remove_mentions=remove_mentions,
-        remove_hashtags=remove_hashtags
+        remove_hashtags=remove_hashtags,
+        lowercase=lowercase
     )
     return cleaner.clean_text(text)
 

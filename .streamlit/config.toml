@@ -1,15 +1,24 @@
+[theme]
+primaryColor = "#667eea"
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f0f2f6"
+textColor = "#262730"
+font = "sans serif"
+
 [server]
 port = 8502
-address = "0.0.0.0"
+address = "0.0.0.0"  # Production: 0.0.0.0 pour accès externe, localhost pour développement local
 headless = true
 runOnSave = false
 enableCORS = false
 enableXsrfProtection = true
+maxUploadSize = 200
 
 [browser]
 gatherUsageStats = false
 serverAddress = "freemobila.duckdns.org"
 serverPort = 8502
 
-[theme]
-base = "light"
+[runner]
+magicEnabled = true
+fastReruns = true

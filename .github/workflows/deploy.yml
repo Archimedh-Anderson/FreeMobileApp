@@ -8,19 +8,224 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     
     steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
     - name: Deploy via SSH
       uses: appleboy/ssh-action@master
       with:
-        host: 15.236.188.205
-        username: ubuntu
+        host: ${{ secrets.LIGHTSAIL_HOST }}
+        username: ${{ secrets.LIGHTSAIL_USER }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
+        port: ${{ secrets.LIGHTSAIL_SSH_PORT || 22 }}
+        timeout: 5m
         script: |
-          cd ~/FreeMobileApp
-          git pull origin main
-          source venv/bin/activate
-          pip install -r streamlit_app/requirements.txt --upgrade
-          pm2 restart freemobile-app
+          set -e
+          
+          echo "🚀 Début du déploiement sur Lightsail..."
+          echo "Date: $(date)"
+          echo "Commit: ${{ github.sha }}"
+          echo "Branch: ${{ github.ref_name }}"
+          echo ""
+          
+          # Variables
+          APP_DIR="$HOME/FreeMobileApp"
+          STREAMLIT_DIR="${APP_DIR}/streamlit_app"
+          BACKUP_DIR="${APP_DIR}/backups"
+          TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+          
+          # Créer le répertoire de backup
+          mkdir -p "${BACKUP_DIR}"
+          
+          # 1. Sauvegarde avant déploiement
+          echo "📦 [1/6] Création d'une sauvegarde..."
+          if [ -d "${STREAMLIT_DIR}" ]; then
+            tar -czf "${BACKUP_DIR}/backup_${TIMESTAMP}.tar.gz" \
+              -C "${APP_DIR}" \
+              --exclude='venv' \
+              --exclude='__pycache__' \
+              --exclude='*.pyc' \
+              --exclude='.git' \
+              streamlit_app 2>/dev/null || true
+            echo "✅ Sauvegarde créée: backup_${TIMESTAMP}.tar.gz"
+          fi
+          
+          # Garder seulement les 5 dernières sauvegardes
+          cd "${BACKUP_DIR}"
+          ls -t backup_*.tar.gz 2>/dev/null | tail -n +6 | xargs -r rm -f || true
+          
+          # 2. Aller dans le répertoire de l'application
+          echo ""
+          echo "📂 [2/6] Accès au répertoire de l'application..."
+          cd "${APP_DIR}" || {
+            echo "❌ Répertoire ${APP_DIR} introuvable!"
+            exit 1
+          }
+          
+          # 3. Sauvegarde des modifications locales
+          echo ""
+          echo "🔄 [3/6] Récupération du code depuis GitHub..."
+          if ! git diff-index --quiet HEAD -- 2>/dev/null; then
+            echo "⚠️  Modifications locales détectées - sauvegarde avec git stash"
+            git stash save "Auto-stash before deploy ${TIMESTAMP}" || true
+          fi
+          
+          # Récupération des modifications
+          git fetch origin main || git fetch origin master || {
+            echo "❌ Échec de la récupération depuis GitHub"
+            exit 1
+          }
+          
+          # Affichage des changements
+          echo "📝 Changements à appliquer:"
+          git log HEAD..origin/main --oneline --decorate=short 2>/dev/null || \
+          git log HEAD..origin/master --oneline --decorate=short 2>/dev/null || true
+          
+          # Mise à jour vers la dernière version
+          BRANCH=$(git branch -r | grep -E 'origin/(main|master)' | head -1 | sed 's/origin\///' | xargs)
+          if [ -z "$BRANCH" ]; then
+            BRANCH="main"
+          fi
+          
+          git reset --hard "origin/${BRANCH}" || {
+            echo "❌ Échec de la mise à jour du code"
+            exit 1
+          }
+          
+          CURRENT_COMMIT=$(git rev-parse --short HEAD)
+          echo "✅ Code mis à jour - Commit: ${CURRENT_COMMIT}"
+          
+          # 4. Vérification de l'environnement virtuel
+          echo ""
+          echo "🐍 [4/6] Vérification de l'environnement Python..."
+          if [ ! -d "venv" ]; then
+            echo "⚠️  Environnement virtuel non trouvé - création..."
+            python3 -m venv venv || {
+              echo "❌ Échec de la création de l'environnement virtuel"
+              exit 1
+            }
+          fi
+          
+          source venv/bin/activate || {
+            echo "❌ Échec de l'activation de l'environnement virtuel"
+            exit 1
+          }
+          
+          # Mise à jour de pip
+          pip install --upgrade pip --quiet
+          
+          # 5. Installation des dépendances
+          echo ""
+          echo "📦 [5/6] Installation des dépendances..."
+          if [ ! -f "${STREAMLIT_DIR}/requirements.txt" ]; then
+            echo "❌ Fichier requirements.txt introuvable!"
+            exit 1
+          fi
+          
+          pip install -r "${STREAMLIT_DIR}/requirements.txt" --upgrade --quiet || {
+            echo "❌ Échec de l'installation des dépendances"
+            exit 1
+          }
+          
+          echo "✅ Dépendances installées avec succès"
+          
+          # 6. Vérification de la configuration
+          echo ""
+          echo "⚙️  [6/6] Vérification de la configuration..."
+          if [ ! -f "${STREAMLIT_DIR}/app.py" ]; then
+            echo "❌ Fichier app.py introuvable!"
+            exit 1
+          fi
+          
+          # Test de syntaxe Python
+          python3 -m py_compile "${STREAMLIT_DIR}/app.py" || {
+            echo "❌ Erreur de syntaxe dans app.py"
+            exit 1
+          }
+          
+          echo "✅ Configuration validée"
+          
+          # 7. Redémarrage de l'application avec PM2
+          echo ""
+          echo "🔄 Redémarrage de l'application..."
+          
+          # Vérifier si PM2 est installé
+          if ! command -v pm2 &> /dev/null; then
+            echo "⚠️  PM2 non trouvé - installation..."
+            npm install -g pm2 || {
+              echo "❌ Échec de l'installation de PM2"
+              exit 1
+            }
+          fi
+          
+          # Redémarrer l'application
+          cd "${APP_DIR}"
+          pm2 restart freemobile-app || pm2 start ecosystem.config.js || {
+            echo "❌ Échec du redémarrage de l'application"
+            pm2 logs freemobile-app --lines 50 --nostream
+            exit 1
+          }
+          
+          # Attendre que l'application démarre
+          echo "⏳ Attente du démarrage de l'application..."
+          sleep 8
+          
+          # Vérifier le statut
           pm2 status
-          echo "✅ Déploiement terminé !"
+          
+          # 8. Health check
+          echo ""
+          echo "🏥 Vérification de santé de l'application..."
+          
+          # Vérifier que le processus est en cours d'exécution
+          if pm2 describe freemobile-app | grep -q "online"; then
+            echo "✅ Application en ligne"
+          else
+            echo "❌ Application non en ligne"
+            pm2 logs freemobile-app --lines 50 --nostream
+            exit 1
+          fi
+          
+          # Test de connexion HTTP (si accessible)
+          if curl -f -s http://localhost:8502 > /dev/null 2>&1; then
+            echo "✅ Application accessible sur http://localhost:8502"
+          else
+            echo "⚠️  Application non accessible via HTTP (peut être normal si derrière un proxy)"
+          fi
+          
+          # Afficher les dernières lignes de log
+          echo ""
+          echo "📋 Dernières lignes de log:"
+          pm2 logs freemobile-app --lines 20 --nostream || true
+          
+          echo ""
+          echo "=================================================================="
+          echo "✅ DÉPLOIEMENT TERMINÉ AVEC SUCCÈS"
+          echo "=================================================================="
+          echo "Commit: ${CURRENT_COMMIT}"
+          echo "Date: $(date)"
+          echo "Application: http://${{ secrets.LIGHTSAIL_HOST }}:8502"
+          echo ""
+          echo "Commandes utiles:"
+          echo "  - Logs en temps réel: pm2 logs freemobile-app"
+          echo "  - Statut: pm2 status"
+          echo "  - Redémarrer: pm2 restart freemobile-app"
+          echo "=================================================================="
+    
+    - name: Deployment Summary
+      if: success()
+      run: |
+        echo "✅ Déploiement réussi sur Lightsail"
+        echo "Commit: ${{ github.sha }}"
+        echo "Branch: ${{ github.ref_name }}"
+        echo "Auteur: ${{ github.actor }}"
+    
+    - name: Deployment Failed
+      if: failure()
+      run: |
+        echo "❌ Échec du déploiement sur Lightsail"
+        echo "Vérifiez les logs ci-dessus pour plus de détails"
+        exit 1

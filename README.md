@@ -47,10 +47,13 @@
 | Domaine | Améliorations |
 | --- | --- |
 | KPI & NLP | Prompts Gemini/Mistral réécrits, configurations strictes, `quality_guard` croisant texte brut + résultat LLM, harmonisation finale via `MultiModelOrchestrator` |
+| **Normalisation KPI** | **Normalisation en lowercase pour matching dynamique, calcul robuste des incidents critiques et urgence haute, préservation des valeurs des classificateurs (Mistral/Gemini)** |
 | Nettoyage | `TweetCleaner` enrichi (stopwords FR, normalisation casse, pipeline paramétrable) + `TextPreprocessor` pour cas avancés |
-| Visualisations | Section "Visualisations Analytiques" reposant sur Plotly Express avec chartes couleur sémantiques, encart "Contrôle Qualité KPI" |
+| Visualisations | Section "Visualisations Analytiques" reposant sur Plotly Express avec chartes couleur sémantiques, encart "Contrôle Qualité KPI" avec calculs dynamiques |
+| Ingestion | Bouton “Importer via API/URL” pour aspirer un CSV distant (data lake, endpoint sécurisé) avec headers personnalisés et limite 500 MB |
 | UI | Suppression des doublons, navigation clarifiée, messages d'état professionnels |
-| Déploiement | Workflow `.github/workflows/deploy.yml` entièrement automatisé (triggers sur `push main`, création service `systemd`, health checks HTTP/port/process, monitoring 30 s) |
+| **Configuration Locale** | **Scripts de démarrage automatique (`start_app.bat`/`start_app.sh`), configuration Streamlit optimisée (port 8502), guides de setup local (`SETUP_LOCAL.md`, `README_LOCAL.md`)** |
+| Déploiement | Workflow `.github/workflows/deploy.yml` entièrement automatisé (triggers sur `push main`, création service `systemd`, health checks HTTP/port/process, monitoring 30 s, vérification domaine DuckDNS) |
 | Observabilité | Logs détaillés, collecte diagnostics côté EC2, métriques de couverture dans l'app |
 
 ---
@@ -160,19 +163,34 @@ Tous les graphiques sont recalculés dynamiquement après filtrage/échantillonn
 
 ### Setup local rapide
 
+**Windows :**
 ```bash
+# Option 1 : Script automatique
+start_app.bat
+
+# Option 2 : Manuel
 python -m venv venv
-source venv/bin/activate  # ou .\venv\Scripts\activate sous Windows
-pip install --upgrade pip
-pip install -r streamlit_app/requirements.txt
-cp docs/.env.example streamlit_app/.env   # puis renseigner les clés API
+venv\Scripts\activate
+pip install -r streamlit_app\requirements.txt
+# Configurer .env avec vos clés API
+streamlit run streamlit_app\app.py --server.port 8502
 ```
 
-### Lancement
-
+**Linux/Mac :**
 ```bash
-streamlit run streamlit_app/app.py --server.port 8502 --server.address 0.0.0.0
+# Option 1 : Script automatique
+chmod +x start_app.sh
+./start_app.sh
+
+# Option 2 : Manuel
+python3 -m venv venv
+source venv/bin/activate
+pip install -r streamlit_app/requirements.txt
+# Configurer .env avec vos clés API
+streamlit run streamlit_app/app.py --server.port 8502
 ```
+
+**Documentation complète :** Voir `SETUP_LOCAL.md` et `README_LOCAL.md` pour plus de détails.
 
 Ollama (optionnel) :
 ```bash
@@ -185,11 +203,10 @@ export OLLAMA_HOST=http://localhost:11434
 
 ## Utilisation & Modes
 
-1. Se connecter (si auth activée), choisir le provider mixte ou ciblé.
-2. Uploader un CSV (colonnes libres, seul le champ texte est requis).
-3. Configurer options (nettoyage avancé, taille d'échantillon, mode Balanced/Cloud/Local).
-4. Lancer la classification  suivre progression affichée.
-5. Explorer onglets Résultats, Sentiment, Visualisations Analytiques, Export.
+1. Se connecter (si auth activée), puis choisir la source : upload drag & drop **ou** bouton “Importer via API/URL” pour aspirer un CSV distant sécurisé.
+2. Vérifier la colonne texte détectée, ajuster si besoin, puis configurer nettoyage avancé, taille d'échantillon et mode Balanced/Cloud/Local.
+3. Lancer la classification et suivre les indicateurs de progression + logs.
+4. Explorer onglets Résultats, Sentiment, Visualisations Analytiques, Export et le panneau “Contrôle Qualité KPI”.
 
 Les exports (CSV enrichi, JSON KPI, rapports) se trouvent dans le répertoire `uploads/`.
 

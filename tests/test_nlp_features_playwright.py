@@ -41,6 +41,7 @@ except ImportError:
 # Configuration
 STREAMLIT_URL = "http://localhost:8503"
 TEST_TIMEOUT = 60000  # 60 seconds
+REMOTE_SAMPLE_URL = "https://raw.githubusercontent.com/Archimedh-Anderson/FreeMobileApp/main/data/samples/sample_tweets.csv"
 
 
 def create_test_csv():
@@ -186,6 +187,55 @@ def test_text_preprocessing_visible(page):
     except Exception as e:
         print(f"⚠️ Could not verify preprocessing: {e}")
         return True  # Don't fail on this
+
+
+def test_remote_import_flow(page):
+    """Test remote API/URL import for CSV ingestion."""
+    print("\n" + "=" * 80)
+    print("TEST: Remote Import via API/URL")
+    print("=" * 80)
+
+    try:
+        expander = page.locator("text=Importer via une API / un lien sécurisé").first
+        if expander.count() == 0:
+            print("❌ Remote import expander not found")
+            return False
+
+        expander.click()
+        page.wait_for_timeout(500)
+
+        url_input = page.locator("input[placeholder='https://data.exemple.com/export.csv']").first
+        if url_input.count() == 0:
+            print("❌ Remote URL input not found")
+            return False
+
+        url_input.fill(REMOTE_SAMPLE_URL)
+
+        import_button = page.locator("button:has-text(\"Importer via l'API\")").first
+        if import_button.count() == 0:
+            print("❌ Remote import button not found")
+            return False
+
+        import_button.click()
+
+        success_badge = page.locator("text=Import distant réussi").first
+        expect(success_badge).to_be_visible(timeout=TEST_TIMEOUT)
+
+        file_success = page.locator("text=Fichier accepté avec succès").first
+        expect(file_success).to_be_visible(timeout=TEST_TIMEOUT)
+
+        print("✅ Remote import flow succeeded")
+
+        reset_btn = page.locator("button:has-text('Réinitialiser')").first
+        if reset_btn.count() > 0:
+            reset_btn.click()
+            page.wait_for_timeout(1500)
+            print("↺ UI reset after remote import")
+
+        return True
+    except Exception as e:
+        print(f"❌ Remote import test failed: {e}")
+        return False
 
 
 def test_provider_selection(page, provider="mistral"):
@@ -374,7 +424,7 @@ def run_all_tests():
     csv_path = create_test_csv()
     
     results = {
-        "total": 9,
+        "total": 10,
         "passed": 0,
         "failed": 0,
         "warnings": 0
@@ -392,6 +442,7 @@ def run_all_tests():
             tests = [
                 ("App Launch", lambda: test_streamlit_app_launch(page)),
                 ("Navigation", lambda: test_navigation_to_classification(page)),
+                ("Remote Import", lambda: test_remote_import_flow(page)),
                 ("CSV Upload", lambda: test_csv_upload(page, csv_path)),
                 ("Preprocessing", lambda: test_text_preprocessing_visible(page)),
                 ("Provider Selection", lambda: test_provider_selection(page, "mistral")),
