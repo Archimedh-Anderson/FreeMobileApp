@@ -14,6 +14,22 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
     
+    - name: Verify SSH secrets
+      run: |
+        if [ -z "${{ secrets.LIGHTSAIL_HOST }}" ]; then
+          echo "❌ LIGHTSAIL_HOST secret is not set"
+          exit 1
+        fi
+        if [ -z "${{ secrets.LIGHTSAIL_USER }}" ]; then
+          echo "❌ LIGHTSAIL_USER secret is not set"
+          exit 1
+        fi
+        if [ -z "${{ secrets.SSH_PRIVATE_KEY }}" ]; then
+          echo "❌ SSH_PRIVATE_KEY secret is not set"
+          exit 1
+        fi
+        echo "✅ All required secrets are configured"
+    
     - name: Deploy via SSH
       uses: appleboy/ssh-action@master
       with:
@@ -21,15 +37,30 @@ jobs:
         username: ${{ secrets.LIGHTSAIL_USER }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         port: ${{ secrets.LIGHTSAIL_SSH_PORT || 22 }}
-        timeout: 5m
+        timeout: 10m
+        command_timeout: 10m
+        script_stop: true
         script: |
-          set -e
+          set -euo pipefail
           
-          echo "🚀 Début du déploiement sur Lightsail..."
-          echo "Date: $(date)"
-          echo "Commit: ${{ github.sha }}"
-          echo "Branch: ${{ github.ref_name }}"
+          # Fonction de logging avec timestamp
+          log() {
+            echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
+          }
+          
+          log "🚀 Début du déploiement sur Lightsail..."
+          log "Date: $(date)"
+          log "Commit: ${{ github.sha }}"
+          log "Branch: ${{ github.ref_name }}"
+          log "Workflow: ${{ github.workflow }}"
+          log "Run ID: ${{ github.run_id }}"
           echo ""
+          
+          # Vérification des prérequis
+          log "🔍 Vérification des prérequis..."
+          command -v git >/dev/null 2>&1 || { log "❌ Git n'est pas installé"; exit 1; }
+          command -v python3 >/dev/null 2>&1 || { log "❌ Python3 n'est pas installé"; exit 1; }
+          log "✅ Prérequis vérifiés"
           
           # Variables
           APP_DIR="$HOME/FreeMobileApp"
@@ -59,44 +90,138 @@ jobs:
           
           # 2. Aller dans le répertoire de l'application
           echo ""
-          echo "📂 [2/6] Accès au répertoire de l'application..."
+          log "📂 [2/6] Accès au répertoire de l'application..."
+          
+          # Créer le répertoire s'il n'existe pas
+          if [ ! -d "${APP_DIR}" ]; then
+            log "⚠️  Répertoire ${APP_DIR} introuvable - création..."
+            mkdir -p "${APP_DIR}" || {
+              log "❌ Échec de la création du répertoire ${APP_DIR}"
+              exit 1
+            }
+          fi
+          
           cd "${APP_DIR}" || {
-            echo "❌ Répertoire ${APP_DIR} introuvable!"
+            log "❌ Impossible d'accéder au répertoire ${APP_DIR}"
             exit 1
           }
           
-          # 3. Sauvegarde des modifications locales
+          # Si le dépôt Git n'existe pas, le cloner
+          if [ ! -d ".git" ]; then
+            log "⚠️  Dépôt Git introuvable - clonage depuis GitHub..."
+            git clone https://github.com/Archimedh-Anderson/FreeMobileApp.git . || {
+              log "❌ Échec du clonage du dépôt"
+              exit 1
+            }
+          fi
+          
+          # 3. Configuration Git et récupération du code
           echo ""
-          echo "🔄 [3/6] Récupération du code depuis GitHub..."
+          log "🔄 [3/6] Récupération du code depuis GitHub..."
+          
+          # Configurer Git si nécessaire
+          git config user.name "GitHub Actions" || true
+          git config user.email "actions@github.com" || true
+          
+          # Configurer le remote origin s'il n'existe pas
+          if ! git remote get-url origin >/dev/null 2>&1; then
+            log "⚠️  Remote origin introuvable - configuration..."
+            git remote add origin https://github.com/Archimedh-Anderson/FreeMobileApp.git || {
+              log "⚠️  Remote origin existe déjà ou erreur de configuration"
+            }
+          else
+            # Mettre à jour l'URL du remote si nécessaire
+            git remote set-url origin https://github.com/Archimedh-Anderson/FreeMobileApp.git || true
+          fi
+          
+          # Sauvegarde des modifications locales
           if ! git diff-index --quiet HEAD -- 2>/dev/null; then
-            echo "⚠️  Modifications locales détectées - sauvegarde avec git stash"
+            log "⚠️  Modifications locales détectées - sauvegarde avec git stash"
             git stash save "Auto-stash before deploy ${TIMESTAMP}" || true
           fi
           
-          # Récupération des modifications
-          git fetch origin main || git fetch origin master || {
-            echo "❌ Échec de la récupération depuis GitHub"
-            exit 1
+          # Fonction de retry pour git fetch
+          fetch_with_retry() {
+            local max_attempts=5
+            local attempt=1
+            local delay=5
+            
+            while [ $attempt -le $max_attempts ]; do
+              echo "🔄 Tentative $attempt/$max_attempts de récupération depuis GitHub..."
+              
+              if git fetch origin main 2>&1; then
+                echo "✅ Récupération réussie depuis origin/main"
+                return 0
+              fi
+              
+              if git fetch origin master 2>&1; then
+                echo "✅ Récupération réussie depuis origin/master"
+                return 0
+              fi
+              
+              local exit_code=$?
+              echo "⚠️  Tentative $attempt échouée (code: $exit_code)"
+              
+              if [ $attempt -lt $max_attempts ]; then
+                echo "⏳ Attente ${delay}s avant nouvelle tentative..."
+                sleep $delay
+                delay=$((delay * 2))  # Exponential backoff
+              fi
+              
+              attempt=$((attempt + 1))
+            done
+            
+            echo "❌ Échec de la récupération après $max_attempts tentatives"
+            return 1
           }
           
-          # Affichage des changements
-          echo "📝 Changements à appliquer:"
-          git log HEAD..origin/main --oneline --decorate=short 2>/dev/null || \
-          git log HEAD..origin/master --oneline --decorate=short 2>/dev/null || true
-          
-          # Mise à jour vers la dernière version
-          BRANCH=$(git branch -r | grep -E 'origin/(main|master)' | head -1 | sed 's/origin\///' | xargs)
-          if [ -z "$BRANCH" ]; then
-            BRANCH="main"
+          # Récupération des modifications avec retry
+          if ! fetch_with_retry; then
+            echo "❌ Échec critique de la récupération depuis GitHub"
+            echo "Vérifiez la connectivité réseau et l'état de GitHub"
+            exit 1
           fi
           
-          git reset --hard "origin/${BRANCH}" || {
-            echo "❌ Échec de la mise à jour du code"
-            exit 1
-          }
+          # Déterminer la branche à utiliser
+          BRANCH="main"
+          if git show-ref --verify --quiet refs/remotes/origin/main; then
+            BRANCH="main"
+          elif git show-ref --verify --quiet refs/remotes/origin/master; then
+            BRANCH="master"
+          else
+            echo "⚠️  Aucune branche main/master trouvée, utilisation de main par défaut"
+          fi
           
-          CURRENT_COMMIT=$(git rev-parse --short HEAD)
-          echo "✅ Code mis à jour - Commit: ${CURRENT_COMMIT}"
+          # Affichage des changements
+          echo "📝 Changements à appliquer (branch: $BRANCH):"
+          git log HEAD..origin/${BRANCH} --oneline --decorate=short 2>/dev/null || echo "Aucun changement détecté"
+          
+          # Mise à jour vers la dernière version avec retry
+          echo "🔄 Mise à jour vers origin/${BRANCH}..."
+          local reset_attempts=3
+          local reset_attempt=1
+          
+          while [ $reset_attempt -le $reset_attempts ]; do
+            if git reset --hard "origin/${BRANCH}" 2>&1; then
+              echo "✅ Code mis à jour avec succès"
+              break
+            fi
+            
+            if [ $reset_attempt -lt $reset_attempts ]; then
+              echo "⚠️  Tentative $reset_attempt échouée, nouvelle tentative..."
+              sleep 3
+              # Réessayer le fetch avant le reset
+              fetch_with_retry || true
+            else
+              echo "❌ Échec de la mise à jour du code après $reset_attempts tentatives"
+              exit 1
+            fi
+            
+            reset_attempt=$((reset_attempt + 1))
+          done
+          
+          CURRENT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+          log "✅ Code mis à jour - Commit: ${CURRENT_COMMIT}"
           
           # 4. Vérification de l'environnement virtuel
           echo ""
