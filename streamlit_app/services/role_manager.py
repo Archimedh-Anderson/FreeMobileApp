@@ -322,7 +322,9 @@ class RoleUIManager:
             if len(role_config.features) > 5:
                 st.markdown(f"*+{len(role_config.features) - 5} autres...*")
 
-    def get_filtered_metrics(self, role: str, all_metrics: Dict[str, Any]) -> Dict[str, Any]:
+    def get_filtered_metrics(
+        self, role: str, all_metrics: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Filtre les métriques selon les priorités du rôle"""
         priority_metrics = self.role_manager.get_priority_metrics(role)
         filtered = {}
@@ -331,7 +333,9 @@ class RoleUIManager:
             if any(metric in key for metric in priority_metrics):
                 filtered[key] = value
 
-        return filtered if filtered else all_metrics  # Retourner tout si aucun filtre ne correspond
+        return (
+            filtered if filtered else all_metrics
+        )  # Retourner tout si aucun filtre ne correspond
 
     def render_role_specific_header(self, role: str, page_title: str):
         """Affiche un header personnalisé selon le rôle"""

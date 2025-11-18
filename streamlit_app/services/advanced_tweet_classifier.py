@@ -41,7 +41,9 @@ try:
     logger.info("✓ Transformers library available")
 except ImportError:
     TRANSFORMERS_AVAILABLE = False
-    logger.warning("⚠️ Transformers not available. Install with: pip install transformers torch")
+    logger.warning(
+        "⚠️ Transformers not available. Install with: pip install transformers torch"
+    )
 
 # Optional TextBlob import for fallback
 try:
@@ -50,7 +52,9 @@ try:
     TEXTBLOB_AVAILABLE = True
 except ImportError:
     TEXTBLOB_AVAILABLE = False
-    logger.warning("⚠️ TextBlob not available. Install with: pip install textblob textblob-fr")
+    logger.warning(
+        "⚠️ TextBlob not available. Install with: pip install textblob textblob-fr"
+    )
 
 
 @dataclass
@@ -224,7 +228,9 @@ class AdvancedTweetClassifier:
         Returns:
             (sentiment, confidence) where sentiment ∈ {POSITIF, NEUTRE, NEGATIF}
         """
-        clean_text = self.preprocessor.clean(text) if self.preprocessor else text.lower()
+        clean_text = (
+            self.preprocessor.clean(text) if self.preprocessor else text.lower()
+        )
 
         if not clean_text:
             return "NEUTRE", 0.0
@@ -270,8 +276,23 @@ class AdvancedTweetClassifier:
                 logger.warning(f"TextBlob sentiment error: {e}")
 
         # Final rule-based fallback
-        positive_words = ["merci", "super", "bravo", "excellent", "génial", "top", "parfait"]
-        negative_words = ["panne", "nul", "mauvais", "honte", "catastrophe", "inadmissible"]
+        positive_words = [
+            "merci",
+            "super",
+            "bravo",
+            "excellent",
+            "génial",
+            "top",
+            "parfait",
+        ]
+        negative_words = [
+            "panne",
+            "nul",
+            "mauvais",
+            "honte",
+            "catastrophe",
+            "inadmissible",
+        ]
 
         positive_count = sum(1 for w in positive_words if w in clean_text)
         negative_count = sum(1 for w in negative_words if w in clean_text)
@@ -301,7 +322,9 @@ class AdvancedTweetClassifier:
         Returns:
             (is_reclamation, confidence_score)
         """
-        clean_text = self.preprocessor.clean(text) if self.preprocessor else text.lower()
+        clean_text = (
+            self.preprocessor.clean(text) if self.preprocessor else text.lower()
+        )
 
         if not clean_text:
             return False, 0.0
@@ -373,7 +396,9 @@ class AdvancedTweetClassifier:
         Returns:
             Urgency level: CRITIQUE, ELEVEE, MOYENNE, or FAIBLE
         """
-        clean_text = self.preprocessor.clean(text) if self.preprocessor else text.lower()
+        clean_text = (
+            self.preprocessor.clean(text) if self.preprocessor else text.lower()
+        )
 
         # Non-reclamations are automatically FAIBLE
         if not is_reclamation:
@@ -400,7 +425,9 @@ class AdvancedTweetClassifier:
         Returns:
             (theme, confidence)
         """
-        clean_text = self.preprocessor.clean(text) if self.preprocessor else text.lower()
+        clean_text = (
+            self.preprocessor.clean(text) if self.preprocessor else text.lower()
+        )
 
         # Try zero-shot classification if available
         if self.theme_classifier is not None:
@@ -442,28 +469,43 @@ class AdvancedTweetClassifier:
         # Fallback: rule-based theme detection
         if any(w in clean_text for w in ["fibre", "ftth", "adsl", "internet fixe"]):
             return "FIBRE", 0.7
-        elif any(w in clean_text for w in ["mobile", "4g", "5g", "forfait mobile", "téléphone"]):
+        elif any(
+            w in clean_text
+            for w in ["mobile", "4g", "5g", "forfait mobile", "téléphone"]
+        ):
             return "MOBILE", 0.7
         elif any(w in clean_text for w in ["tv", "télévision", "freebox tv", "chaîne"]):
             return "TV", 0.7
-        elif any(w in clean_text for w in ["facture", "facturation", "paiement", "prélèvement"]):
+        elif any(
+            w in clean_text
+            for w in ["facture", "facturation", "paiement", "prélèvement"]
+        ):
             return "FACTURE", 0.7
-        elif any(w in clean_text for w in ["sav", "service client", "assistance", "support"]):
+        elif any(
+            w in clean_text for w in ["sav", "service client", "assistance", "support"]
+        ):
             return "SAV", 0.7
-        elif any(w in clean_text for w in ["réseau", "couverture", "débit", "connexion"]):
+        elif any(
+            w in clean_text for w in ["réseau", "couverture", "débit", "connexion"]
+        ):
             return "RESEAU", 0.7
         else:
             return "AUTRE", 0.5
 
     def _infer_incident_type(self, text: str, theme: str) -> str:
         """Infer incident type from text and theme."""
-        clean_text = self.preprocessor.clean(text) if self.preprocessor else text.lower()
+        clean_text = (
+            self.preprocessor.clean(text) if self.preprocessor else text.lower()
+        )
 
         if any(
-            w in clean_text for w in ["panne", "coupure", "ne marche plus", "ne fonctionne plus"]
+            w in clean_text
+            for w in ["panne", "coupure", "ne marche plus", "ne fonctionne plus"]
         ):
             return "PANNE"
-        elif any(w in clean_text for w in ["lent", "lenteur", "ralenti", "débit faible"]):
+        elif any(
+            w in clean_text for w in ["lent", "lenteur", "ralenti", "débit faible"]
+        ):
             return "LENTEUR"
         elif theme == "FACTURE" or "factur" in clean_text:
             return "FACTURATION"
@@ -544,7 +586,11 @@ class AdvancedTweetClassifier:
         )
 
         # Metadata for debugging
-        metadata = {"sent_conf": sent_conf, "reclam_conf": reclam_conf, "theme_conf": theme_conf}
+        metadata = {
+            "sent_conf": sent_conf,
+            "reclam_conf": reclam_conf,
+            "theme_conf": theme_conf,
+        }
 
         return ClassificationResult(
             sentiment=sentiment,

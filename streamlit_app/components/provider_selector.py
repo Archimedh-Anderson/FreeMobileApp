@@ -161,7 +161,9 @@ def render_provider_selector():
             # Card de statut du provider sélectionné
             status_color = "#10B981" if selected_status.available else "#EF4444"
             status_bg = (
-                "rgba(16, 185, 129, 0.1)" if selected_status.available else "rgba(239, 68, 68, 0.1)"
+                "rgba(16, 185, 129, 0.1)"
+                if selected_status.available
+                else "rgba(239, 68, 68, 0.1)"
             )
 
             st.sidebar.markdown(
@@ -194,7 +196,9 @@ def render_provider_selector():
             # Afficher bouton de configuration si non disponible
             if not selected_status.available:
                 if st.sidebar.button(
-                    "🔧 Configurer", key="btn_configure_selected", use_container_width=True
+                    "🔧 Configurer",
+                    key="btn_configure_selected",
+                    use_container_width=True,
                 ):
                     st.session_state.show_provider_config_modal = True
                     st.session_state.config_provider_type = (
@@ -202,7 +206,9 @@ def render_provider_selector():
                     )
 
     # Afficher les providers non disponibles dans un expander
-    unavailable_providers = [status for status in statuses.values() if not status.available]
+    unavailable_providers = [
+        status for status in statuses.values() if not status.available
+    ]
 
     if unavailable_providers:
         with st.sidebar.expander("❌ Providers non disponibles", expanded=False):
@@ -355,14 +361,14 @@ def render_provider_configuration_modal():
                                     test_result = True
                                     test_msg = "✅ Clé API valide"
                                 except Exception:
-                                    test_result = (
-                                        True  # On considère valide même si list_models échoue
-                                    )
+                                    test_result = True  # On considère valide même si list_models échoue
                                     test_msg = "✅ Clé API acceptée"
 
                                 if test_result:
                                     # Sauvegarder dans .env
-                                    env_file = Path(__file__).parent.parent.parent / ".env"
+                                    env_file = (
+                                        Path(__file__).parent.parent.parent / ".env"
+                                    )
                                     if env_file.exists():
                                         # Lire le fichier existant
                                         content = env_file.read_text(encoding="utf-8")
@@ -373,7 +379,9 @@ def render_provider_configuration_modal():
                                             new_lines = []
                                             for line in lines:
                                                 if line.startswith("GEMINI_API_KEY"):
-                                                    new_lines.append(f"GEMINI_API_KEY={api_key}")
+                                                    new_lines.append(
+                                                        f"GEMINI_API_KEY={api_key}"
+                                                    )
                                                 else:
                                                     new_lines.append(line)
                                             env_file.write_text(
@@ -387,14 +395,17 @@ def render_provider_configuration_modal():
                                     else:
                                         # Créer le fichier .env
                                         env_file.write_text(
-                                            f"GEMINI_API_KEY={api_key}", encoding="utf-8"
+                                            f"GEMINI_API_KEY={api_key}",
+                                            encoding="utf-8",
                                         )
 
                                     # Mettre à jour la variable d'environnement
                                     os.environ["GEMINI_API_KEY"] = api_key
 
                                     st.success(test_msg)
-                                    st.success("✅ Clé API Gemini sauvegardée dans .env!")
+                                    st.success(
+                                        "✅ Clé API Gemini sauvegardée dans .env!"
+                                    )
 
                                     # Fermer la modal et recharger
                                     st.session_state.show_provider_config_modal = False
@@ -405,7 +416,9 @@ def render_provider_configuration_modal():
 
                     with col2:
                         if st.button(
-                            "❌ Annuler", key="btn_cancel_gemini", use_container_width=True
+                            "❌ Annuler",
+                            key="btn_cancel_gemini",
+                            use_container_width=True,
                         ):
                             st.session_state.show_provider_config_modal = False
                             st.rerun()

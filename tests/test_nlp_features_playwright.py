@@ -48,8 +48,12 @@ REMOTE_SAMPLE_URL = "https://raw.githubusercontent.com/Archimedh-Anderson/FreeMo
 def create_test_csv():
     """Create a test CSV file with French tweets for classification."""
     test_data = [
-        {"text": "Ma connexion internet ne fonctionne plus depuis 3 jours! C'est inadmissible!"},
-        {"text": "Merci @free pour votre excellent service, tout fonctionne parfaitement!"},
+        {
+            "text": "Ma connexion internet ne fonctionne plus depuis 3 jours! C'est inadmissible!"
+        },
+        {
+            "text": "Merci @free pour votre excellent service, tout fonctionne parfaitement!"
+        },
         {"text": "Bonjour, comment puis-je modifier mon forfait mobile?"},
         {"text": "URGENT: Panne totale de connexion, impossible de travailler!"},
         {"text": "Le débit est un peu lent le soir mais ça fonctionne globalement"},
@@ -109,7 +113,10 @@ def test_navigation_to_classification(page):
         # Common patterns: "Classification", "Start", "Classifier"
 
         # Check if already on classification page
-        if "Classification" in page.title() or page.locator("text=Classification").count() > 0:
+        if (
+            "Classification" in page.title()
+            or page.locator("text=Classification").count() > 0
+        ):
             print("✅ Already on classification page")
             return True
 
@@ -205,7 +212,9 @@ def test_remote_import_flow(page):
         expander.click()
         page.wait_for_timeout(500)
 
-        url_input = page.locator("input[placeholder='https://data.exemple.com/export.csv']").first
+        url_input = page.locator(
+            "input[placeholder='https://data.exemple.com/export.csv']"
+        ).first
         if url_input.count() == 0:
             print("❌ Remote URL input not found")
             return False
@@ -335,7 +344,10 @@ def test_wait_for_classification(page, timeout=120000):
                     return True
 
             # Check for errors
-            if page.locator("text=Erreur").count() > 0 or page.locator("text=Error").count() > 0:
+            if (
+                page.locator("text=Erreur").count() > 0
+                or page.locator("text=Error").count() > 0
+            ):
                 print("❌ Classification error detected")
                 return False
 
@@ -394,7 +406,9 @@ def test_check_case_insensitive_matching(page):
             # Extract the number
             import re
 
-            reclamation_matches = re.findall(r"réclamation.*?(\d+)", page_content.lower())
+            reclamation_matches = re.findall(
+                r"réclamation.*?(\d+)", page_content.lower()
+            )
 
             if reclamation_matches and int(reclamation_matches[0]) > 0:
                 print(
@@ -438,7 +452,10 @@ def run_all_tests():
                 ("Remote Import", lambda: test_remote_import_flow(page)),
                 ("CSV Upload", lambda: test_csv_upload(page, csv_path)),
                 ("Preprocessing", lambda: test_text_preprocessing_visible(page)),
-                ("Provider Selection", lambda: test_provider_selection(page, "mistral")),
+                (
+                    "Provider Selection",
+                    lambda: test_provider_selection(page, "mistral"),
+                ),
                 ("Start Classification", lambda: test_start_classification(page)),
                 ("Wait Completion", lambda: test_wait_for_classification(page)),
                 ("Verify KPIs", lambda: test_verify_kpi_results(page)),

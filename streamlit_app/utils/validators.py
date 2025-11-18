@@ -29,7 +29,13 @@ class FileValidator:
     def __init__(self):
         self.config = get_config()
         self.required_columns = ["text"]  # Colonne minimale requise
-        self.recommended_columns = ["text", "author", "date", "retweet_count", "favorite_count"]
+        self.recommended_columns = [
+            "text",
+            "author",
+            "date",
+            "retweet_count",
+            "favorite_count",
+        ]
 
     def validate_file(self, uploaded_file) -> Dict[str, Any]:
         """Valide un fichier uploadé"""
@@ -78,7 +84,9 @@ class FileValidator:
             # Vérification du type MIME (si disponible)
             if MAGIC_AVAILABLE:
                 try:
-                    file_content = uploaded_file.read(1024)  # Lire les premiers 1024 bytes
+                    file_content = uploaded_file.read(
+                        1024
+                    )  # Lire les premiers 1024 bytes
                     uploaded_file.seek(0)  # Reset position
 
                     mime_type = magic.from_buffer(file_content, mime=True)
@@ -101,7 +109,9 @@ class FileValidator:
                 except Exception as e:
                     logger.warning(f"Impossible de vérifier le type MIME: {e}")
             else:
-                logger.debug("python-magic not available, skipping MIME type validation")
+                logger.debug(
+                    "python-magic not available, skipping MIME type validation"
+                )
 
             return {
                 "valid": True,
@@ -126,7 +136,9 @@ class FileValidator:
             suggestions = []
 
             # Vérification des colonnes requises
-            missing_required = [col for col in self.required_columns if col not in data.columns]
+            missing_required = [
+                col for col in self.required_columns if col not in data.columns
+            ]
             if missing_required:
                 return {
                     "valid": False,
@@ -165,10 +177,14 @@ class FileValidator:
                     max_length = text_lengths.max()
 
                     if min_length < 5:
-                        warnings.append("Textes très courts détectés (moins de 5 caractères)")
+                        warnings.append(
+                            "Textes très courts détectés (moins de 5 caractères)"
+                        )
 
                     if max_length > 1000:
-                        warnings.append("Textes très longs détectés (plus de 1000 caractères)")
+                        warnings.append(
+                            "Textes très longs détectés (plus de 1000 caractères)"
+                        )
 
                     if avg_length < 10:
                         warnings.append("Longueur moyenne des textes très faible")
@@ -180,10 +196,14 @@ class FileValidator:
             row_count = len(data)
             if row_count > 10000:
                 warnings.append(f"Fichier volumineux ({row_count:,} lignes)")
-                suggestions.append("Considérez limiter à 1000 tweets pour les premiers tests")
+                suggestions.append(
+                    "Considérez limiter à 1000 tweets pour les premiers tests"
+                )
             elif row_count < 10:
                 warnings.append("Fichier très petit (moins de 10 tweets)")
-                suggestions.append("Ajoutez plus de données pour une analyse significative")
+                suggestions.append(
+                    "Ajoutez plus de données pour une analyse significative"
+                )
 
             # Vérification des doublons
             if "text" in data.columns:
@@ -261,7 +281,9 @@ class FileValidator:
                     score -= 10
 
         # Bonus pour colonnes recommandées
-        recommended_count = sum(1 for col in self.recommended_columns if col in data.columns)
+        recommended_count = sum(
+            1 for col in self.recommended_columns if col in data.columns
+        )
         score += recommended_count * 5
 
         return max(0, min(100, score))
@@ -311,6 +333,8 @@ class DataValidator:
         if "llm_provider" in config:
             valid_providers = ["ollama", "mistral", "openai", "anthropic"]
             if config["llm_provider"] not in valid_providers:
-                errors.append(f"llm_provider doit être l'un de: {', '.join(valid_providers)}")
+                errors.append(
+                    f"llm_provider doit être l'un de: {', '.join(valid_providers)}"
+                )
 
         return {"valid": len(errors) == 0, "errors": errors}

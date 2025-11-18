@@ -14,7 +14,9 @@ logger = logging.getLogger(__name__)
 # Backend API URL - Use environment variable or default to localhost for local development
 # For demo purposes, allow offline authentication
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
-OFFLINE_MODE = os.getenv("OFFLINE_MODE", "true").lower() == "true"  # Enable offline demo mode
+OFFLINE_MODE = (
+    os.getenv("OFFLINE_MODE", "true").lower() == "true"
+)  # Enable offline demo mode
 
 
 class AuthService:
@@ -63,7 +65,12 @@ class AuthService:
         try:
             response = requests.post(
                 f"{BACKEND_URL}/api/auth/signup",
-                json={"email": email, "full_name": full_name, "password": password, "role": role},
+                json={
+                    "email": email,
+                    "full_name": full_name,
+                    "password": password,
+                    "role": role,
+                },
                 timeout=10,
             )
 
@@ -82,7 +89,11 @@ class AuthService:
                 return False, error_detail, None
 
         except requests.exceptions.ConnectionError:
-            return False, "Cannot connect to server. Please ensure the backend is running.", None
+            return (
+                False,
+                "Cannot connect to server. Please ensure the backend is running.",
+                None,
+            )
         except Exception as e:
             logger.error(f"Signup error: {e}")
             return False, f"An error occurred: {str(e)}", None
@@ -146,7 +157,11 @@ class AuthService:
                 return False, error_detail, None
 
         except requests.exceptions.ConnectionError:
-            return False, "Cannot connect to server. Please ensure the backend is running.", None
+            return (
+                False,
+                "Cannot connect to server. Please ensure the backend is running.",
+                None,
+            )
         except Exception as e:
             logger.error(f"Login error: {e}")
             return False, f"An error occurred: {str(e)}", None

@@ -65,7 +65,9 @@ try:
     OLLAMA_AVAILABLE = True  # Indicateur de disponibilité du module
 except ImportError:
     OLLAMA_AVAILABLE = False  # Désactivation si le module n'est pas installé
-    logger.warning("Module ollama non disponible. Installation requise: pip install ollama")
+    logger.warning(
+        "Module ollama non disponible. Installation requise: pip install ollama"
+    )
 
 
 class MistralClassifier:
@@ -95,8 +97,12 @@ class MistralClassifier:
         # Stockage des paramètres de configuration dans les attributs d'instance
         self.model_name = model_name  # Identification du modèle LLM à utiliser
         self.batch_size = batch_size  # Définition de la taille des lots de traitement
-        self.temperature = temperature  # Contrôle de la variabilité des réponses du modèle
-        self.max_retries = max_retries  # Configuration de la résilience face aux erreurs
+        self.temperature = (
+            temperature  # Contrôle de la variabilité des réponses du modèle
+        )
+        self.max_retries = (
+            max_retries  # Configuration de la résilience face aux erreurs
+        )
 
         # Configuration des options Ollama pour le contrôle fin du modèle
         self.ollama_options = {
@@ -109,7 +115,9 @@ class MistralClassifier:
         self._check_ollama_connection()
 
         # Journalisation de l'initialisation réussie avec les paramètres
-        logger.info(f"MistralClassifier initialisé: model={model_name}, batch_size={batch_size}")
+        logger.info(
+            f"MistralClassifier initialisé: model={model_name}, batch_size={batch_size}"
+        )
 
     def _check_ollama_connection(self) -> bool:
         """
@@ -123,7 +131,9 @@ class MistralClassifier:
         """
         # Vérification de la disponibilité du module Python ollama
         if not OLLAMA_AVAILABLE:
-            logger.warning("Module ollama non installé. Installation: pip install ollama")
+            logger.warning(
+                "Module ollama non installé. Installation: pip install ollama"
+            )
             return False
 
         try:
@@ -140,7 +150,9 @@ class MistralClassifier:
                     logger.info("Connexion Ollama OK")
                     # Vérifier que le modèle demandé est disponible
                     models_data = response.json()
-                    available_models = [m.get("name", "") for m in models_data.get("models", [])]
+                    available_models = [
+                        m.get("name", "") for m in models_data.get("models", [])
+                    ]
                     if self.model_name not in available_models and not any(
                         self.model_name in m for m in available_models
                     ):
@@ -152,7 +164,9 @@ class MistralClassifier:
                     logger.error(f"Ollama répond avec code {response.status_code}")
                     return False
             except Timeout:
-                logger.error("Timeout lors de la connexion à Ollama (serveur non démarré?)")
+                logger.error(
+                    "Timeout lors de la connexion à Ollama (serveur non démarré?)"
+                )
                 return False
             except RequestException as e:
                 logger.error(f"Erreur connexion Ollama: {e}")
@@ -199,7 +213,9 @@ class MistralClassifier:
         # Construction de la liste numérotée des tweets pour référence dans les résultats
         tweets_text = ""  # Initialisation de la chaîne vide
         for i, tweet in enumerate(tweets):  # Itération avec index pour chaque tweet
-            tweets_text += f"{i}: {tweet}\n"  # Formatage index: contenu avec saut de ligne
+            tweets_text += (
+                f"{i}: {tweet}\n"  # Formatage index: contenu avec saut de ligne
+            )
 
         # Construction du prompt avec instructions détaillées et taxonomie spécifique
         prompt = f"""Tu es un expert en analyse de tweets pour Free Mobile (opérateur télécoms français).
@@ -301,7 +317,9 @@ FORMAT STRICT (aucun texte avant/après):
             # Mécanisme de retry avec backoff exponentiel
             if retry < self.max_retries - 1:  # Vérification qu'il reste des tentatives
                 logger.info(f"Nouvelle tentative dans {RETRY_DELAY}s...")
-                time.sleep(RETRY_DELAY)  # Pause avant retry pour éviter la surcharge serveur
+                time.sleep(
+                    RETRY_DELAY
+                )  # Pause avant retry pour éviter la surcharge serveur
                 return self.classify_batch(
                     tweets, retry + 1
                 )  # Appel récursif avec incrémentation du compteur
@@ -312,7 +330,9 @@ FORMAT STRICT (aucun texte avant/après):
                     tweets
                 )  # Classification par règles comme solution de secours
 
-    def _parse_ollama_response(self, response_text: str, expected_count: int) -> List[Dict]:
+    def _parse_ollama_response(
+        self, response_text: str, expected_count: int
+    ) -> List[Dict]:
         """
         Parse la réponse JSON d'Ollama
 
@@ -341,7 +361,9 @@ FORMAT STRICT (aucun texte avant/après):
                             f"Nombre de résultats incorrect: {len(results)} vs {expected_count}"
                         )
                         while len(results) < expected_count:
-                            results.append(self._validate_result({"index": len(results)}))
+                            results.append(
+                                self._validate_result({"index": len(results)})
+                            )
                         return results[:expected_count]
 
             return None
@@ -364,7 +386,9 @@ FORMAT STRICT (aucun texte avant/après):
         score = max(0.4, min(0.99, score))
 
         is_claim = (
-            str(result.get("is_claim", "oui" if sentiment == "negatif" else "non")).lower().strip()
+            str(result.get("is_claim", "oui" if sentiment == "negatif" else "non"))
+            .lower()
+            .strip()
         )
         if is_claim not in CLAIM_OPTIONS:
             is_claim = "oui" if sentiment == "negatif" else "non"
@@ -378,7 +402,9 @@ FORMAT STRICT (aucun texte avant/après):
             topics = categorie if categorie in TOPIC_OPTIONS else "autre"
 
         incident = (
-            str(result.get("incident", "aucun" if is_claim == "non" else "non_specifie"))
+            str(
+                result.get("incident", "aucun" if is_claim == "non" else "non_specifie")
+            )
             .lower()
             .strip()
         )
@@ -413,19 +439,32 @@ FORMAT STRICT (aucun texte avant/après):
             tweet_lower = tweet.lower()
 
             # Détection sentiment basique
-            if any(w in tweet_lower for w in ["merci", "super", "génial", "excellent", "bravo"]):
+            if any(
+                w in tweet_lower
+                for w in ["merci", "super", "génial", "excellent", "bravo"]
+            ):
                 sentiment = "positif"
-            elif any(w in tweet_lower for w in ["panne", "nul", "bug", "problème", "mauvais"]):
+            elif any(
+                w in tweet_lower for w in ["panne", "nul", "bug", "problème", "mauvais"]
+            ):
                 sentiment = "negatif"
             else:
                 sentiment = "neutre"
 
             # Détection catégorie basique
-            if any(w in tweet_lower for w in ["fibre", "mobile", "box", "débit", "4g", "5g"]):
+            if any(
+                w in tweet_lower
+                for w in ["fibre", "mobile", "box", "débit", "4g", "5g"]
+            ):
                 categorie = "produit"
-            elif any(w in tweet_lower for w in ["sav", "service", "support", "assistance"]):
+            elif any(
+                w in tweet_lower for w in ["sav", "service", "support", "assistance"]
+            ):
                 categorie = "service"
-            elif any(w in tweet_lower for w in ["aide", "dépannage", "installation", "technicien"]):
+            elif any(
+                w in tweet_lower
+                for w in ["aide", "dépannage", "installation", "technicien"]
+            ):
                 categorie = "support"
             elif any(w in tweet_lower for w in ["offre", "promo", "prix", "réduction"]):
                 categorie = "promotion"
@@ -435,8 +474,14 @@ FORMAT STRICT (aucun texte avant/après):
             # Confiance basée sur la clarté
             confidence = 0.75 if sentiment != "neutre" or categorie != "autre" else 0.50
 
-            is_claim = "oui" if sentiment == "negatif" or "panne" in tweet_lower else "non"
-            if "urgent" in tweet_lower or "impossible" in tweet_lower or "bloque" in tweet_lower:
+            is_claim = (
+                "oui" if sentiment == "negatif" or "panne" in tweet_lower else "non"
+            )
+            if (
+                "urgent" in tweet_lower
+                or "impossible" in tweet_lower
+                or "bloque" in tweet_lower
+            ):
                 urgence = "haute"
             elif is_claim == "oui":
                 urgence = "moyenne"
@@ -530,7 +575,11 @@ FORMAT STRICT (aucun texte avant/après):
             if any(tok in text for tok in facture_tokens):
                 result["topics"] = "facture"
                 result["incident"] = "probleme_facturation"
-            if any(tok in text for tok in mobile_tokens) or "connexion" in text or "wifi" in text:
+            if (
+                any(tok in text for tok in mobile_tokens)
+                or "connexion" in text
+                or "wifi" in text
+            ):
                 result["topics"] = "reseau"
                 if result["incident"] in ["aucun", "non_specifie"]:
                     result["incident"] = "panne_connexion"
@@ -546,7 +595,10 @@ FORMAT STRICT (aucun texte avant/après):
         return results
 
     def classify_dataframe(
-        self, df: pd.DataFrame, text_column: str = "text_cleaned", show_progress: bool = True
+        self,
+        df: pd.DataFrame,
+        text_column: str = "text_cleaned",
+        show_progress: bool = True,
     ) -> pd.DataFrame:
         """
         Classifie tous les tweets du DataFrame par lots avec progress bar
@@ -614,7 +666,9 @@ FORMAT STRICT (aucun texte avant/après):
         # Ajout des colonnes de classification
         df_classified["sentiment"] = [r.get("sentiment", "neutre") for r in all_results]
         df_classified["categorie"] = [r.get("categorie", "autre") for r in all_results]
-        df_classified["score_confiance"] = [r.get("score_confiance", 0.5) for r in all_results]
+        df_classified["score_confiance"] = [
+            r.get("score_confiance", 0.5) for r in all_results
+        ]
 
         # Ajout de métadonnées
         df_classified["classification_method"] = "mistral"
@@ -640,7 +694,9 @@ FORMAT STRICT (aucun texte avant/après):
 
         stats = {
             "total_classified": len(df_classified),
-            "sentiment_distribution": df_classified["sentiment"].value_counts().to_dict(),
+            "sentiment_distribution": df_classified["sentiment"]
+            .value_counts()
+            .to_dict(),
             "categorie_distribution": (
                 df_classified["categorie"].value_counts().to_dict()
                 if "categorie" in df_classified.columns
@@ -740,5 +796,10 @@ def classify_single_tweet(tweet: str, model_name: str = "mistral") -> Dict[str, 
     return (
         results[0]
         if results
-        else {"index": 0, "sentiment": "neutre", "categorie": "autre", "score_confiance": 0.5}
+        else {
+            "index": 0,
+            "sentiment": "neutre",
+            "categorie": "autre",
+            "score_confiance": 0.5,
+        }
     )

@@ -230,13 +230,17 @@ class RuleClassifier:
 
         self.urgence_haute_pattern = re.compile(
             "|".join(
-                [re.escape(kw) if not "\\d" in kw else kw for kw in self.URGENCE_HAUTE_KEYWORDS]
+                [
+                    re.escape(kw) if not "\\d" in kw else kw
+                    for kw in self.URGENCE_HAUTE_KEYWORDS
+                ]
             ),
             re.IGNORECASE,
         )
 
         self.urgence_moyenne_pattern = re.compile(
-            "|".join([re.escape(kw) for kw in self.URGENCE_MOYENNE_KEYWORDS]), re.IGNORECASE
+            "|".join([re.escape(kw) for kw in self.URGENCE_MOYENNE_KEYWORDS]),
+            re.IGNORECASE,
         )
 
         logger.info(" Patterns compilés pour détection rapide")
@@ -314,7 +318,9 @@ class RuleClassifier:
 
         return "autre"
 
-    def classify_batch(self, texts: List[str], show_progress: bool = False) -> pd.DataFrame:
+    def classify_batch(
+        self, texts: List[str], show_progress: bool = False
+    ) -> pd.DataFrame:
         """
         Classification vectorisée ultra-rapide
 
@@ -357,10 +363,14 @@ class RuleClassifier:
             "total": len(df),
             "claims_count": df["is_claim"].sum() if "is_claim" in df.columns else 0,
             "claims_percentage": (
-                (df["is_claim"].sum() / len(df) * 100) if "is_claim" in df.columns else 0
+                (df["is_claim"].sum() / len(df) * 100)
+                if "is_claim" in df.columns
+                else 0
             ),
             "urgence_distribution": (
-                df["urgence"].value_counts().to_dict() if "urgence" in df.columns else {}
+                df["urgence"].value_counts().to_dict()
+                if "urgence" in df.columns
+                else {}
             ),
             "topics_distribution": (
                 df["topics"].value_counts().to_dict() if "topics" in df.columns else {}

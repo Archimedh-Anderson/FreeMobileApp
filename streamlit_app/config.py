@@ -20,7 +20,9 @@ SERVICES_DIR = (
     BASE_DIR / "services"
 )  # Répertoire des modules de service (classificateurs, visualisations)
 TESTS_DIR = BASE_DIR / "tests"  # Répertoire des tests unitaires et d'intégration
-DATA_DIR = BASE_DIR.parent / "data"  # Répertoire des données (datasets, modèles entraînés)
+DATA_DIR = (
+    BASE_DIR.parent / "data"
+)  # Répertoire des données (datasets, modèles entraînés)
 
 # Configuration des modèles de langage (LLM) avec paramètres optimisés
 LLM_CONFIG = {
@@ -48,7 +50,14 @@ TAXONOMY = {
     "theme": ["FIBRE", "MOBILE", "TV", "FACTURE", "SAV", "RESEAU", "AUTRE"],
     "sentiment": ["NEGATIF", "NEUTRE", "POSITIF"],
     "urgence": ["FAIBLE", "MOYENNE", "ELEVEE", "CRITIQUE"],
-    "type_incident": ["PANNE", "LENTEUR", "FACTURATION", "PROCESSUS_SAV", "INFO", "AUTRE"],
+    "type_incident": [
+        "PANNE",
+        "LENTEUR",
+        "FACTURATION",
+        "PROCESSUS_SAV",
+        "INFO",
+        "AUTRE",
+    ],
 }
 
 # Patterns de détection pour le mode fallback
@@ -192,9 +201,21 @@ DETECTION_PATTERNS = {
         "dysfonctionnement",
         "arrêt",
     ],
-    "type_lenteur": ["lent", "lenteur", "débit faible", "ralentissement", "performance"],
+    "type_lenteur": [
+        "lent",
+        "lenteur",
+        "débit faible",
+        "ralentissement",
+        "performance",
+    ],
     "type_facturation": ["facture", "facturation", "prix", "coût", "tarif", "montant"],
-    "type_processus_sav": ["sav", "service client", "support", "assistance", "technicien"],
+    "type_processus_sav": [
+        "sav",
+        "service client",
+        "support",
+        "assistance",
+        "technicien",
+    ],
 }
 
 # Configuration des types de données
@@ -271,10 +292,19 @@ LOGGING_CONFIG = {
 }
 
 # Configuration des exports
-EXPORT_CONFIG = {"csv_encoding": "utf-8", "json_indent": 2, "date_format": "%Y%m%d_%H%M%S"}
+EXPORT_CONFIG = {
+    "csv_encoding": "utf-8",
+    "json_indent": 2,
+    "date_format": "%Y%m%d_%H%M%S",
+}
 
 # Configuration des modèles
-MODEL_CONFIG = {"batch_size": 100, "max_retries": 3, "retry_delay": 1, "cache_size": 1000}
+MODEL_CONFIG = {
+    "batch_size": 100,
+    "max_retries": 3,
+    "retry_delay": 1,
+    "cache_size": 1000,
+}
 
 # Configuration des visualisations
 VISUALIZATION_CONFIG = {

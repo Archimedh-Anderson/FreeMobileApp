@@ -69,7 +69,9 @@ class MultiModelOrchestrator:
             # 1. BERT (toujours chargé sauf mode fast sans sentiment)
             from services.bert_classifier import BERTClassifier
 
-            self.bert = BERTClassifier(batch_size=64, use_gpu=True)  # Optimisé pour RTX 5060
+            self.bert = BERTClassifier(
+                batch_size=64, use_gpu=True
+            )  # Optimisé pour RTX 5060
             logger.info(f" BERT chargé sur {self.bert.device}")
 
             if progress_callback:
@@ -94,7 +96,9 @@ class MultiModelOrchestrator:
                         self.gemini = GeminiClassifier(batch_size=50, temperature=0.1)
                         logger.info(" Gemini chargé")
                     except Exception as e:
-                        logger.warning(f"Erreur chargement Gemini: {e}. Fallback vers Mistral...")
+                        logger.warning(
+                            f"Erreur chargement Gemini: {e}. Fallback vers Mistral..."
+                        )
                         self.provider = "mistral"  # Fallback vers Mistral
                         from services.mistral_classifier import MistralClassifier
 
@@ -127,7 +131,10 @@ class MultiModelOrchestrator:
             raise
 
     def classify_intelligent(
-        self, df: pd.DataFrame, text_column: str = "text_cleaned", progress_callback=None
+        self,
+        df: pd.DataFrame,
+        text_column: str = "text_cleaned",
+        progress_callback=None,
     ) -> pd.DataFrame:
         """
         Classification intelligente multi-modèle
@@ -158,7 +165,9 @@ class MultiModelOrchestrator:
                 from services.tweet_cleaner import TweetCleaner
 
                 cleaner = TweetCleaner()
-                results[text_column] = results["text"].fillna("").apply(cleaner.clean_text)
+                results[text_column] = (
+                    results["text"].fillna("").apply(cleaner.clean_text)
+                )
             except Exception as exc:
                 logger.error(f"Impossible de nettoyer les tweets: {exc}")
                 raise
@@ -196,7 +205,9 @@ class MultiModelOrchestrator:
         phase2_start = time.time()
         logger.info("️ Phase 2: Règles (is_claim + urgence + topics)...")
 
-        rules_results = self.rules.classify_batch_extended(results[text_column].fillna("").tolist())
+        rules_results = self.rules.classify_batch_extended(
+            results[text_column].fillna("").tolist()
+        )
 
         results["is_claim"] = rules_results["is_claim"]
         results["urgence"] = rules_results["urgence"]
@@ -214,7 +225,9 @@ class MultiModelOrchestrator:
         if self.mode in ["balanced", "precise"]:
             provider_name = "Gemini" if self.provider == "gemini" else "Mistral"
             if progress_callback:
-                progress_callback(f"Phase 3: {provider_name} sur échantillon stratifié...", 0.5)
+                progress_callback(
+                    f"Phase 3: {provider_name} sur échantillon stratifié...", 0.5
+                )
 
             phase3_start = time.time()
 
@@ -231,7 +244,8 @@ class MultiModelOrchestrator:
 
             if progress_callback:
                 progress_callback(
-                    f"Phase 3: Classification {provider_name} de {sample_size} tweets...", 0.6
+                    f"Phase 3: Classification {provider_name} de {sample_size} tweets...",
+                    0.6,
                 )
 
             # Classification Mistral ou Gemini en parallèle
@@ -257,7 +271,9 @@ class MultiModelOrchestrator:
 
                     # Confidence
                     if "score_confiance" in llm_results.columns:
-                        results.loc[idx, "confidence"] = llm_results.loc[idx, "score_confiance"]
+                        results.loc[idx, "confidence"] = llm_results.loc[
+                            idx, "score_confiance"
+                        ]
 
                     # is_claim validé par LLM
                     if "is_claim" in llm_results.columns:
@@ -283,7 +299,9 @@ class MultiModelOrchestrator:
         if "incident" not in results.columns:
             results["incident"] = results["incident_preliminary"]
         else:
-            results["incident"] = results["incident"].fillna(results["incident_preliminary"])
+            results["incident"] = results["incident"].fillna(
+                results["incident_preliminary"]
+            )
 
         # Confidence: agrégation BERT + règles
         if "confidence" not in results.columns or results["confidence"].isna().any():
@@ -293,7 +311,9 @@ class MultiModelOrchestrator:
 
         # Nettoyer colonnes temporaires
         results.drop(
-            columns=["topics_preliminary", "incident_preliminary"], errors="ignore", inplace=True
+            columns=["topics_preliminary", "incident_preliminary"],
+            errors="ignore",
+            inplace=True,
         )
 
         # Enforcement final (cohérence KPI)
@@ -306,7 +326,8 @@ class MultiModelOrchestrator:
 
         if progress_callback:
             progress_callback(
-                f" Classification terminée! {total_tweets} tweets en {total_time:.1f}s", 1.0
+                f" Classification terminée! {total_tweets} tweets en {total_time:.1f}s",
+                1.0,
             )
 
         return results
@@ -384,7 +405,10 @@ class MultiModelOrchestrator:
                     ]
                 ):
                     df.at[idx, "urgence"] = "haute"
-                elif df.at[idx, "is_claim"] == "oui" and df.at[idx, "urgence"] == "faible":
+                elif (
+                    df.at[idx, "is_claim"] == "oui"
+                    and df.at[idx, "urgence"] == "faible"
+                ):
                     df.at[idx, "urgence"] = "moyenne"
 
             if "incident" in df.columns:
@@ -392,7 +416,10 @@ class MultiModelOrchestrator:
                 if incident_value in ["aucun", "non_specifie", "non", ""]:
                     if any(token in text for token in facture_tokens):
                         df.at[idx, "incident"] = "probleme_facturation"
-                    elif any(token in text for token in ["connexion", "reseau", "réseau", "wifi"]):
+                    elif any(
+                        token in text
+                        for token in ["connexion", "reseau", "réseau", "wifi"]
+                    ):
                         df.at[idx, "incident"] = "panne_connexion"
                     elif "freebox" in text or "box" in text:
                         df.at[idx, "incident"] = "bug_freebox"
@@ -400,7 +427,9 @@ class MultiModelOrchestrator:
                         df.at[idx, "incident"] = "probleme_mobile"
                     else:
                         df.at[idx, "incident"] = (
-                            "non_specifie" if df.at[idx, "is_claim"] == "oui" else "aucun"
+                            "non_specifie"
+                            if df.at[idx, "is_claim"] == "oui"
+                            else "aucun"
                         )
 
             if "topics" in df.columns and df.at[idx, "topics"] == "autre":
@@ -419,7 +448,9 @@ class MultiModelOrchestrator:
             df["confidence"] = df["confidence"].clip(0.4, 0.99)
         return df
 
-    def _select_strategic_sample(self, df: pd.DataFrame, ratio: float = 0.20) -> pd.DataFrame:
+    def _select_strategic_sample(
+        self, df: pd.DataFrame, ratio: float = 0.20
+    ) -> pd.DataFrame:
         """
         Sélectionne un échantillon stratifié intelligent
 
@@ -441,7 +472,9 @@ class MultiModelOrchestrator:
         urgent_claims = df[(df["is_claim"] == 1) & (df["urgence"] == "haute")]
         if len(urgent_claims) > 0:
             samples.append(urgent_claims)
-            logger.info(f"   Priorité 1: {len(urgent_claims)} réclamations urgentes (100%)")
+            logger.info(
+                f"   Priorité 1: {len(urgent_claims)} réclamations urgentes (100%)"
+            )
 
         # Priorité 2: 50% des réclamations moyennes
         medium_claims = df[(df["is_claim"] == 1) & (df["urgence"] == "moyenne")]
@@ -449,7 +482,9 @@ class MultiModelOrchestrator:
             sample_size = max(len(medium_claims) // 2, 50)
             medium_sample = medium_claims.sample(n=min(sample_size, len(medium_claims)))
             samples.append(medium_sample)
-            logger.info(f"   Priorité 2: {len(medium_sample)} réclamations moyennes (50%)")
+            logger.info(
+                f"   Priorité 2: {len(medium_sample)} réclamations moyennes (50%)"
+            )
 
         # Priorité 3: Échantillon du reste pour équilibrer
         rest = df[df["is_claim"] == 0]
@@ -460,7 +495,9 @@ class MultiModelOrchestrator:
 
             rest_sample = rest.sample(n=min(remaining, len(rest)))
             samples.append(rest_sample)
-            logger.info(f"   Priorité 3: {len(rest_sample)} non-réclamations (échantillon)")
+            logger.info(
+                f"   Priorité 3: {len(rest_sample)} non-réclamations (échantillon)"
+            )
 
         # Combiner
         combined = pd.concat(samples) if samples else df.head(100)
@@ -502,7 +539,9 @@ class MultiModelOrchestrator:
             futures = {}
 
             for idx, chunk in enumerate(chunks):
-                future = executor.submit(self._classify_chunk_mistral, chunk, text_column)
+                future = executor.submit(
+                    self._classify_chunk_mistral, chunk, text_column
+                )
                 futures[future] = idx
 
             # Collecter résultats
@@ -543,7 +582,9 @@ class MultiModelOrchestrator:
 
         # Gemini gère déjà le batch processing, pas besoin de parallélisation complexe
         try:
-            result = self.gemini.classify_dataframe(df, text_column, show_progress=False)
+            result = self.gemini.classify_dataframe(
+                df, text_column, show_progress=False
+            )
             return result
         except Exception as e:
             logger.error(f"Erreur classification Gemini: {e}")
@@ -553,7 +594,9 @@ class MultiModelOrchestrator:
             df["score_confiance"] = 0.5
             return df
 
-    def _classify_chunk_mistral(self, chunk: pd.DataFrame, text_column: str) -> pd.DataFrame:
+    def _classify_chunk_mistral(
+        self, chunk: pd.DataFrame, text_column: str
+    ) -> pd.DataFrame:
         """
         Classifie un chunk avec Mistral
 
@@ -565,7 +608,9 @@ class MultiModelOrchestrator:
             DataFrame avec résultats
         """
         try:
-            result = self.mistral.classify_dataframe(chunk, text_column, show_progress=False)
+            result = self.mistral.classify_dataframe(
+                chunk, text_column, show_progress=False
+            )
             return result
 
         except Exception as e:
@@ -627,11 +672,15 @@ class MultiModelOrchestrator:
             # is_claim
             "claims_count": df["is_claim"].sum() if "is_claim" in df.columns else 0,
             "claims_percentage": (
-                (df["is_claim"].sum() / len(df) * 100) if "is_claim" in df.columns else 0
+                (df["is_claim"].sum() / len(df) * 100)
+                if "is_claim" in df.columns
+                else 0
             ),
             # Sentiment
             "sentiment_distribution": (
-                df["sentiment"].value_counts().to_dict() if "sentiment" in df.columns else {}
+                df["sentiment"].value_counts().to_dict()
+                if "sentiment" in df.columns
+                else {}
             ),
             "sentiment_positive_pct": (
                 (df["sentiment"] == "positif").sum() / len(df) * 100
@@ -645,7 +694,9 @@ class MultiModelOrchestrator:
             ),
             # Urgence
             "urgence_distribution": (
-                df["urgence"].value_counts().to_dict() if "urgence" in df.columns else {}
+                df["urgence"].value_counts().to_dict()
+                if "urgence" in df.columns
+                else {}
             ),
             "urgence_haute_count": (
                 (df["urgence"] == "haute").sum() if "urgence" in df.columns else 0
@@ -657,13 +708,23 @@ class MultiModelOrchestrator:
             "topics_count": df["topics"].nunique() if "topics" in df.columns else 0,
             # Incidents
             "incident_distribution": (
-                df["incident"].value_counts().to_dict() if "incident" in df.columns else {}
+                df["incident"].value_counts().to_dict()
+                if "incident" in df.columns
+                else {}
             ),
-            "incident_count": df["incident"].nunique() if "incident" in df.columns else 0,
+            "incident_count": (
+                df["incident"].nunique() if "incident" in df.columns else 0
+            ),
             # Confidence
-            "confidence_avg": df["confidence"].mean() if "confidence" in df.columns else 0,
-            "confidence_min": df["confidence"].min() if "confidence" in df.columns else 0,
-            "confidence_max": df["confidence"].max() if "confidence" in df.columns else 0,
+            "confidence_avg": (
+                df["confidence"].mean() if "confidence" in df.columns else 0
+            ),
+            "confidence_min": (
+                df["confidence"].min() if "confidence" in df.columns else 0
+            ),
+            "confidence_max": (
+                df["confidence"].max() if "confidence" in df.columns else 0
+            ),
         }
 
         return report
@@ -727,7 +788,11 @@ if __name__ == "__main__":
     elapsed = time.time() - start
 
     print(f"\n Résultats en {elapsed:.2f}s:\n")
-    print(results[["sentiment", "is_claim", "urgence", "topics", "confidence"]].to_string())
+    print(
+        results[
+            ["sentiment", "is_claim", "urgence", "topics", "confidence"]
+        ].to_string()
+    )
 
     # Rapport
     report = orchestrator.get_classification_report(results)

@@ -67,7 +67,9 @@ class TextPreprocessor:
         'bonjour ma fibre ne marche pas'
     """
 
-    def __init__(self, use_spacy: bool = False, enable_language_detection: bool = False):
+    def __init__(
+        self, use_spacy: bool = False, enable_language_detection: bool = False
+    ):
         """
         Initialize the text preprocessor.
 
@@ -76,7 +78,9 @@ class TextPreprocessor:
             enable_language_detection: Enable language detection for each text
         """
         self.use_spacy = use_spacy and SPACY_AVAILABLE
-        self.enable_language_detection = enable_language_detection and LANGDETECT_AVAILABLE
+        self.enable_language_detection = (
+            enable_language_detection and LANGDETECT_AVAILABLE
+        )
         self.nlp = None
 
         # Initialize spaCy if requested and available
@@ -96,7 +100,9 @@ class TextPreprocessor:
         self.mention_pattern = re.compile(r"@\w+")
         self.hashtag_pattern = re.compile(r"#(\w+)")
         # Keep French accented characters
-        self.special_chars_pattern = re.compile(r"[^\w\s\-.,!?àâäéèêëïîôùûüÿæœç]", re.UNICODE)
+        self.special_chars_pattern = re.compile(
+            r"[^\w\s\-.,!?àâäéèêëïîôùûüÿæœç]", re.UNICODE
+        )
         self.spaces_pattern = re.compile(r"\s+")
 
         # Emoji pattern (optional, can be kept for sentiment analysis)
@@ -110,7 +116,9 @@ class TextPreprocessor:
             flags=re.UNICODE,
         )
 
-    def clean(self, text: str, preserve_case: bool = False, remove_emojis: bool = False) -> str:
+    def clean(
+        self, text: str, preserve_case: bool = False, remove_emojis: bool = False
+    ) -> str:
         """
         Clean and normalize text for NLP processing.
 

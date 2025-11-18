@@ -66,7 +66,9 @@ else:
         if os.getenv("GEMINI_API_KEY"):
             logger.info("✓ GEMINI_API_KEY détectée dans .env")
     else:
-        logger.warning("Fichier .env non trouvé, utilisation des variables d'environnement système")
+        logger.warning(
+            "Fichier .env non trouvé, utilisation des variables d'environnement système"
+        )
 
 # Configuration des chemins
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -184,7 +186,9 @@ def _load_classification_modules():
         )
 
         modules_status["modules"]["MistralClassifier"] = MistralClassifier
-        modules_status["modules"]["check_ollama_availability"] = check_ollama_availability
+        modules_status["modules"][
+            "check_ollama_availability"
+        ] = check_ollama_availability
         modules_status["modules"]["list_available_models"] = list_available_models
         logger.info("✓ MistralClassifier chargé")
     except ImportError as e:
@@ -203,10 +207,15 @@ def _load_classification_modules():
 
     # Module 5: GeminiClassifier
     try:
-        from services.gemini_classifier import GeminiClassifier, check_gemini_availability
+        from services.gemini_classifier import (
+            GeminiClassifier,
+            check_gemini_availability,
+        )
 
         modules_status["modules"]["GeminiClassifier"] = GeminiClassifier
-        modules_status["modules"]["check_gemini_availability"] = check_gemini_availability
+        modules_status["modules"][
+            "check_gemini_availability"
+        ] = check_gemini_availability
         logger.info("✓ GeminiClassifier chargé")
     except ImportError as e:
         modules_status["errors"]["GeminiClassifier"] = f"Import error: {str(e)}"
@@ -262,7 +271,11 @@ def _load_classification_modules():
 def _load_role_system():
     """Charge le système de rôles avec cache"""
     try:
-        from services.role_manager import initialize_role_system, get_current_role, check_permission
+        from services.role_manager import (
+            initialize_role_system,
+            get_current_role,
+            check_permission,
+        )
         from services.auth_service import AuthService
 
         return {
@@ -682,7 +695,11 @@ def _render_header():
     with col3:
         # Étape workflow
         step = st.session_state.get("workflow_step", "upload")
-        step_names = {"upload": "Upload", "classify": "Classification", "results": "Résultats"}
+        step_names = {
+            "upload": "Upload",
+            "classify": "Classification",
+            "results": "Résultats",
+        }
         step_icons = {
             "upload": "<i class='fas fa-upload'></i>",
             "classify": "<i class='fas fa-cogs'></i>",
@@ -724,9 +741,9 @@ def _render_workflow_indicator():
     for idx, (step_key, step_info) in enumerate(steps.items()):
         with cols[idx]:
             is_current = step_key == current_step
-            is_completed = (step_key == "upload" and current_step in ["classify", "results"]) or (
-                step_key == "classify" and current_step == "results"
-            )
+            is_completed = (
+                step_key == "upload" and current_step in ["classify", "results"]
+            ) or (step_key == "classify" and current_step == "results")
 
             if is_current:
                 st.info(f"**[{step_info['num']}] {step_info['name']}**\n\nEn cours...")
@@ -1015,7 +1032,9 @@ def _check_mistral_availability() -> dict:
 
         # Vérifier si MistralClassifier est chargé
         if "MistralClassifier" not in modules_dict:
-            error_msg = modules_status.get("errors", {}).get("MistralClassifier", "Erreur inconnue")
+            error_msg = modules_status.get("errors", {}).get(
+                "MistralClassifier", "Erreur inconnue"
+            )
             result["message"] = "Module MistralClassifier non chargé"
             result["details"] = str(error_msg)[:100]  # Limiter la longueur
             if "ollama" in str(error_msg).lower() or "import" in str(error_msg).lower():
@@ -1048,7 +1067,9 @@ def _check_mistral_availability() -> dict:
                 result["solution"] = ""
             else:
                 result["message"] = "Ollama non disponible"
-                result["details"] = "Le service Ollama n'est pas démarré ou inaccessible"
+                result["details"] = (
+                    "Le service Ollama n'est pas démarré ou inaccessible"
+                )
                 result["solution"] = (
                     "Démarrez Ollama avec: ollama serve\nOu installez: https://ollama.ai"
                 )
@@ -1202,7 +1223,9 @@ def _check_gemini_availability() -> dict:
             else:
                 if api_key:
                     result["message"] = "Gemini API non accessible"
-                    result["details"] = "La clé API est présente mais la connexion échoue"
+                    result["details"] = (
+                        "La clé API est présente mais la connexion échoue"
+                    )
                     result["solution"] = (
                         "Vérifiez que la clé est valide et que google-generativeai est installé"
                     )
@@ -1269,7 +1292,9 @@ def _render_system_status():
 
     # Afficher uniquement les modules avec erreurs dans un expander
     if error_modules:
-        with st.expander(f"⚠️ Modules indisponibles ({len(error_modules)})", expanded=False):
+        with st.expander(
+            f"⚠️ Modules indisponibles ({len(error_modules)})", expanded=False
+        ):
             for module_key, error_msg in list(error_modules.items())[
                 :3
             ]:  # Limiter à 3 pour ne pas surcharger
@@ -1281,7 +1306,9 @@ def _render_system_status():
                     "MultiModelOrchestrator": "Orchestrator",
                 }
                 name = module_names.get(module_key, module_key)
-                st.caption(f"**{name}**: {error_msg[:60]}{'...' if len(error_msg) > 60 else ''}")
+                st.caption(
+                    f"**{name}**: {error_msg[:60]}{'...' if len(error_msg) > 60 else ''}"
+                )
 
             if len(error_modules) > 3:
                 st.caption(f"... et {len(error_modules) - 3} autre(s)")
@@ -1326,7 +1353,9 @@ def _render_provider_cards():
             if mistral_available
             else "linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.05) 100%)"
         )
-        mistral_icon = "fa-check-circle" if mistral_available else "fa-exclamation-circle"
+        mistral_icon = (
+            "fa-check-circle" if mistral_available else "fa-exclamation-circle"
+        )
         mistral_message = mistral_status.get("message", "Non disponible")
         mistral_status_text = "Disponible" if mistral_available else "Indisponible"
 
@@ -1407,7 +1436,9 @@ def _render_provider_cards():
         )
         gemini_icon = "fa-check-circle" if gemini_available else "fa-exclamation-circle"
         gemini_message = gemini_status.get("message", "Non disponible")
-        gemini_status_text = "Disponible" if gemini_available else "Configuration requise"
+        gemini_status_text = (
+            "Disponible" if gemini_available else "Configuration requise"
+        )
 
         st.markdown(
             f"""
@@ -1508,7 +1539,11 @@ def _render_provider_cards():
         "Choisissez le modèle:",
         options=provider_options,
         format_func=lambda x: provider_labels.get(x, x),
-        index=0 if "mistral" in provider_options else (1 if "gemini" in provider_options else 0),
+        index=(
+            0
+            if "mistral" in provider_options
+            else (1 if "gemini" in provider_options else 0)
+        ),
         key="api_provider_selector",
         help="Mistral: Local via Ollama | Gemini: API externe Google",
     )
@@ -1559,10 +1594,22 @@ def _render_classifiers_tab():
     # Liste des classificateurs avec statut détaillé
     classificateurs_info = {
         "TweetCleaner": ("Tweet Cleaner", "Nettoyage et préprocessing", True),
-        "EnhancedRuleClassifier": ("Rule Classifier", "Classification par règles métier", True),
-        "BERTClassifier": ("BERT Classifier", "Deep Learning - Analyse de sentiment", False),
+        "EnhancedRuleClassifier": (
+            "Rule Classifier",
+            "Classification par règles métier",
+            True,
+        ),
+        "BERTClassifier": (
+            "BERT Classifier",
+            "Deep Learning - Analyse de sentiment",
+            False,
+        ),
         "MistralClassifier": ("Mistral Classifier", "LLM Mistral AI via Ollama", False),
-        "MultiModelOrchestrator": ("Multi-Model Orchestrator", "Orchestration intelligente", False),
+        "MultiModelOrchestrator": (
+            "Multi-Model Orchestrator",
+            "Orchestration intelligente",
+            False,
+        ),
     }
 
     # Afficher les classificateurs disponibles
@@ -1574,7 +1621,9 @@ def _render_classifiers_tab():
         ]
     )
     if available_count > 0:
-        with st.expander(f"Classificateurs Disponibles ({available_count})", expanded=True):
+        with st.expander(
+            f"Classificateurs Disponibles ({available_count})", expanded=True
+        ):
             for module_key, (name, desc, essential) in classificateurs_info.items():
                 if module_key in available_modules:
                     st.markdown(
@@ -1597,9 +1646,13 @@ def _render_classifiers_tab():
 
     # Afficher les classificateurs indisponibles
     if error_modules:
-        error_count = len([k for k in error_modules.keys() if k in classificateurs_info])
+        error_count = len(
+            [k for k in error_modules.keys() if k in classificateurs_info]
+        )
         if error_count > 0:
-            with st.expander(f"Classificateurs Indisponibles ({error_count})", expanded=False):
+            with st.expander(
+                f"Classificateurs Indisponibles ({error_count})", expanded=False
+            ):
                 for module_key, error_msg in error_modules.items():
                     if module_key in classificateurs_info:
                         name, desc, essential = classificateurs_info[module_key]
@@ -1651,7 +1704,8 @@ def _render_classifiers_tab():
                         models = list_models()
                         if models:
                             with st.expander(
-                                f"Modèles LLM Disponibles ({len(models)})", expanded=False
+                                f"Modèles LLM Disponibles ({len(models)})",
+                                expanded=False,
                             ):
                                 for idx, model in enumerate(models):
                                     status = "Recommandé" if idx == 0 else "Disponible"
@@ -1820,7 +1874,10 @@ def _render_role_management_tab():
             }
 
             for perm_key, perm_label in key_perms.items():
-                has_perm = perm_key in role_config.permissions or "all" in role_config.permissions
+                has_perm = (
+                    perm_key in role_config.permissions
+                    or "all" in role_config.permissions
+                )
                 icon = (
                     "<i class='fas fa-check' style='color:#10AC84;'></i>"
                     if has_perm
@@ -2067,10 +2124,14 @@ def _render_remote_importer():
         color = "#d1fae5" if status.get("type") == "success" else "#fee2e2"
         border = "#10B981" if status.get("type") == "success" else "#EF4444"
         icon = (
-            "fa-cloud-arrow-down" if status.get("type") == "success" else "fa-triangle-exclamation"
+            "fa-cloud-arrow-down"
+            if status.get("type") == "success"
+            else "fa-triangle-exclamation"
         )
         title = (
-            "Import distant réussi" if status.get("type") == "success" else "Import distant échoué"
+            "Import distant réussi"
+            if status.get("type") == "success"
+            else "Import distant échoué"
         )
         detail = ""
         if status.get("type") == "success":
@@ -2105,9 +2166,15 @@ def _render_remote_importer():
         )
 
         col_method, col_timeout = st.columns([1, 1])
-        method = col_method.selectbox("Méthode", ["GET", "POST"], key="remote_import_method")
+        method = col_method.selectbox(
+            "Méthode", ["GET", "POST"], key="remote_import_method"
+        )
         timeout = col_timeout.slider(
-            "Timeout (secondes)", min_value=5, max_value=60, value=15, key="remote_import_timeout"
+            "Timeout (secondes)",
+            min_value=5,
+            max_value=60,
+            value=15,
+            key="remote_import_timeout",
         )
 
         col_token, col_header = st.columns(2)
@@ -2115,7 +2182,9 @@ def _render_remote_importer():
             "Token / API Key (optionnel)", type="password", key="remote_import_token"
         )
         header_name = col_header.text_input(
-            "Nom du header (ex: Authorization)", value="Authorization", key="remote_import_header"
+            "Nom du header (ex: Authorization)",
+            value="Authorization",
+            key="remote_import_header",
         )
 
         payload = ""
@@ -2138,7 +2207,10 @@ def _render_remote_importer():
 
         fetching = st.session_state.get("remote_import_loading", False)
         fetch_btn = st.button(
-            "Importer via l'API", type="primary", use_container_width=True, disabled=fetching
+            "Importer via l'API",
+            type="primary",
+            use_container_width=True,
+            disabled=fetching,
         )
 
         if fetch_btn:
@@ -2179,7 +2251,9 @@ def _render_remote_importer():
                     },
                 }
                 saved_path = persist_remote_dataset(dataset, base_dir=REMOTE_UPLOAD_DIR)
-                st.session_state["remote_import_status"]["details"]["saved_path"] = str(saved_path)
+                st.session_state["remote_import_status"]["details"]["saved_path"] = str(
+                    saved_path
+                )
                 _handle_upload_robust(dataset["uploaded_file"])
             except Exception as exc:
                 message = str(exc)
@@ -2274,7 +2348,9 @@ def _handle_upload_robust(uploaded_file):
                         f"Encodage détecté par chardet: {detected_encoding} (confiance: {result['confidence']:.2f})"
                     )
             except ImportError:
-                logger.debug("chardet non disponible, utilisation de la détection manuelle")
+                logger.debug(
+                    "chardet non disponible, utilisation de la détection manuelle"
+                )
             except Exception as e:
                 logger.warning(f"Erreur détection chardet: {e}")
 
@@ -2283,13 +2359,22 @@ def _handle_upload_robust(uploaded_file):
             if detected_encoding:
                 encodings_to_try.append(detected_encoding)
             encodings_to_try.extend(
-                ["utf-8-sig", "utf-8", "latin-1", "iso-8859-1", "cp1252", "windows-1252"]
+                [
+                    "utf-8-sig",
+                    "utf-8",
+                    "latin-1",
+                    "iso-8859-1",
+                    "cp1252",
+                    "windows-1252",
+                ]
             )
 
             for encoding in encodings_to_try:
                 try:
                     uploaded_file.seek(0)
-                    df = pd.read_csv(uploaded_file, encoding=encoding, on_bad_lines="skip")
+                    df = pd.read_csv(
+                        uploaded_file, encoding=encoding, on_bad_lines="skip"
+                    )
                     logger.info(f"Lecture réussie avec encodage: {encoding}")
                     st.caption(
                         f"<i class='fas fa-check'></i> Encodage détecté: {encoding}",
@@ -2311,7 +2396,9 @@ def _handle_upload_robust(uploaded_file):
             st.error("Fichier vide")
             return
 
-        st.success(f"Chargé avec succès: {len(df):,} lignes • {len(df.columns)} colonnes")
+        st.success(
+            f"Chargé avec succès: {len(df):,} lignes • {len(df.columns)} colonnes"
+        )
 
         # Preview
         with st.expander("Aperçu des Données (10 premières lignes)", expanded=True):
@@ -2366,7 +2453,9 @@ def _handle_upload_robust(uploaded_file):
 
         with col1:
             if st.button(
-                "Nettoyer et Préparer les Données", type="primary", use_container_width=True
+                "Nettoyer et Préparer les Données",
+                type="primary",
+                use_container_width=True,
             ):
                 with st.spinner("Nettoyage des données en cours..."):
                     modules = _load_classification_modules()
@@ -2378,7 +2467,9 @@ def _handle_upload_robust(uploaded_file):
                         progress_bar = st.progress(0)
                         progress_bar.progress(0.3)
 
-                        df_cleaned, stats = cleaner.process_dataframe(df.copy(), selected_column)
+                        df_cleaned, stats = cleaner.process_dataframe(
+                            df.copy(), selected_column
+                        )
 
                         progress_bar.progress(1.0)
 
@@ -2442,7 +2533,9 @@ def _handle_upload_robust(uploaded_file):
             
             <strong><i class='fas fa-book'></i> Documentation complète:</strong> Voir le guide d'utilisation
             """.format(
-                    uploaded_file.size / (1024 * 1024) if "uploaded_file" in locals() else 0
+                    uploaded_file.size / (1024 * 1024)
+                    if "uploaded_file" in locals()
+                    else 0
                 ),
                 icon="error",
             )
@@ -2498,7 +2591,9 @@ def _section_classification():
         available = [c for c in key_cols if c in df_cleaned.columns]
 
         if available:
-            st.dataframe(df_cleaned[available].head(10), use_container_width=True, height=300)
+            st.dataframe(
+                df_cleaned[available].head(10), use_container_width=True, height=300
+            )
         else:
             st.dataframe(df_cleaned.head(10), use_container_width=True, height=300)
 
@@ -2516,7 +2611,9 @@ def _section_classification():
         config_provider = config.get("provider", selected_provider)
         selected_provider = config_provider if config_provider else selected_provider
 
-        provider_name = "Gemini API" if selected_provider == "gemini" else "Mistral (Local)"
+        provider_name = (
+            "Gemini API" if selected_provider == "gemini" else "Mistral (Local)"
+        )
 
         st.info(
             f"""
@@ -2539,7 +2636,9 @@ def _section_classification():
     st.markdown("### Lancer la Classification")
 
     if st.button(
-        "Démarrer la Classification Intelligente", type="primary", use_container_width=True
+        "Démarrer la Classification Intelligente",
+        type="primary",
+        use_container_width=True,
     ):
         _perform_classification(df_cleaned, text_col, mode, use_optimized)
 
@@ -2670,7 +2769,9 @@ def _perform_classification(df, text_col, mode, use_optimized):
 
             # Vérifier que le provider sélectionné est disponible
             if selected_provider == "mistral":
-                mistral_status = provider_manager.get_provider_status("Mistral Local (Ollama)")
+                mistral_status = provider_manager.get_provider_status(
+                    "Mistral Local (Ollama)"
+                )
                 if not mistral_status or not mistral_status.available:
                     st.warning(
                         "⚠️ Mistral n'est pas disponible. Basculement vers Gemini ou fallback..."
@@ -2681,25 +2782,37 @@ def _perform_classification(df, text_col, mode, use_optimized):
                     )
                     if gemini_status and gemini_status.available:
                         selected_provider = "gemini"
-                        logger.info("Basculement vers Gemini car Mistral n'est pas disponible")
+                        logger.info(
+                            "Basculement vers Gemini car Mistral n'est pas disponible"
+                        )
                     else:
-                        st.error("❌ Aucun provider disponible. Impossible de classifier.")
+                        st.error(
+                            "❌ Aucun provider disponible. Impossible de classifier."
+                        )
                         status.empty()
                         progress_bar.empty()
                         st.stop()
             elif selected_provider == "gemini":
-                gemini_status = provider_manager.get_provider_status("Gemini API (Google Cloud)")
+                gemini_status = provider_manager.get_provider_status(
+                    "Gemini API (Google Cloud)"
+                )
                 if not gemini_status or not gemini_status.available:
                     st.warning(
                         "⚠️ Gemini n'est pas disponible. Basculement vers Mistral ou fallback..."
                     )
                     # Essayer Mistral
-                    mistral_status = provider_manager.get_provider_status("Mistral Local (Ollama)")
+                    mistral_status = provider_manager.get_provider_status(
+                        "Mistral Local (Ollama)"
+                    )
                     if mistral_status and mistral_status.available:
                         selected_provider = "mistral"
-                        logger.info("Basculement vers Mistral car Gemini n'est pas disponible")
+                        logger.info(
+                            "Basculement vers Mistral car Gemini n'est pas disponible"
+                        )
                     else:
-                        st.error("❌ Aucun provider disponible. Impossible de classifier.")
+                        st.error(
+                            "❌ Aucun provider disponible. Impossible de classifier."
+                        )
                         status.empty()
                         progress_bar.empty()
                         st.stop()
@@ -2729,7 +2842,9 @@ def _perform_classification(df, text_col, mode, use_optimized):
                 df_classified = gemini_classifier.classify_dataframe(
                     df,
                     text_column=(
-                        f"{text_col}_cleaned" if f"{text_col}_cleaned" in df.columns else text_col
+                        f"{text_col}_cleaned"
+                        if f"{text_col}_cleaned" in df.columns
+                        else text_col
                     ),
                     show_progress=False,
                 )
@@ -2761,7 +2876,9 @@ def _perform_classification(df, text_col, mode, use_optimized):
 
             except Exception as e:
                 logger.error(f"Erreur classification Gemini: {e}")
-                st.warning(f"Erreur avec Gemini API: {str(e)}. Basculement vers Mistral...")
+                st.warning(
+                    f"Erreur avec Gemini API: {str(e)}. Basculement vers Mistral..."
+                )
                 # Fallback vers Mistral
                 selected_provider = "mistral"
 
@@ -2776,7 +2893,9 @@ def _perform_classification(df, text_col, mode, use_optimized):
             else:
                 if use_optimized:
                     try:
-                        from services.ultra_optimized_classifier import UltraOptimizedClassifier
+                        from services.ultra_optimized_classifier import (
+                            UltraOptimizedClassifier,
+                        )
 
                         status.info("Classificateur ultra-optimisé...")
                         progress_bar.progress(0.2)
@@ -2791,7 +2910,10 @@ def _perform_classification(df, text_col, mode, use_optimized):
 
                         start = time.time()
                         results, benchmark = classifier.classify_tweets_batch(
-                            df, f"{text_col}_cleaned", mode=mode, progress_callback=update_progress
+                            df,
+                            f"{text_col}_cleaned",
+                            mode=mode,
+                            progress_callback=update_progress,
                         )
                         elapsed = time.time() - start
 
@@ -2801,7 +2923,9 @@ def _perform_classification(df, text_col, mode, use_optimized):
                     except Exception as e:
                         logger.warning(f"Ultra-optimized fallback: {e}")
                         MultiModelOrchestrator = modules["MultiModelOrchestrator"]
-                        orchestrator = MultiModelOrchestrator(mode=mode, provider=selected_provider)
+                        orchestrator = MultiModelOrchestrator(
+                            mode=mode, provider=selected_provider
+                        )
 
                         status.info("🤖 Classification multi-modèles en cours...")
                         df_classified = orchestrator.classify_intelligent(
@@ -2813,13 +2937,17 @@ def _perform_classification(df, text_col, mode, use_optimized):
                         )
                 else:
                     MultiModelOrchestrator = modules["MultiModelOrchestrator"]
-                    orchestrator = MultiModelOrchestrator(mode=mode, provider=selected_provider)
+                    orchestrator = MultiModelOrchestrator(
+                        mode=mode, provider=selected_provider
+                    )
 
                     status.info("🤖 Classification multi-modèles en cours...")
                     df_classified = orchestrator.classify_intelligent(
                         df,
                         text_col,
-                        progress_callback=lambda msg, pct: progress_bar.progress(0.2 + pct * 0.7),
+                        progress_callback=lambda msg, pct: progress_bar.progress(
+                            0.2 + pct * 0.7
+                        ),
                     )
 
         # Normaliser et compléter les champs KPI pour tous les providers
@@ -2871,7 +2999,11 @@ def _classify_fallback(df: pd.DataFrame, text_col: str) -> pd.DataFrame:
         t = str(text).lower()
 
         # CORRECTION: "réclamation" au lieu de "claim"
-        is_claim = "oui" if any(w in t for w in ["panne", "@free", "problème", "bug"]) else "non"
+        is_claim = (
+            "oui"
+            if any(w in t for w in ["panne", "@free", "problème", "bug"])
+            else "non"
+        )
 
         if any(w in t for w in ["merci", "super", "bravo", "excellent"]):
             sentiment = "positif"
@@ -2893,7 +3025,9 @@ def _classify_fallback(df: pd.DataFrame, text_col: str) -> pd.DataFrame:
         )
 
         incident = (
-            "incident_reseau" if "panne" in t else "facturation" if "facture" in t else "autre"
+            "incident_reseau"
+            if "panne" in t
+            else "facturation" if "facture" in t else "autre"
         )
 
         return pd.Series(
@@ -2959,7 +3093,13 @@ def _normalize_kpi_fields(df: pd.DataFrame) -> pd.DataFrame:
     # 2. Normaliser la colonne is_claim
     if "is_claim" not in df.columns:
         # Chercher des colonnes alternatives
-        for col in ["is_claim", "reclamation", "réclamation", "claim", "is_reclamation"]:
+        for col in [
+            "is_claim",
+            "reclamation",
+            "réclamation",
+            "claim",
+            "is_reclamation",
+        ]:
             if col in df.columns:
                 df["is_claim"] = df[col]
                 break
@@ -3029,14 +3169,21 @@ def _normalize_kpi_fields(df: pd.DataFrame) -> pd.DataFrame:
             # Inférer urgence depuis is_claim et sentiment
             for idx in df[invalid_mask].index:
                 if idx < len(is_claim_col):
-                    is_claim_val = is_claim_col.iloc[idx] if idx < len(is_claim_col) else "non"
+                    is_claim_val = (
+                        is_claim_col.iloc[idx] if idx < len(is_claim_col) else "non"
+                    )
                     sentiment_val = (
                         sentiment_col.iloc[idx]
                         if "sentiment" in df.columns and idx < len(sentiment_col)
                         else "neutre"
                     )
 
-                    if is_claim_val in ["oui", "yes", "1", "true"] and sentiment_val in [
+                    if is_claim_val in [
+                        "oui",
+                        "yes",
+                        "1",
+                        "true",
+                    ] and sentiment_val in [
                         "negatif",
                         "negative",
                         "neg",
@@ -3053,7 +3200,14 @@ def _normalize_kpi_fields(df: pd.DataFrame) -> pd.DataFrame:
     # 4. Normaliser la colonne theme/topic
     if "theme" not in df.columns and "topics" not in df.columns:
         # Chercher des colonnes alternatives
-        for col in ["Thème principal", "category", "Category", "theme", "topics", "topic"]:
+        for col in [
+            "Thème principal",
+            "category",
+            "Category",
+            "theme",
+            "topics",
+            "topic",
+        ]:
             if col in df.columns:
                 df["theme"] = df[col]
                 break
@@ -3101,7 +3255,9 @@ def _normalize_kpi_fields(df: pd.DataFrame) -> pd.DataFrame:
             is_claim_col = df["is_claim"].astype(str).str.lower().str.strip()
             for idx in df[invalid_mask].index:
                 if idx < len(is_claim_col):
-                    is_claim_val = is_claim_col.iloc[idx] if idx < len(is_claim_col) else "non"
+                    is_claim_val = (
+                        is_claim_col.iloc[idx] if idx < len(is_claim_col) else "non"
+                    )
                     if is_claim_val in ["oui", "yes", "1", "true"]:
                         df.loc[idx, "incident"] = "non_specifie"
                     else:
@@ -3187,18 +3343,28 @@ def _calculate_metrics(df: pd.DataFrame) -> Dict[str, Any]:
     return {
         "total_tweets": total,
         "reclamations_count": reclamations_count,
-        "reclamations_percentage": (reclamations_count / total * 100) if total > 0 else 0,
+        "reclamations_percentage": (
+            (reclamations_count / total * 100) if total > 0 else 0
+        ),
         "negative_count": negative_count,
         "negative_percentage": (negative_count / total * 100) if total > 0 else 0,
         "urgence_haute_count": urgence_haute_count,
-        "urgence_haute_percentage": (urgence_haute_count / total * 100) if total > 0 else 0,
+        "urgence_haute_percentage": (
+            (urgence_haute_count / total * 100) if total > 0 else 0
+        ),
         "confidence_avg": df["confidence"].mean() if "confidence" in df.columns else 0,
         "sentiment_dist": (
             df["sentiment"].value_counts() if "sentiment" in df.columns else pd.Series()
         ),
-        "urgence_dist": df["urgence"].value_counts() if "urgence" in df.columns else pd.Series(),
-        "topics_dist": df["topics"].value_counts() if "topics" in df.columns else pd.Series(),
-        "incident_dist": df["incident"].value_counts() if "incident" in df.columns else pd.Series(),
+        "urgence_dist": (
+            df["urgence"].value_counts() if "urgence" in df.columns else pd.Series()
+        ),
+        "topics_dist": (
+            df["topics"].value_counts() if "topics" in df.columns else pd.Series()
+        ),
+        "incident_dist": (
+            df["incident"].value_counts() if "incident" in df.columns else pd.Series()
+        ),
     }
 
 
@@ -3219,7 +3385,9 @@ def _section_results():
     col1, col2 = st.columns([3, 1])
 
     with col1:
-        st.info(f"**Mode {mode.upper()}** | **{len(df):,}** tweets classifiés avec succès")
+        st.info(
+            f"**Mode {mode.upper()}** | **{len(df):,}** tweets classifiés avec succès"
+        )
 
     with col2:
         # NOUVEAU: Bouton affichage complet des indicateurs
@@ -3230,7 +3398,9 @@ def _section_results():
             "Tout Afficher" if not st.session_state.show_all_indicators else "Réduire",
             use_container_width=True,
         ):
-            st.session_state.show_all_indicators = not st.session_state.show_all_indicators
+            st.session_state.show_all_indicators = (
+                not st.session_state.show_all_indicators
+            )
             st.rerun()
 
     # KPIs principaux avec pourcentages
@@ -3268,14 +3438,18 @@ def _section_results():
 
         with col4:
             st.metric(
-                "Confiance Moyenne", f"{report.get('confidence_avg', 0):.3f}", delta="Score 0-1"
+                "Confiance Moyenne",
+                f"{report.get('confidence_avg', 0):.3f}",
+                delta="Score 0-1",
             )
 
         with col5:
             if not report.get("topics_dist", pd.Series()).empty:
                 top_topic = report["topics_dist"].index[0]
                 top_topic_count = report["topics_dist"].iloc[0]
-                st.metric("Thème Principal", top_topic, delta=f"{top_topic_count:,} tweets")
+                st.metric(
+                    "Thème Principal", top_topic, delta=f"{top_topic_count:,} tweets"
+                )
 
         with col6:
             if "incident" in df.columns:
@@ -3284,7 +3458,9 @@ def _section_results():
 
                 # Filtrer les incidents réels (exclure "aucun", "non", etc.)
                 non_incidents = ["aucun", "non", "none", "n/a", "na", ""]
-                incidents_reels = incident_normalized[~incident_normalized.isin(non_incidents)]
+                incidents_reels = incident_normalized[
+                    ~incident_normalized.isin(non_incidents)
+                ]
 
                 if len(incidents_reels) > 0:
                     # Obtenir l'incident le plus fréquent (hors "aucun")
@@ -3304,13 +3480,17 @@ def _section_results():
                 else:
                     # Aucun incident réel détecté
                     total_aucun = len(df) - len(incidents_reels)
-                    st.metric("Incident Principal", "aucun", delta=f"{total_aucun:,} tweets")
+                    st.metric(
+                        "Incident Principal", "aucun", delta=f"{total_aucun:,} tweets"
+                    )
             elif not report.get("incident_dist", pd.Series()).empty:
                 # Fallback vers le rapport si disponible
                 top_incident = report["incident_dist"].index[0]
                 top_incident_count = report["incident_dist"].iloc[0]
                 st.metric(
-                    "Incident Principal", top_incident, delta=f"{top_incident_count:,} tweets"
+                    "Incident Principal",
+                    top_incident,
+                    delta=f"{top_incident_count:,} tweets",
                 )
 
     else:
@@ -3404,7 +3584,9 @@ def _render_quality_summary(df: pd.DataFrame, report: Dict[str, Any]):
     """Affiche un encart de qualité/couverture pour rassurer l'utilisateur."""
     total = len(df)
     claims = report.get("reclamations_count", 0)
-    sentiments_covered = len(df["sentiment"].dropna()) if "sentiment" in df.columns else 0
+    sentiments_covered = (
+        len(df["sentiment"].dropna()) if "sentiment" in df.columns else 0
+    )
 
     # Calcul des incidents critiques - MATCHING DYNAMIQUE ROBUSTE
     incidents_detected = 0
@@ -3433,9 +3615,9 @@ def _render_quality_summary(df: pd.DataFrame, report: Dict[str, Any]):
             "none",
             "",
         ]
-        incidents_mask = incident_normalized.isin(critical_incidents) & ~incident_normalized.isin(
-            non_critical
-        )
+        incidents_mask = incident_normalized.isin(
+            critical_incidents
+        ) & ~incident_normalized.isin(non_critical)
         incidents_detected = int(incidents_mask.sum())
 
     # Alternative : calculer depuis urgence haute + incident
@@ -3447,7 +3629,16 @@ def _render_quality_summary(df: pd.DataFrame, report: Dict[str, Any]):
             ["haute", "high", "elevee", "élevée", "critique", "critical"]
         )
         has_incident_mask = ~incident_normalized.isin(
-            ["aucun", "non_specifie", "autre", "information", "non_specifié", "nan", "none", ""]
+            [
+                "aucun",
+                "non_specifie",
+                "autre",
+                "information",
+                "non_specifié",
+                "nan",
+                "none",
+                "",
+            ]
         )
         incidents_detected = int((high_urgency_mask & has_incident_mask).sum())
 
@@ -3464,7 +3655,9 @@ def _render_quality_summary(df: pd.DataFrame, report: Dict[str, Any]):
     col_q1, col_q2, col_q3 = st.columns(3)
     with col_q1:
         coverage = (claims / total * 100) if total else 0
-        st.metric("Couverture Réclamations", f"{coverage:.1f}%", f"{claims:,} détectées")
+        st.metric(
+            "Couverture Réclamations", f"{coverage:.1f}%", f"{claims:,} détectées"
+        )
     with col_q2:
         st.metric(
             "Tweets avec Sentiment",
@@ -3472,7 +3665,9 @@ def _render_quality_summary(df: pd.DataFrame, report: Dict[str, Any]):
             f"{sentiments_covered:,}/{total:,}",
         )
     with col_q3:
-        st.metric("Incidents critiques", f"{incidents_detected:,}", "pannes/facturation")
+        st.metric(
+            "Incidents critiques", f"{incidents_detected:,}", "pannes/facturation"
+        )
 
 
 def _render_analytics_visualizations(df):
@@ -3525,7 +3720,8 @@ def _render_analytics_visualizations(df):
 
             # Créer labels avec count et pourcentage
             text_labels = [
-                f"{count}<br>({pct}%)" for count, pct in zip(theme_counts.values, percentages)
+                f"{count}<br>({pct}%)"
+                for count, pct in zip(theme_counts.values, percentages)
             ]
 
             fig = go.Figure(
@@ -3536,7 +3732,9 @@ def _render_analytics_visualizations(df):
                         marker=dict(color=colors, line=dict(color="white", width=1.5)),
                         text=text_labels,
                         textposition="outside",
-                        textfont=dict(size=11, color="#1a202c", family="Arial, sans-serif"),
+                        textfont=dict(
+                            size=11, color="#1a202c", family="Arial, sans-serif"
+                        ),
                         hovertemplate="<b>%{x}</b><br>Nombre: %{y:,}<br>Pourcentage: %{customdata:.2f}%<extra></extra>",
                         customdata=percentages,
                         showlegend=False,
@@ -3556,7 +3754,11 @@ def _render_analytics_visualizations(df):
                         cmin=0,
                         cmax=theme_counts.max(),
                         colorbar=dict(
-                            title="Nombre", tickmode="linear", thickness=15, len=0.7, x=1.12
+                            title="Nombre",
+                            tickmode="linear",
+                            thickness=15,
+                            len=0.7,
+                            x=1.12,
                         ),
                     ),
                     hoverinfo="skip",
@@ -3614,7 +3816,8 @@ def _render_analytics_visualizations(df):
 
             # Labels avec count et pourcentage
             text_labels = [
-                f"{count} ({pct}%)" for count, pct in zip(incident_counts.values, percentages)
+                f"{count} ({pct}%)"
+                for count, pct in zip(incident_counts.values, percentages)
             ]
 
             fig = go.Figure(
@@ -3626,7 +3829,9 @@ def _render_analytics_visualizations(df):
                         marker=dict(color=colors, line=dict(color="white", width=1.5)),
                         text=text_labels,
                         textposition="outside",
-                        textfont=dict(size=11, color="#1a202c", family="Arial, sans-serif"),
+                        textfont=dict(
+                            size=11, color="#1a202c", family="Arial, sans-serif"
+                        ),
                         hovertemplate="<b>%{y}</b><br>Nombre: %{x:,}<br>Pourcentage: %{customdata:.2f}%<extra></extra>",
                         customdata=percentages,
                         showlegend=False,
@@ -3657,7 +3862,9 @@ def _render_analytics_visualizations(df):
                 hovermode="closest",
             )
 
-            st.plotly_chart(fig, use_container_width=True, key="analytics_incident_dist")
+            st.plotly_chart(
+                fig, use_container_width=True, key="analytics_incident_dist"
+            )
         else:
             st.info("⚠️ Aucune donnée d'incidents disponible")
 
@@ -3674,7 +3881,9 @@ def _render_sentiment_chart(df):
 
     if "sentiment" in df.columns:
         sentiment_normalized = df["sentiment"].astype(str).str.lower().str.strip()
-        neg_count = int(sentiment_normalized.isin(["negatif", "négatif", "negative", "neg"]).sum())
+        neg_count = int(
+            sentiment_normalized.isin(["negatif", "négatif", "negative", "neg"]).sum()
+        )
         neu_count = int(sentiment_normalized.isin(["neutre", "neutral", "neu"]).sum())
         pos_count = int(sentiment_normalized.isin(["positif", "positive", "pos"]).sum())
         total = len(df)
@@ -3724,7 +3933,9 @@ def _render_sentiment_chart(df):
         with stat_col2:
             if "is_claim" in df.columns:
                 claims_normalized = df["is_claim"].astype(str).str.lower().str.strip()
-                claims_count = int(claims_normalized.isin(["oui", "yes", "1", "true"]).sum())
+                claims_count = int(
+                    claims_normalized.isin(["oui", "yes", "1", "true"]).sum()
+                )
                 st.metric(
                     "Réclamations détectées",
                     f"{claims_count:,}",
@@ -3769,13 +3980,17 @@ def _render_reclamations_chart(df):
         claims_normalized = df["is_claim"].astype(str).str.lower().str.strip()
 
         # Compter réclamations et non-réclamations
-        reclamations_count = int(claims_normalized.isin(["oui", "yes", "1", "true"]).sum())
+        reclamations_count = int(
+            claims_normalized.isin(["oui", "yes", "1", "true"]).sum()
+        )
         non_reclamations_count = len(df) - reclamations_count
         total = len(df)
 
         # Calculer les pourcentages
         reclamations_pct = (reclamations_count / total * 100) if total > 0 else 0
-        non_reclamations_pct = (non_reclamations_count / total * 100) if total > 0 else 0
+        non_reclamations_pct = (
+            (non_reclamations_count / total * 100) if total > 0 else 0
+        )
 
         # Donut chart style coral/red du screenshot
         fig = go.Figure(
@@ -3849,7 +4064,9 @@ def _render_urgence_chart(df):
         }
 
         # Appliquer le mapping
-        urgence_categorized = urgence_normalized.map(lambda x: urgence_map.get(x, "FAIBLE"))
+        urgence_categorized = urgence_normalized.map(
+            lambda x: urgence_map.get(x, "FAIBLE")
+        )
 
         # Compter les catégories
         counts = urgence_categorized.value_counts()
@@ -3907,7 +4124,11 @@ def _render_urgence_chart(df):
                 showgrid=True,
                 gridcolor="rgba(0,0,0,0.08)",
                 title_font=dict(size=12, color="#4a5568"),
-                range=[0, max(counts.values) * 1.15] if max(counts.values) > 0 else [0, 10],
+                range=(
+                    [0, max(counts.values) * 1.15]
+                    if max(counts.values) > 0
+                    else [0, 10]
+                ),
             ),
             height=450,
             template="plotly_white",
@@ -3934,7 +4155,13 @@ def _render_topics_chart(df):
     if "topics" in df.columns:
         counts = df["topics"].value_counts().head(10)
 
-        fig = px.bar(y=counts.index, x=counts.values, orientation="h", title="", text=counts.values)
+        fig = px.bar(
+            y=counts.index,
+            x=counts.values,
+            orientation="h",
+            title="",
+            text=counts.values,
+        )
         fig.update_traces(texttemplate="%{text}", textposition="outside")
         fig.update_layout(height=400, showlegend=False)
         st.plotly_chart(fig, use_container_width=True)
@@ -4040,30 +4267,51 @@ def _display_business_dashboard_mistral(df, report):
             with col2:
                 if "is_claim" in df.columns:
                     # Matching robuste case-insensitive pour is_claim
-                    claims_normalized = df["is_claim"].astype(str).str.lower().str.strip()
-                    claims = int(claims_normalized.isin(["oui", "yes", "1", "true"]).sum())
+                    claims_normalized = (
+                        df["is_claim"].astype(str).str.lower().str.strip()
+                    )
+                    claims = int(
+                        claims_normalized.isin(["oui", "yes", "1", "true"]).sum()
+                    )
                     claims_pct = (claims / len(df) * 100) if len(df) > 0 else 0
                     st.metric("Réclamations", f"{claims:,}", delta=f"{claims_pct:.1f}%")
 
             with col3:
                 if "sentiment" in df.columns:
                     # Matching robuste case-insensitive pour sentiment négatif
-                    sentiment_normalized = df["sentiment"].astype(str).str.lower().str.strip()
-                    neg = int(sentiment_normalized.isin(["negatif", "negative", "neg"]).sum())
+                    sentiment_normalized = (
+                        df["sentiment"].astype(str).str.lower().str.strip()
+                    )
+                    neg = int(
+                        sentiment_normalized.isin(["negatif", "negative", "neg"]).sum()
+                    )
                     neg_pct = (neg / len(df) * 100) if len(df) > 0 else 0
-                    st.metric("Sentiments Négatifs", f"{neg:,}", delta=f"{neg_pct:.1f}%")
+                    st.metric(
+                        "Sentiments Négatifs", f"{neg:,}", delta=f"{neg_pct:.1f}%"
+                    )
 
             with col4:
                 if "urgence" in df.columns:
                     # Matching robuste case-insensitive pour urgence haute
-                    urgence_normalized = df["urgence"].astype(str).str.lower().str.strip()
+                    urgence_normalized = (
+                        df["urgence"].astype(str).str.lower().str.strip()
+                    )
                     urgent = int(
                         urgence_normalized.isin(
-                            ["haute", "high", "elevee", "élevée", "critique", "critical"]
+                            [
+                                "haute",
+                                "high",
+                                "elevee",
+                                "élevée",
+                                "critique",
+                                "critical",
+                            ]
                         ).sum()
                     )
                     urgent_pct = (urgent / len(df) * 100) if len(df) > 0 else 0
-                    st.metric("Urgence Haute", f"{urgent:,}", delta=f"{urgent_pct:.1f}%")
+                    st.metric(
+                        "Urgence Haute", f"{urgent:,}", delta=f"{urgent_pct:.1f}%"
+                    )
 
     except Exception as e:
         logger.error(f"Erreur dashboard business: {e}")
@@ -4131,7 +4379,12 @@ def _render_export_section(df, report):
 
     with col4:
         if st.button("Nouvelle Classification", use_container_width=True):
-            for key in ["df_cleaned", "df_classified", "classification_report", "cleaning_stats"]:
+            for key in [
+                "df_cleaned",
+                "df_classified",
+                "classification_report",
+                "cleaning_stats",
+            ]:
                 st.session_state.pop(key, None)
             st.session_state.workflow_step = "upload"
             st.rerun()

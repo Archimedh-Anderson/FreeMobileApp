@@ -145,7 +145,9 @@ class ProviderManager:
                 response = requests.get(f"{ollama_url}/api/tags", timeout=2)
                 if response.status_code == 200:
                     models = response.json().get("models", [])
-                    has_mistral = any("mistral" in m.get("name", "").lower() for m in models)
+                    has_mistral = any(
+                        "mistral" in m.get("name", "").lower() for m in models
+                    )
 
                     if has_mistral:
                         return ProviderStatus(
@@ -284,7 +286,10 @@ class ProviderManager:
         Returns:
             Dictionnaire avec les statuts de tous les providers
         """
-        return {provider_key: check_func() for provider_key, check_func in self.providers.items()}
+        return {
+            provider_key: check_func()
+            for provider_key, check_func in self.providers.items()
+        }
 
     def get_available_providers(self) -> List[str]:
         """

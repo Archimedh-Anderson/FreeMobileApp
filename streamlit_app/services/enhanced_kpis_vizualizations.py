@@ -18,7 +18,9 @@ import pandas as pd  # Manipulation de DataFrames et calculs vectorisés
 import numpy as np  # Calculs mathématiques optimisés et agrégations
 import plotly.express as px  # Graphiques interactifs haut niveau
 import plotly.graph_objects as go  # Graphiques interactifs bas niveau (contrôle fin)
-from plotly.subplots import make_subplots  # Création de tableaux de bord multi-graphiques
+from plotly.subplots import (
+    make_subplots,
+)  # Création de tableaux de bord multi-graphiques
 from typing import Dict, Any, List, Tuple  # Annotations de types pour clarté
 import streamlit as st  # Interface utilisateur et composants de rendu
 from datetime import datetime  # Gestion des horodatages pour traçabilité
@@ -109,7 +111,9 @@ def compute_business_kpis(df: pd.DataFrame) -> Dict[str, Any]:
         }
         # Ajouter la confiance moyenne si disponible
         if "theme_confidence" in df.columns:
-            kpis["thematic_distribution"]["avg_confidence"] = float(df["theme_confidence"].mean())
+            kpis["thematic_distribution"]["avg_confidence"] = float(
+                df["theme_confidence"].mean()
+            )
     elif "category" in df.columns:
         theme_dist = df["category"].value_counts()
         kpis["thematic_distribution"] = {
@@ -141,7 +145,9 @@ def compute_business_kpis(df: pd.DataFrame) -> Dict[str, Any]:
         positive_mask = sentiment_normalized.isin(
             ["positive", "positif", "pos", "1", "good", "happy"]
         )
-        neutral_mask = sentiment_normalized.isin(["neutral", "neutre", "neu", "0", "ok"])
+        neutral_mask = sentiment_normalized.isin(
+            ["neutral", "neutre", "neu", "0", "ok"]
+        )
         negative_mask = sentiment_normalized.isin(
             ["negative", "négatif", "negatif", "neg", "-1", "bad", "angry"]
         )
@@ -153,7 +159,9 @@ def compute_business_kpis(df: pd.DataFrame) -> Dict[str, Any]:
         # Calcul de l'indice de satisfaction (scale 0-100)
         # Formule: ((positif - négatif) / total) * 50 + 50
         satisfaction_index = (
-            ((positive - negative) / total_tweets * 50 + 50) if total_tweets > 0 else 50.0
+            ((positive - negative) / total_tweets * 50 + 50)
+            if total_tweets > 0
+            else 50.0
         )
 
         kpis["satisfaction_index"] = {
@@ -161,9 +169,13 @@ def compute_business_kpis(df: pd.DataFrame) -> Dict[str, Any]:
             "positive_count": positive,
             "neutral_count": neutral,
             "negative_count": negative,
-            "positive_pct": (positive / total_tweets * 100) if total_tweets > 0 else 0.0,
+            "positive_pct": (
+                (positive / total_tweets * 100) if total_tweets > 0 else 0.0
+            ),
             "neutral_pct": (neutral / total_tweets * 100) if total_tweets > 0 else 0.0,
-            "negative_pct": (negative / total_tweets * 100) if total_tweets > 0 else 0.0,
+            "negative_pct": (
+                (negative / total_tweets * 100) if total_tweets > 0 else 0.0
+            ),
         }
 
     # 4. Urgency Rate (Taux d'urgence) - OPTIMISÉ ET ROBUSTE
@@ -215,19 +227,27 @@ def compute_business_kpis(df: pd.DataFrame) -> Dict[str, Any]:
                 "average": float(confidence_clean.mean()),
                 "min": float(confidence_clean.min()),
                 "max": float(confidence_clean.max()),
-                "std": float(confidence_clean.std()) if len(confidence_clean) > 1 else 0.0,
+                "std": (
+                    float(confidence_clean.std()) if len(confidence_clean) > 1 else 0.0
+                ),
             }
         else:
             kpis["confidence_score"] = {"average": 0, "min": 0, "max": 0, "std": 0}
     elif "sentiment_score" in df.columns:
-        sentiment_numeric = pd.to_numeric(df["sentiment_score"], errors="coerce").dropna()
+        sentiment_numeric = pd.to_numeric(
+            df["sentiment_score"], errors="coerce"
+        ).dropna()
 
         if len(sentiment_numeric) > 0:
             kpis["confidence_score"] = {
                 "average": float(abs(sentiment_numeric.mean())),
                 "min": float(sentiment_numeric.min()),
                 "max": float(sentiment_numeric.max()),
-                "std": float(sentiment_numeric.std()) if len(sentiment_numeric) > 1 else 0.0,
+                "std": (
+                    float(sentiment_numeric.std())
+                    if len(sentiment_numeric) > 1
+                    else 0.0
+                ),
             }
         else:
             kpis["confidence_score"] = {"average": 0, "min": 0, "max": 0, "std": 0}
@@ -237,10 +257,16 @@ def compute_business_kpis(df: pd.DataFrame) -> Dict[str, Any]:
         incident_dist = df["Incident principal"].value_counts()
         kpis["incident_distribution"] = {
             "categories": incident_dist.to_dict(),
-            "top_incident": incident_dist.index[0] if len(incident_dist) > 0 else "aucun",
-            "top_incident_count": int(incident_dist.iloc[0]) if len(incident_dist) > 0 else 0,
+            "top_incident": (
+                incident_dist.index[0] if len(incident_dist) > 0 else "aucun"
+            ),
+            "top_incident_count": (
+                int(incident_dist.iloc[0]) if len(incident_dist) > 0 else 0
+            ),
             "top_incident_pct": (
-                (incident_dist.iloc[0] / total_tweets * 100) if len(incident_dist) > 0 else 0.0
+                (incident_dist.iloc[0] / total_tweets * 100)
+                if len(incident_dist) > 0
+                else 0.0
             ),
             "count": len(incident_dist),
         }
@@ -328,7 +354,11 @@ def render_business_kpis(kpis: Dict[str, Any]):
             claim_count = kpis["claim_rate"]["count"]
 
             # Couleur dynamique basée sur le taux
-            color = "#e53e3e" if claim_rate > 30 else "#ed8936" if claim_rate > 15 else "#48bb78"
+            color = (
+                "#e53e3e"
+                if claim_rate > 30
+                else "#ed8936" if claim_rate > 15 else "#48bb78"
+            )
             emoji = "⚠️" if claim_rate > 30 else "🟠" if claim_rate > 15 else "✅"
 
             st.markdown(
@@ -407,7 +437,9 @@ def render_business_kpis(kpis: Dict[str, Any]):
             urgent_total = kpis["urgency_rate"]["urgent_total"]
 
             # Couleur dynamique urgence
-            color = "#e53e3e" if urgency > 20 else "#ed8936" if urgency > 10 else "#48bb78"
+            color = (
+                "#e53e3e" if urgency > 20 else "#ed8936" if urgency > 10 else "#48bb78"
+            )
 
             st.markdown(
                 f"""
@@ -441,7 +473,11 @@ def render_business_kpis(kpis: Dict[str, Any]):
             max_conf = kpis["confidence_score"]["max"]
 
             # Couleur basée sur la confiance
-            color = "#48bb78" if confidence > 0.8 else "#4299e1" if confidence > 0.6 else "#ed8936"
+            color = (
+                "#48bb78"
+                if confidence > 0.8
+                else "#4299e1" if confidence > 0.6 else "#ed8936"
+            )
 
             st.markdown(
                 f"""
@@ -475,7 +511,9 @@ def render_business_kpis(kpis: Dict[str, Any]):
             top_theme = kpis["thematic_distribution"]["top_category"]
 
             # Tronquer proprement
-            top_theme_display = top_theme[:12] + "..." if len(top_theme) > 12 else top_theme
+            top_theme_display = (
+                top_theme[:12] + "..." if len(top_theme) > 12 else top_theme
+            )
 
             st.markdown(
                 f"""
@@ -543,7 +581,10 @@ def create_sentiment_distribution_chart(df: pd.DataFrame) -> go.Figure:
     }
 
     # List comprehension optimisée
-    colors = [color_map.get(str(sent).lower(), COLORS["info"]) for sent in sentiment_counts.index]
+    colors = [
+        color_map.get(str(sent).lower(), COLORS["info"])
+        for sent in sentiment_counts.index
+    ]
 
     # Création du graphique avec design moderne
     fig = go.Figure(
@@ -552,7 +593,9 @@ def create_sentiment_distribution_chart(df: pd.DataFrame) -> go.Figure:
                 labels=[str(label).capitalize() for label in sentiment_counts.index],
                 values=sentiment_counts.values,
                 hole=0.45,  # Donut plus moderne
-                marker=dict(colors=colors, line=dict(color="white", width=2)),  # Séparation blanche
+                marker=dict(
+                    colors=colors, line=dict(color="white", width=2)
+                ),  # Séparation blanche
                 textinfo="label+percent",
                 textfont=dict(size=13, family="Arial, sans-serif", color="white"),
                 textposition="inside",
@@ -675,7 +718,9 @@ def create_time_series_chart(df: pd.DataFrame, date_col: str = "date") -> go.Fig
             height=450,
             template="plotly_white",
             hovermode="x unified",
-            legend=dict(orientation="h", yanchor="bottom", y=-0.3, xanchor="center", x=0.5),
+            legend=dict(
+                orientation="h", yanchor="bottom", y=-0.3, xanchor="center", x=0.5
+            ),
         )
 
         return fig
@@ -718,7 +763,9 @@ def create_activity_heatmap(df: pd.DataFrame, date_col: str = "date") -> go.Figu
         df_copy["day_of_week"] = df_copy[date_col].dt.day_name()
 
         # Créer une matrice heure x jour
-        heatmap_data = df_copy.groupby(["day_of_week", "hour"]).size().reset_index(name="count")
+        heatmap_data = (
+            df_copy.groupby(["day_of_week", "hour"]).size().reset_index(name="count")
+        )
 
         # Pivoter pour avoir le bon format
         heatmap_pivot = heatmap_data.pivot(
@@ -726,8 +773,18 @@ def create_activity_heatmap(df: pd.DataFrame, date_col: str = "date") -> go.Figu
         ).fillna(0)
 
         # Ordonner les jours
-        day_order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-        heatmap_pivot = heatmap_pivot.reindex([d for d in day_order if d in heatmap_pivot.index])
+        day_order = [
+            "Monday",
+            "Tuesday",
+            "Wednesday",
+            "Thursday",
+            "Friday",
+            "Saturday",
+            "Sunday",
+        ]
+        heatmap_pivot = heatmap_pivot.reindex(
+            [d for d in day_order if d in heatmap_pivot.index]
+        )
 
         fig = go.Figure(
             data=go.Heatmap(
@@ -756,7 +813,9 @@ def create_activity_heatmap(df: pd.DataFrame, date_col: str = "date") -> go.Figu
         return None
 
 
-def create_category_comparison_chart(df: pd.DataFrame, category_col: str = "category") -> go.Figure:
+def create_category_comparison_chart(
+    df: pd.DataFrame, category_col: str = "category"
+) -> go.Figure:
     """
     Crée un graphique en barres verticales pour les top 10 thèmes
     Correspond exactement au screenshot fourni
@@ -813,7 +872,8 @@ def create_category_comparison_chart(df: pd.DataFrame, category_col: str = "cate
 
     # Créer les labels avec pourcentages
     text_labels = [
-        f"{count}<br>({pct}%)" for count, pct in zip(category_counts.values, percentages)
+        f"{count}<br>({pct}%)"
+        for count, pct in zip(category_counts.values, percentages)
     ]
 
     fig = go.Figure(
@@ -965,7 +1025,9 @@ def create_incident_distribution_chart(df: pd.DataFrame) -> go.Figure:
         colors.append(matched_color)
 
     # Créer labels avec nombre et pourcentage
-    text_labels = [f"{count} ({pct}%)" for count, pct in zip(incident_counts.values, percentages)]
+    text_labels = [
+        f"{count} ({pct}%)" for count, pct in zip(incident_counts.values, percentages)
+    ]
 
     fig = go.Figure(
         data=[
@@ -1044,13 +1106,19 @@ def create_radar_chart(kpis: Dict[str, Any], df: pd.DataFrame) -> go.Figure:
         satisfaction = 50
         if "sentiment" in cat_df.columns:
             positive = (
-                cat_df["sentiment"].str.contains("positive|positif", case=False, na=False)
+                cat_df["sentiment"].str.contains(
+                    "positive|positif", case=False, na=False
+                )
             ).sum()
             negative = (
-                cat_df["sentiment"].str.contains("negative|négatif|negatif", case=False, na=False)
+                cat_df["sentiment"].str.contains(
+                    "negative|négatif|negatif", case=False, na=False
+                )
             ).sum()
             total = len(cat_df)
-            satisfaction = ((positive - negative) / total * 50 + 50) if total > 0 else 50
+            satisfaction = (
+                ((positive - negative) / total * 50 + 50) if total > 0 else 50
+            )
 
         metrics.append(satisfaction)
 
@@ -1105,7 +1173,9 @@ def create_urgency_distribution_chart(df: pd.DataFrame) -> go.Figure:
             "low": COLORS["success"],
         }
 
-        colors = [color_map.get(p.lower(), COLORS["info"]) for p in priority_counts.index]
+        colors = [
+            color_map.get(p.lower(), COLORS["info"]) for p in priority_counts.index
+        ]
 
         fig = go.Figure(
             data=[
@@ -1137,7 +1207,9 @@ def create_urgency_distribution_chart(df: pd.DataFrame) -> go.Figure:
         fig = go.Figure(
             data=[
                 go.Pie(
-                    labels=["Urgent" if x else "Non Urgent" for x in urgent_counts.index],
+                    labels=[
+                        "Urgent" if x else "Non Urgent" for x in urgent_counts.index
+                    ],
                     values=urgent_counts.values,
                     marker=dict(colors=[COLORS["danger"], COLORS["success"]]),
                     hole=0.3,
@@ -1216,7 +1288,9 @@ def render_enhanced_visualizations(df: pd.DataFrame, kpis: Dict[str, Any]):
     )
 
     has_incident_data = (
-        "Incident principal" in df.columns or "incident" in df.columns or "category" in df.columns
+        "Incident principal" in df.columns
+        or "incident" in df.columns
+        or "category" in df.columns
     )
 
     # Afficher les graphiques si des données de thèmes OU incidents sont disponibles
@@ -1226,7 +1300,8 @@ def render_enhanced_visualizations(df: pd.DataFrame, kpis: Dict[str, Any]):
         # Graphique des thèmes (gauche)
         with col1:
             st.markdown(
-                "#### <i class='fas fa-tags'></i> Distribution des Thèmes", unsafe_allow_html=True
+                "#### <i class='fas fa-tags'></i> Distribution des Thèmes",
+                unsafe_allow_html=True,
             )
 
             # Déterminer la colonne à utiliser
@@ -1244,7 +1319,9 @@ def render_enhanced_visualizations(df: pd.DataFrame, kpis: Dict[str, Any]):
                 fig_theme = create_category_comparison_chart(df, theme_col)
                 if fig_theme:
                     st.plotly_chart(
-                        fig_theme, use_container_width=True, key="business_viz_theme_dist"
+                        fig_theme,
+                        use_container_width=True,
+                        key="business_viz_theme_dist",
                     )
                 else:
                     st.info(f"Aucune donnée disponible dans la colonne '{theme_col}'")
@@ -1271,25 +1348,34 @@ def render_enhanced_visualizations(df: pd.DataFrame, kpis: Dict[str, Any]):
                 fig_incident = create_incident_distribution_chart(df)
                 if fig_incident:
                     st.plotly_chart(
-                        fig_incident, use_container_width=True, key="business_viz_incident_dist"
+                        fig_incident,
+                        use_container_width=True,
+                        key="business_viz_incident_dist",
                     )
                 else:
-                    st.info(f"Aucune donnée disponible dans la colonne '{incident_col}'")
+                    st.info(
+                        f"Aucune donnée disponible dans la colonne '{incident_col}'"
+                    )
             else:
                 st.info("Colonne d'incidents non détectée")
 
     # Afficher le graphique de sentiment si disponible
     st.markdown(
-        "#### <i class='fas fa-chart-pie'></i> Distribution des Sentiments", unsafe_allow_html=True
+        "#### <i class='fas fa-chart-pie'></i> Distribution des Sentiments",
+        unsafe_allow_html=True,
     )
 
     # Creation et affichage du graphique de distribution des sentiments
     fig_sentiment = create_sentiment_distribution_chart(df)
     if fig_sentiment:
-        st.plotly_chart(fig_sentiment, use_container_width=True, key="business_viz_sentiment_dist")
+        st.plotly_chart(
+            fig_sentiment, use_container_width=True, key="business_viz_sentiment_dist"
+        )
     else:
         # Message si la colonne sentiment n'existe pas
-        st.info("Distribution des sentiments non disponible (colonne 'sentiment' manquante)")
+        st.info(
+            "Distribution des sentiments non disponible (colonne 'sentiment' manquante)"
+        )
 
 
 def render_complete_dashboard(df: pd.DataFrame):

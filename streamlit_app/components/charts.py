@@ -23,7 +23,11 @@ def render_sentiment_distribution(data: pd.DataFrame, sentiment_col: str = "sent
         values=sentiment_counts.values,
         names=sentiment_counts.index,
         title="Distribution des Sentiments",
-        color_discrete_map={"positif": "#28a745", "négatif": "#dc3545", "neutre": "#ffc107"},
+        color_discrete_map={
+            "positif": "#28a745",
+            "négatif": "#dc3545",
+            "neutre": "#ffc107",
+        },
     )
 
     st.plotly_chart(fig, use_container_width=True)
@@ -106,7 +110,9 @@ def render_time_series(data: pd.DataFrame, date_col: str, value_col: str):
         data[date_col] = pd.to_datetime(data[date_col])
         data_sorted = data.sort_values(date_col)
 
-        fig = px.line(data_sorted, x=date_col, y=value_col, title=f"Évolution de {value_col}")
+        fig = px.line(
+            data_sorted, x=date_col, y=value_col, title=f"Évolution de {value_col}"
+        )
 
         st.plotly_chart(fig, use_container_width=True)
     except Exception as e:
@@ -127,6 +133,8 @@ def render_confusion_matrix(cm: List[List[int]], labels: List[str]):
         )
     )
 
-    fig.update_layout(title="Matrice de Confusion", xaxis_title="Prédit", yaxis_title="Réel")
+    fig.update_layout(
+        title="Matrice de Confusion", xaxis_title="Prédit", yaxis_title="Réel"
+    )
 
     st.plotly_chart(fig, use_container_width=True)

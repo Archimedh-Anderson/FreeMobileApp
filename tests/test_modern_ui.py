@@ -15,7 +15,9 @@ def test_normalize_kpi_fields_function_exists():
     """Test que la fonction _normalize_kpi_fields existe"""
     from pages.Classification_Mistral import _normalize_kpi_fields
 
-    assert callable(_normalize_kpi_fields), "La fonction _normalize_kpi_fields doit exister"
+    assert callable(
+        _normalize_kpi_fields
+    ), "La fonction _normalize_kpi_fields doit exister"
 
 
 def test_normalize_kpi_fields_basic():
@@ -46,7 +48,9 @@ def test_provider_cards_function_exists():
     """Test que la fonction _render_provider_cards existe"""
     from pages.Classification_Mistral import _render_provider_cards
 
-    assert callable(_render_provider_cards), "La fonction _render_provider_cards doit exister"
+    assert callable(
+        _render_provider_cards
+    ), "La fonction _render_provider_cards doit exister"
 
 
 def test_upload_section_function_exists():
@@ -86,7 +90,9 @@ def test_normalize_kpi_fields_alternative_columns():
     from pages.Classification_Mistral import _normalize_kpi_fields
 
     # DataFrame avec colonnes alternatives
-    df = pd.DataFrame({"text": ["Test tweet"], "priority": ["HIGH"], "category": ["FIBRE"]})
+    df = pd.DataFrame(
+        {"text": ["Test tweet"], "priority": ["HIGH"], "category": ["FIBRE"]}
+    )
 
     result = _normalize_kpi_fields(df)
 

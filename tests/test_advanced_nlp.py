@@ -94,7 +94,11 @@ try:
         },
         {
             "text": "Merci @free pour votre excellent service, tout fonctionne parfaitement!",
-            "expected": {"sentiment": "POSITIF", "reclamation": "NON", "urgence": "FAIBLE"},
+            "expected": {
+                "sentiment": "POSITIF",
+                "reclamation": "NON",
+                "urgence": "FAIBLE",
+            },
         },
         {
             "text": "Bonjour, comment puis-je modifier mon forfait mobile?",
@@ -139,7 +143,9 @@ try:
             f"  Reclamation:  {result.reclamation} (confidence: {result.metadata['reclam_conf']:.2f})"
         )
         print(f"  Urgence:      {result.urgence}")
-        print(f"  Theme:        {result.theme} (confidence: {result.metadata['theme_conf']:.2f})")
+        print(
+            f"  Theme:        {result.theme} (confidence: {result.metadata['theme_conf']:.2f})"
+        )
         print(f"  Incident:     {result.type_incident}")
         print(f"  Responsable:  {result.responsable}")
         print(f"  Confiance:    {result.confiance}")
@@ -161,7 +167,9 @@ try:
             reclam_match = result.reclamation in expected_reclam
         else:
             reclam_match = result.reclamation == expected_reclam
-        checks.append(("Reclamation", reclam_match, result.reclamation, expected_reclam))
+        checks.append(
+            ("Reclamation", reclam_match, result.reclamation, expected_reclam)
+        )
 
         # Check urgence
         expected_urg = test["expected"]["urgence"]
@@ -184,7 +192,9 @@ try:
             print(f"\n✅ Test {i} PASSED")
         else:
             failed += 1
-            print(f"\n⚠️ Test {i} PARTIALLY PASSED (some expectations not met, but functional)")
+            print(
+                f"\n⚠️ Test {i} PARTIALLY PASSED (some expectations not met, but functional)"
+            )
 
     print(f"\n{'=' * 80}")
     print(f"CLASSIFICATION RESULTS: {passed} fully passed, {failed} partially passed")
@@ -207,7 +217,9 @@ try:
     from services.gemini_classifier import GeminiClassifier
 
     # Initialize with preprocessing (no API key needed for this test)
-    classifier = GeminiClassifier(api_key=None, enable_preprocessing=True)  # No API key for testing
+    classifier = GeminiClassifier(
+        api_key=None, enable_preprocessing=True
+    )  # No API key for testing
 
     print("\n✅ GeminiClassifier initialized successfully")
     print(f"   - Preprocessor available: {classifier.preprocessor is not None}")

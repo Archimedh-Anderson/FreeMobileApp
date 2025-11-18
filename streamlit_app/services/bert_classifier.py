@@ -115,7 +115,16 @@ class BERTClassifier:
                 compute_cap_str = f"sm_{compute_cap[0]}{compute_cap[1]}"
 
                 # PyTorch 2.5.1 supporte : sm_50, sm_60, sm_61, sm_70, sm_75, sm_80, sm_86, sm_90
-                supported_caps = [(5, 0), (6, 0), (6, 1), (7, 0), (7, 5), (8, 0), (8, 6), (9, 0)]
+                supported_caps = [
+                    (5, 0),
+                    (6, 0),
+                    (6, 1),
+                    (7, 0),
+                    (7, 5),
+                    (8, 0),
+                    (8, 6),
+                    (9, 0),
+                ]
 
                 if compute_cap in supported_caps:
                     # Test complet avec une vraie opération
@@ -225,7 +234,9 @@ class BERTClassifier:
             sentiment_detail = self.sentiment_map.get(pred_class, "neutre")
             sentiment = self.simplified_map.get(sentiment_detail, "neutre")
 
-            sentiment, confidence = self._calibrate_sentiment(sentiment, confidence, text)
+            sentiment, confidence = self._calibrate_sentiment(
+                sentiment, confidence, text
+            )
 
             return {
                 "sentiment": sentiment,
@@ -235,9 +246,15 @@ class BERTClassifier:
 
         except Exception as e:
             logger.error(f"Erreur prédiction: {e}")
-            return {"sentiment": "neutre", "sentiment_detail": "neutre", "confidence": 0.5}
+            return {
+                "sentiment": "neutre",
+                "sentiment_detail": "neutre",
+                "confidence": 0.5,
+            }
 
-    def predict_sentiment_batch(self, texts: List[str], show_progress: bool = True) -> List[str]:
+    def predict_sentiment_batch(
+        self, texts: List[str], show_progress: bool = True
+    ) -> List[str]:
         """
         Prédit le sentiment par batch (OPTIMISÉ GPU)
 
@@ -261,7 +278,11 @@ class BERTClassifier:
             try:
                 # Tokenisation du batch
                 inputs = self.tokenizer(
-                    batch, padding=True, truncation=True, max_length=512, return_tensors="pt"
+                    batch,
+                    padding=True,
+                    truncation=True,
+                    max_length=512,
+                    return_tensors="pt",
                 ).to(self.device)
 
                 # Inférence batch
@@ -287,7 +308,9 @@ class BERTClassifier:
 
         return results
 
-    def predict_with_confidence(self, texts: List[str], show_progress: bool = True) -> pd.DataFrame:
+    def predict_with_confidence(
+        self, texts: List[str], show_progress: bool = True
+    ) -> pd.DataFrame:
         """
         Prédit sentiment + score de confiance
 
@@ -308,7 +331,11 @@ class BERTClassifier:
 
             try:
                 inputs = self.tokenizer(
-                    batch, padding=True, truncation=True, max_length=512, return_tensors="pt"
+                    batch,
+                    padding=True,
+                    truncation=True,
+                    max_length=512,
+                    return_tensors="pt",
                 ).to(self.device)
 
                 with torch.no_grad():
@@ -336,7 +363,9 @@ class BERTClassifier:
                 all_sentiments.extend(["neutre"] * len(batch))
                 all_confidences.extend([0.5] * len(batch))
 
-        return pd.DataFrame({"sentiment": all_sentiments, "sentiment_confidence": all_confidences})
+        return pd.DataFrame(
+            {"sentiment": all_sentiments, "sentiment_confidence": all_confidences}
+        )
 
     def _calibrate_sentiment(
         self, sentiment: str, confidence: float, text: str
@@ -352,10 +381,14 @@ class BERTClassifier:
         if any(token in lowered for token in NEGATIVE_KEYWORDS):
             sentiment = "negatif"
             confidence = max(confidence, 0.75)
-        elif sentiment == "neutre" and any(token in lowered for token in POSITIVE_KEYWORDS):
+        elif sentiment == "neutre" and any(
+            token in lowered for token in POSITIVE_KEYWORDS
+        ):
             sentiment = "positif"
             confidence = max(confidence, 0.7)
-        elif sentiment == "positif" and any(token in lowered for token in NEGATIVE_KEYWORDS):
+        elif sentiment == "positif" and any(
+            token in lowered for token in NEGATIVE_KEYWORDS
+        ):
             # Contradiction → neutre
             sentiment = "neutre"
             confidence = min(confidence, 0.6)
@@ -370,7 +403,9 @@ class BERTClassifier:
             "device": self.device,
             "batch_size": self.batch_size,
             "gpu_available": torch.cuda.is_available(),
-            "gpu_name": torch.cuda.get_device_name(0) if torch.cuda.is_available() else "N/A",
+            "gpu_name": (
+                torch.cuda.get_device_name(0) if torch.cuda.is_available() else "N/A"
+            ),
         }
 
 

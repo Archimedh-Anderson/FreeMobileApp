@@ -42,7 +42,9 @@ else:
         load_dotenv(root_env)
         logger.info(f"Fichier .env chargé depuis: {root_env}")
     else:
-        logger.warning("Fichier .env non trouvé, utilisation des variables d'environnement système")
+        logger.warning(
+            "Fichier .env non trouvé, utilisation des variables d'environnement système"
+        )
 
 # Configuration des paramètres de traitement par lot (optimisés pour performance)
 BATCH_SIZE = 50  # Nombre de tweets traités simultanément pour optimiser la performance
@@ -160,8 +162,12 @@ class GeminiClassifier:
 
         # Stockage des paramètres de configuration dans les attributs d'instance
         self.api_key = api_key  # Clé API pour authentification
-        self.model_name = self.config.model_name  # Identification du modèle LLM à utiliser
-        self.batch_size = self.config.batch_size  # Définition de la taille des lots de traitement
+        self.model_name = (
+            self.config.model_name
+        )  # Identification du modèle LLM à utiliser
+        self.batch_size = (
+            self.config.batch_size
+        )  # Définition de la taille des lots de traitement
         self.temperature = (
             self.config.temperature
         )  # Contrôle de la variabilité des réponses du modèle
@@ -275,11 +281,24 @@ class GeminiClassifier:
                             },
                             "categorie": {
                                 "type": "string",
-                                "enum": ["produit", "service", "support", "promotion", "autre"],
+                                "enum": [
+                                    "produit",
+                                    "service",
+                                    "support",
+                                    "promotion",
+                                    "autre",
+                                ],
                             },
-                            "score_confiance": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+                            "score_confiance": {
+                                "type": "number",
+                                "minimum": 0.0,
+                                "maximum": 1.0,
+                            },
                             "is_claim": {"type": "string", "enum": ["oui", "non"]},
-                            "urgence": {"type": "string", "enum": ["haute", "moyenne", "faible"]},
+                            "urgence": {
+                                "type": "string",
+                                "enum": ["haute", "moyenne", "faible"],
+                            },
                             "topics": {"type": "string"},
                             "incident": {"type": "string"},
                         },
@@ -356,7 +375,9 @@ Résultat: {"index": 4, "sentiment": "positif", "categorie": "promotion", "score
         # Construction de la liste numérotée des tweets pour référence dans les résultats
         tweets_text = ""  # Initialisation de la chaîne vide
         for i, tweet in enumerate(tweets):  # Itération avec index pour chaque tweet
-            tweets_text += f"{i}: {tweet}\n"  # Formatage index: contenu avec saut de ligne
+            tweets_text += (
+                f"{i}: {tweet}\n"  # Formatage index: contenu avec saut de ligne
+            )
 
         # Construction du prompt avec Few-Shot prompting et instructions détaillées
         few_shot_examples = self._get_few_shot_examples()
@@ -521,11 +542,15 @@ IMPORTANT: Le nombre de résultats DOIT être exactement {len(tweets)} (un par t
                     # Structured Outputs via response_mime_type et response_schema
                     response_mime_type="application/json",
                     response_schema=self._get_structured_output_schema(),
-                    request_options={"timeout": self.config.response_timeout},  # Timeout explicite
+                    request_options={
+                        "timeout": self.config.response_timeout
+                    },  # Timeout explicite
                 )
             except Exception as e:
                 # Fallback si Structured Outputs non supporté
-                logger.warning(f"Structured Outputs non supporté, fallback standard: {e}")
+                logger.warning(
+                    f"Structured Outputs non supporté, fallback standard: {e}"
+                )
                 response = self.model.generate_content(
                     prompt,
                     generation_config={
@@ -539,7 +564,9 @@ IMPORTANT: Le nombre de résultats DOIT être exactement {len(tweets)} (un par t
                 )
 
             # Extraction du texte de réponse depuis la structure de données Gemini
-            response_text = response.text if hasattr(response, "text") else str(response)
+            response_text = (
+                response.text if hasattr(response, "text") else str(response)
+            )
 
             # Parsing et validation du JSON retourné par le modèle
             results = self._parse_gemini_response(response_text, len(tweets))
@@ -634,7 +661,9 @@ IMPORTANT: Le nombre de résultats DOIT être exactement {len(tweets)} (un par t
                 "autres": "autre",
                 "misc": "autre",
             }
-            categorie = categorie_mapping.get(categorie, "autre")  # Fallback vers autre si inconnu
+            categorie = categorie_mapping.get(
+                categorie, "autre"
+            )  # Fallback vers autre si inconnu
 
         # Validation score_confiance (range 0.0-1.0)
         score_confiance = float(result.get("score_confiance", 0.5))
@@ -695,7 +724,9 @@ IMPORTANT: Le nombre de résultats DOIT être exactement {len(tweets)} (un par t
             topics = categorie if categorie in TOPIC_OPTIONS else "autre"
 
         incident = (
-            str(result.get("incident", "aucun" if is_claim == "non" else "non_specifie"))
+            str(
+                result.get("incident", "aucun" if is_claim == "non" else "non_specifie")
+            )
             .lower()
             .strip()
         )
@@ -812,7 +843,9 @@ IMPORTANT: Le nombre de résultats DOIT être exactement {len(tweets)} (un par t
 
         return results
 
-    def _parse_gemini_response(self, response_text: str, expected_count: int) -> List[Dict]:
+    def _parse_gemini_response(
+        self, response_text: str, expected_count: int
+    ) -> List[Dict]:
         """
         Parse et valide la réponse JSON de Gemini avec validation stricte
 
@@ -901,7 +934,9 @@ IMPORTANT: Le nombre de résultats DOIT être exactement {len(tweets)} (un par t
         Returns:
             Liste de classifications complètes avec tous les champs KPI
         """
-        logger.info("Utilisation du classificateur fallback amélioré (règles intelligentes)")
+        logger.info(
+            "Utilisation du classificateur fallback amélioré (règles intelligentes)"
+        )
 
         # Vocabulaire étendu pour détection plus précise
         POSITIVE_KEYWORDS = [
@@ -1129,7 +1164,11 @@ IMPORTANT: Le nombre de résultats DOIT être exactement {len(tweets)} (un par t
 
             # Détection incident améliorée
             if is_claim == "oui":
-                if "panne" in tweet_lower or "coupure" in tweet_lower or "connexion" in tweet_lower:
+                if (
+                    "panne" in tweet_lower
+                    or "coupure" in tweet_lower
+                    or "connexion" in tweet_lower
+                ):
                     incident = "panne_connexion"
                 elif "bug" in tweet_lower or "freebox" in tweet_lower:
                     incident = "bug_freebox"
@@ -1139,7 +1178,11 @@ IMPORTANT: Le nombre de résultats DOIT être exactement {len(tweets)} (un par t
                     or "facturation" in tweet_lower
                 ):
                     incident = "probleme_facturation"
-                elif "mobile" in tweet_lower or "4g" in tweet_lower or "5g" in tweet_lower:
+                elif (
+                    "mobile" in tweet_lower
+                    or "4g" in tweet_lower
+                    or "5g" in tweet_lower
+                ):
                     incident = "probleme_mobile"
                 else:
                     incident = "non_specifie"
@@ -1165,7 +1208,10 @@ IMPORTANT: Le nombre de résultats DOIT être exactement {len(tweets)} (un par t
         return results
 
     def classify_dataframe(
-        self, df: pd.DataFrame, text_column: str = "text_cleaned", show_progress: bool = True
+        self,
+        df: pd.DataFrame,
+        text_column: str = "text_cleaned",
+        show_progress: bool = True,
     ) -> pd.DataFrame:
         """
         Classifie tous les tweets du DataFrame par lots avec progress bar
@@ -1194,7 +1240,9 @@ IMPORTANT: Le nombre de résultats DOIT être exactement {len(tweets)} (un par t
             logger.info("Applying advanced text preprocessing...")
             # Clean tweets before sending to Gemini for better results
             # Note: Keep original tweets in df, only clean for API input
-            preprocessed_tweets = [self.preprocessor.clean(t, preserve_case=False) for t in tweets]
+            preprocessed_tweets = [
+                self.preprocessor.clean(t, preserve_case=False) for t in tweets
+            ]
             # Use preprocessed for API, but keep original for reference
             tweets_for_api = preprocessed_tweets
         else:
@@ -1230,7 +1278,9 @@ IMPORTANT: Le nombre de résultats DOIT être exactement {len(tweets)} (un par t
             # Délai réduit pour petits batches, augmenté pour gros volumes
             if batch_idx < total_batches - 1:
                 # Délai adaptatif: 0.3s pour petits batches (< 10), 0.5s pour moyens, 1s pour gros (> 50)
-                adaptive_delay = 0.3 if total_batches < 10 else (0.5 if total_batches < 50 else 1.0)
+                adaptive_delay = (
+                    0.3 if total_batches < 10 else (0.5 if total_batches < 50 else 1.0)
+                )
                 time.sleep(adaptive_delay)
 
         # Renforcer la cohérence des résultats avec le texte original (non nettoyé)
@@ -1251,7 +1301,9 @@ IMPORTANT: Le nombre de résultats DOIT être exactement {len(tweets)} (un par t
         # Ajout des colonnes de classification (avec tous les champs KPI)
         df_classified["sentiment"] = [r.get("sentiment", "neutre") for r in all_results]
         df_classified["categorie"] = [r.get("categorie", "autre") for r in all_results]
-        df_classified["score_confiance"] = [r.get("score_confiance", 0.5) for r in all_results]
+        df_classified["score_confiance"] = [
+            r.get("score_confiance", 0.5) for r in all_results
+        ]
 
         # Ajout des champs KPI supplémentaires
         df_classified["is_claim"] = [r.get("is_claim", "non") for r in all_results]
@@ -1286,7 +1338,9 @@ IMPORTANT: Le nombre de résultats DOIT être exactement {len(tweets)} (un par t
 
         stats = {
             "total_classified": len(df_classified),
-            "sentiment_distribution": df_classified["sentiment"].value_counts().to_dict(),
+            "sentiment_distribution": df_classified["sentiment"]
+            .value_counts()
+            .to_dict(),
             "categorie_distribution": (
                 df_classified["categorie"].value_counts().to_dict()
                 if "categorie" in df_classified.columns
@@ -1352,7 +1406,9 @@ def check_gemini_availability() -> bool:
         )
 
         if not api_key:
-            logger.debug("Clé API Gemini non trouvée dans les variables d'environnement")
+            logger.debug(
+                "Clé API Gemini non trouvée dans les variables d'environnement"
+            )
             return False
 
         # Vérifier que la clé n'est pas vide
@@ -1405,13 +1461,25 @@ def classify_single_tweet(
         Dictionnaire avec classification
     """
     try:
-        classifier = GeminiClassifier(api_key=api_key, model_name=model_name, batch_size=1)
+        classifier = GeminiClassifier(
+            api_key=api_key, model_name=model_name, batch_size=1
+        )
         results = classifier.classify_batch([tweet])
         return (
             results[0]
             if results
-            else {"index": 0, "sentiment": "neutre", "categorie": "autre", "score_confiance": 0.5}
+            else {
+                "index": 0,
+                "sentiment": "neutre",
+                "categorie": "autre",
+                "score_confiance": 0.5,
+            }
         )
     except Exception as e:
         logger.error(f"Erreur classification Gemini: {e}")
-        return {"index": 0, "sentiment": "neutre", "categorie": "autre", "score_confiance": 0.5}
+        return {
+            "index": 0,
+            "sentiment": "neutre",
+            "categorie": "autre",
+            "score_confiance": 0.5,
+        }

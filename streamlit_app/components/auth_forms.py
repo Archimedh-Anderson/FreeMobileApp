@@ -68,7 +68,9 @@ def login_form():
 
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
-            submit = st.form_submit_button("Sign In", type="primary", use_container_width=True)
+            submit = st.form_submit_button(
+                "Sign In", type="primary", use_container_width=True
+            )
 
         if submit:
             # Validate inputs
@@ -114,10 +116,14 @@ def signup_form():
     )
 
     with st.form("signup_form", clear_on_submit=False):
-        full_name = st.text_input("Full Name", placeholder="John Doe", help="Enter your full name")
+        full_name = st.text_input(
+            "Full Name", placeholder="John Doe", help="Enter your full name"
+        )
 
         email = st.text_input(
-            "Email Address", placeholder="your.email@example.com", help="Enter your email address"
+            "Email Address",
+            placeholder="your.email@example.com",
+            help="Enter your email address",
         )
 
         password = st.text_input(

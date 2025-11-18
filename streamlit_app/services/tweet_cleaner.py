@@ -13,7 +13,12 @@ Fonctionnalités:
 """
 
 # Imports pour la manipulation de types et de données
-from typing import Tuple, Dict, List, Optional  # Annotations de types pour la clarté du code
+from typing import (
+    Tuple,
+    Dict,
+    List,
+    Optional,
+)  # Annotations de types pour la clarté du code
 import pandas as pd  # Traitement de données tabulaires (DataFrames)
 import hashlib  # Génération de hash MD5 pour détection de doublons
 import re  # Expressions régulières pour le nettoyage de texte
@@ -25,10 +30,14 @@ import logging  # Journalisation des opérations de nettoyage
 logger = logging.getLogger(__name__)
 
 # Définition des patterns regex pour le nettoyage (conformes aux spécifications)
-URL_PATTERN = r"http\S+|www\S+|https\S+"  # Détection de toutes les URLs (http, https, www)
+URL_PATTERN = (
+    r"http\S+|www\S+|https\S+"  # Détection de toutes les URLs (http, https, www)
+)
 MENTION_PATTERN = r"@\w+"  # Détection des mentions Twitter (@username)
 HASHTAG_PATTERN = r"#\w+"  # Détection des hashtags (#tag)
-PUNCTUATION_PATTERN = r"[^\w\s,.\?!]"  # Suppression ponctuation exceptée (garde , . ? !)
+PUNCTUATION_PATTERN = (
+    r"[^\w\s,.\?!]"  # Suppression ponctuation exceptée (garde , . ? !)
+)
 WHITESPACE_PATTERN = r"\s+"  # Normalisation des espaces multiples en espace unique
 
 
@@ -276,7 +285,9 @@ class TweetCleaner:
         empty_count = df_clean[text_column].isna().sum()
         df_clean = df_clean.dropna(subset=[text_column])
         stats["empty_tweets"] = int(empty_count)
-        stats["cleaning_operations"].append(f"Valeurs manquantes supprimées: {empty_count}")
+        stats["cleaning_operations"].append(
+            f"Valeurs manquantes supprimées: {empty_count}"
+        )
 
         # 2. Suppression des doublons
         count_before_dedup = len(df_clean)
@@ -287,16 +298,22 @@ class TweetCleaner:
 
         # 3. Calcul de la longueur moyenne avant nettoyage
         if len(df_clean) > 0:
-            stats["avg_length_before"] = float(df_clean[text_column].astype(str).str.len().mean())
+            stats["avg_length_before"] = float(
+                df_clean[text_column].astype(str).str.len().mean()
+            )
         else:
             stats["avg_length_before"] = 0.0
 
         # 4. Nettoyage du texte
-        df_clean[f"{text_column}_cleaned"] = df_clean[text_column].apply(self.clean_text)
+        df_clean[f"{text_column}_cleaned"] = df_clean[text_column].apply(
+            self.clean_text
+        )
 
         # 5. Calcul de la longueur moyenne après nettoyage
         if len(df_clean) > 0:
-            stats["avg_length_after"] = float(df_clean[f"{text_column}_cleaned"].str.len().mean())
+            stats["avg_length_after"] = float(
+                df_clean[f"{text_column}_cleaned"].str.len().mean()
+            )
         else:
             stats["avg_length_after"] = 0.0
 

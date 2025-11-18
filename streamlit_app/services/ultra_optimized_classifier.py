@@ -103,7 +103,11 @@ class BenchmarkMetrics:
 ### Performance par Phase
 """
         for phase, duration in self.phase_times.items():
-            pct = (duration / self.total_time_seconds * 100) if self.total_time_seconds > 0 else 0
+            pct = (
+                (duration / self.total_time_seconds * 100)
+                if self.total_time_seconds > 0
+                else 0
+            )
             report += f"- **{phase}**: {duration:.2f}s ({pct:.1f}%)\n"
 
         report += f"""
@@ -295,7 +299,9 @@ class UltraOptimizedClassifier:
         logger.info(f" Created {len(batches)} batches ({self.batch_size} tweets each)")
         return batches
 
-    def _process_batch_bert(self, batch: pd.DataFrame, text_column: str) -> pd.DataFrame:
+    def _process_batch_bert(
+        self, batch: pd.DataFrame, text_column: str
+    ) -> pd.DataFrame:
         """
         Process batch with BERT
         Performance: ~200 tweets/s on CPU i9-13900H
@@ -324,7 +330,9 @@ class UltraOptimizedClassifier:
         # Process uncached
         if uncached_texts:
             try:
-                bert_df = self.bert.predict_with_confidence(uncached_texts, show_progress=False)
+                bert_df = self.bert.predict_with_confidence(
+                    uncached_texts, show_progress=False
+                )
 
                 for i, batch_idx in enumerate(uncached_indices):
                     sentiment = bert_df["sentiment"].iloc[i]
@@ -351,7 +359,9 @@ class UltraOptimizedClassifier:
         result["bert_confidence"] = results_confidence
         return result
 
-    def _process_batch_rules(self, batch: pd.DataFrame, text_column: str) -> pd.DataFrame:
+    def _process_batch_rules(
+        self, batch: pd.DataFrame, text_column: str
+    ) -> pd.DataFrame:
         """
         Process batch with Rules
         Performance: 2000+ tweets/s (regex optimized)
@@ -379,7 +389,9 @@ class UltraOptimizedClassifier:
             result["incident"] = "aucun"
             return result
 
-    def _process_batch_mistral(self, batch: pd.DataFrame, text_column: str) -> pd.DataFrame:
+    def _process_batch_mistral(
+        self, batch: pd.DataFrame, text_column: str
+    ) -> pd.DataFrame:
         """
         Process batch with Mistral
         Performance: 5-10 tweets/s (slow, use sparingly)
@@ -404,13 +416,17 @@ class UltraOptimizedClassifier:
             try:
                 uncached_texts = [t for t, m in zip(texts, uncached_mask) if m]
                 mistral_df = self.mistral.classify_dataframe(
-                    pd.DataFrame({text_column: uncached_texts}), text_column, show_progress=False
+                    pd.DataFrame({text_column: uncached_texts}),
+                    text_column,
+                    show_progress=False,
                 )
 
                 uncached_idx = 0
                 for i, is_uncached in enumerate(uncached_mask):
                     if is_uncached:
-                        confidence = mistral_df.iloc[uncached_idx].get("score_confiance", 0.5)
+                        confidence = mistral_df.iloc[uncached_idx].get(
+                            "score_confiance", 0.5
+                        )
                         results_confidence[i] = confidence
 
                         # Cache it
@@ -497,7 +513,9 @@ class UltraOptimizedClassifier:
         for batch_idx, batch in enumerate(batches):
             if progress_callback:
                 pct = (batch_idx / num_batches) * 0.30  # 0-30%
-                progress_callback(f"Phase 1/4: BERT batch {batch_idx+1}/{num_batches}", pct)
+                progress_callback(
+                    f"Phase 1/4: BERT batch {batch_idx+1}/{num_batches}", pct
+                )
 
             batch_result = self._process_batch_bert(batch, text_column)
             bert_results.append(batch_result)
@@ -560,7 +578,9 @@ class UltraOptimizedClassifier:
             )
 
             if progress_callback:
-                progress_callback(f"Phase 3/4: Mistral échantillon ({len(sample_df)} tweets)", 0.50)
+                progress_callback(
+                    f"Phase 3/4: Mistral échantillon ({len(sample_df)} tweets)", 0.50
+                )
 
             # Process sample
             sample_batches = self._create_batches(sample_df)
@@ -570,7 +590,8 @@ class UltraOptimizedClassifier:
                 if progress_callback:
                     pct = 0.50 + (batch_idx / len(sample_batches)) * 0.35  # 50-85%
                     progress_callback(
-                        f"Phase 3/4: Mistral batch {batch_idx+1}/{len(sample_batches)}", pct
+                        f"Phase 3/4: Mistral batch {batch_idx+1}/{len(sample_batches)}",
+                        pct,
                     )
 
                 batch_result = self._process_batch_mistral(batch, text_column)
@@ -582,12 +603,14 @@ class UltraOptimizedClassifier:
             # Update main results for sampled tweets
             for idx in mistral_combined.index:
                 if idx in results.index:
-                    results.loc[idx, "confidence"] = mistral_combined.loc[idx, "mistral_confidence"]
+                    results.loc[idx, "confidence"] = mistral_combined.loc[
+                        idx, "mistral_confidence"
+                    ]
 
             # Fill non-sampled with BERT confidence
-            results["confidence"] = results.get("confidence", results["bert_confidence"]).fillna(
-                results["bert_confidence"]
-            )
+            results["confidence"] = results.get(
+                "confidence", results["bert_confidence"]
+            ).fillna(results["bert_confidence"])
 
         elif mode == "precise":
             # ALL tweets through Mistral (slow!)
@@ -597,7 +620,9 @@ class UltraOptimizedClassifier:
             for batch_idx, batch in enumerate(batches):
                 if progress_callback:
                     pct = 0.50 + (batch_idx / num_batches) * 0.35
-                    progress_callback(f"Phase 3/4: Mistral batch {batch_idx+1}/{num_batches}", pct)
+                    progress_callback(
+                        f"Phase 3/4: Mistral batch {batch_idx+1}/{num_batches}", pct
+                    )
 
                 batch_result = self._process_batch_mistral(batch, text_column)
                 mistral_results.append(batch_result)
@@ -622,7 +647,14 @@ class UltraOptimizedClassifier:
         phase4_start = time.time()
 
         # Ensure all required columns exist
-        required_columns = ["sentiment", "is_claim", "urgence", "topics", "incident", "confidence"]
+        required_columns = [
+            "sentiment",
+            "is_claim",
+            "urgence",
+            "topics",
+            "incident",
+            "confidence",
+        ]
         for col in required_columns:
             if col not in results.columns:
                 if col == "sentiment":
@@ -663,7 +695,9 @@ class UltraOptimizedClassifier:
 
         # Cache hit rate
         total_cache_ops = self.cache_hits + self.cache_misses
-        cache_hit_rate = (self.cache_hits / total_cache_ops * 100) if total_cache_ops > 0 else 0.0
+        cache_hit_rate = (
+            (self.cache_hits / total_cache_ops * 100) if total_cache_ops > 0 else 0.0
+        )
 
         metrics = BenchmarkMetrics(
             total_tweets=total_tweets,
@@ -690,7 +724,9 @@ class UltraOptimizedClassifier:
         logger.info("=" * 80)
 
         if progress_callback:
-            progress_callback(f" Terminé! {total_tweets:,} tweets en {total_time:.1f}s", 1.0)
+            progress_callback(
+                f" Terminé! {total_tweets:,} tweets en {total_time:.1f}s", 1.0
+            )
 
         return results, metrics
 
@@ -825,7 +861,8 @@ if __name__ == "__main__":
     test_data = pd.DataFrame(
         {
             "text_cleaned": [
-                f"Test tweet {i} avec du contenu varié pour benchmark" for i in range(200)
+                f"Test tweet {i} avec du contenu varié pour benchmark"
+                for i in range(200)
             ]
         }
     )

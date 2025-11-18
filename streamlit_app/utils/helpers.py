@@ -144,7 +144,9 @@ def chunk_list(lst: List[Any], chunk_size: int) -> List[List[Any]]:
     return [lst[i : i + chunk_size] for i in range(0, len(lst), chunk_size)]
 
 
-def flatten_dict(d: Dict[str, Any], parent_key: str = "", sep: str = "_") -> Dict[str, Any]:
+def flatten_dict(
+    d: Dict[str, Any], parent_key: str = "", sep: str = "_"
+) -> Dict[str, Any]:
     """Aplatit un dictionnaire imbriqué"""
     items = []
     for k, v in d.items():
@@ -250,9 +252,7 @@ def create_download_link(data: bytes, filename: str, mime_type: str) -> str:
     import base64
 
     b64 = base64.b64encode(data).decode()
-    return (
-        f'<a href="data:{mime_type};base64,{b64}" download="{filename}">Télécharger {filename}</a>'
-    )
+    return f'<a href="data:{mime_type};base64,{b64}" download="{filename}">Télécharger {filename}</a>'
 
 
 def format_relative_time(timestamp: str) -> str:
@@ -380,7 +380,9 @@ def fetch_remote_dataset(
     content = response.content
     size_mb = len(content) / (1024 * 1024)
     if size_mb > max_size_mb:
-        raise ValueError(f"Fichier trop volumineux ({size_mb:.1f} MB). Limite: {max_size_mb} MB.")
+        raise ValueError(
+            f"Fichier trop volumineux ({size_mb:.1f} MB). Limite: {max_size_mb} MB."
+        )
 
     content_type = response.headers.get("Content-Type", "text/csv").split(";")[0]
     filename = os.path.basename(parsed.path) or "remote_dataset.csv"

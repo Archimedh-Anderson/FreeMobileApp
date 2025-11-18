@@ -585,7 +585,10 @@ def render_features():
                 unsafe_allow_html=True,
             )
             if st.button(
-                "Start LLM Classification", type="primary", use_container_width=True, key="btn_llm"
+                "Start LLM Classification",
+                type="primary",
+                use_container_width=True,
+                key="btn_llm",
             ):
                 st.switch_page("pages/Classification_Mistral.py")
 
@@ -668,8 +671,16 @@ def render_features():
             "Interactive Dashboards",
             "Dynamic and customizable visualizations",
         ),
-        ("<i class='fas fa-clock'></i>", "Real Time", "Real-time tweet processing and analysis"),
-        ("<i class='fas fa-tags'></i>", "Auto Categorization", "Automatic tweet classification"),
+        (
+            "<i class='fas fa-clock'></i>",
+            "Real Time",
+            "Real-time tweet processing and analysis",
+        ),
+        (
+            "<i class='fas fa-tags'></i>",
+            "Auto Categorization",
+            "Automatic tweet classification",
+        ),
         (
             "<i class='fas fa-file-alt'></i>",
             "Detailed Reports",
@@ -1000,15 +1011,22 @@ def render_footer():
         )
 
         with st.form(key="contact_form"):
-            nom = st.text_input("Name", placeholder="John Doe", label_visibility="collapsed")
+            nom = st.text_input(
+                "Name", placeholder="John Doe", label_visibility="collapsed"
+            )
             email = st.text_input(
                 "Email", placeholder="john@email.com", label_visibility="collapsed"
             )
             message = st.text_area(
-                "Message", placeholder="Your message...", height=100, label_visibility="collapsed"
+                "Message",
+                placeholder="Your message...",
+                height=100,
+                label_visibility="collapsed",
             )
 
-            submit = st.form_submit_button("Send", use_container_width=True, type="primary")
+            submit = st.form_submit_button(
+                "Send", use_container_width=True, type="primary"
+            )
 
             if submit:
                 if nom and email and message:

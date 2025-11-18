@@ -38,10 +38,14 @@ def test_normalize_function():
         from pages.Classification_Mistral import _normalize_kpi_fields
 
         # Test 1: DataFrame avec colonnes standard
-        df1 = pd.DataFrame({"text": ["Test tweet"], "sentiment": ["POSITIVE"], "is_claim": ["YES"]})
+        df1 = pd.DataFrame(
+            {"text": ["Test tweet"], "sentiment": ["POSITIVE"], "is_claim": ["YES"]}
+        )
         result1 = _normalize_kpi_fields(df1)
         assert "sentiment" in result1.columns, "Colonne sentiment manquante"
-        assert result1["sentiment"].iloc[0] == "POSITIF", "Normalisation sentiment échouée"
+        assert (
+            result1["sentiment"].iloc[0] == "POSITIF"
+        ), "Normalisation sentiment échouée"
         print("  ✅ Test 1: Normalisation sentiment OK")
 
         # Test 2: DataFrame avec colonnes manquantes
@@ -54,7 +58,9 @@ def test_normalize_function():
         print("  ✅ Test 2: Création colonnes manquantes OK")
 
         # Test 3: Colonnes alternatives
-        df3 = pd.DataFrame({"text": ["Test"], "priority": ["HIGH"], "category": ["FIBRE"]})
+        df3 = pd.DataFrame(
+            {"text": ["Test"], "priority": ["HIGH"], "category": ["FIBRE"]}
+        )
         result3 = _normalize_kpi_fields(df3)
         # La fonction normalise HIGH -> ELEVEE
         assert result3["urgence"].iloc[0] in [
