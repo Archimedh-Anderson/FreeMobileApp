@@ -107,15 +107,17 @@ install_dependencies() {
     if [ -d "venv" ]; then
         source venv/bin/activate
     else
-        log_warning "Environnement virtuel non trouvé - utilisation de Python système"
+        log_warning "Environnement virtuel non trouvé - création..."
+        python3 -m venv venv
+        source venv/bin/activate
     fi
     
     # Mise à jour de pip
-    python3 -m pip install --upgrade pip --quiet
+    pip install --upgrade pip --quiet
     
     # Installation des packages
     if [ -f "requirements.txt" ]; then
-        python3 -m pip install -r requirements.txt --quiet
+        pip install -r requirements.txt --upgrade --quiet
         log_success "Dépendances installées avec succès"
     else
         log_error "Fichier requirements.txt introuvable!"
@@ -138,7 +140,7 @@ check_configuration() {
 # Configuration FreeMobilaChat
 GEMINI_API_KEY=your_key_here
 MISTRAL_API_KEY=your_key_here
-STREAMLIT_PORT=8503
+STREAMLIT_PORT=8502
 ENVIRONMENT=production
 EOF
         log_warning "Pensez à configurer vos clés API dans .env"
@@ -192,19 +194,6 @@ restart_service() {
 }
 
 ###############################################################################
-# Fonction: Affichage des logs
-###############################################################################
-show_logs() {
-    log_info "Dernières lignes de log (${LOG_FILE}):"
-    
-    if [ -f "${LOG_FILE}" ]; then
-        sudo tail -n 30 "${LOG_FILE}"
-    else
-        log_warning "Fichier de log non trouvé: ${LOG_FILE}"
-    fi
-}
-
-###############################################################################
 # Fonction: Test de santé de l'application
 ###############################################################################
 health_check() {
@@ -217,7 +206,7 @@ health_check() {
     if curl -f http://localhost:8502 > /dev/null 2>&1; then
         log_success "Application accessible sur http://localhost:8502"
     else
-        log_warning "Application non accessible via HTTP (normal si derrière un proxy)"
+        log_warning "Application non accessible via HTTP (vérifiez le firewall)"
     fi
     
     # Vérification des processus Streamlit
@@ -227,30 +216,6 @@ health_check() {
     else
         log_error "Aucun processus Streamlit trouvé"
     fi
-}
-
-###############################################################################
-# Fonction: Restauration depuis une sauvegarde
-###############################################################################
-rollback() {
-    log_warning "Restauration depuis la dernière sauvegarde..."
-    
-    LATEST_BACKUP=$(ls -t "${BACKUP_DIR}"/backup_*.tar.gz 2>/dev/null | head -1)
-    
-    if [ -z "${LATEST_BACKUP}" ]; then
-        log_error "Aucune sauvegarde trouvée"
-        exit 1
-    fi
-    
-    log_info "Restauration depuis: $(basename ${LATEST_BACKUP})"
-    
-    # Extraction de la sauvegarde
-    tar -xzf "${LATEST_BACKUP}" -C "${APP_DIR}"
-    
-    log_success "Code restauré depuis la sauvegarde"
-    
-    # Redémarrage du service
-    restart_service
 }
 
 ###############################################################################
@@ -275,7 +240,6 @@ main() {
     check_configuration
     restart_service
     health_check
-    show_logs
     
     echo ""
     echo "=================================================================="
@@ -284,7 +248,6 @@ main() {
     echo ""
     log_info "Application accessible sur: http://13.37.186.191:8502"
     log_info "Logs en temps réel: sudo journalctl -u ${SERVICE_NAME} -f"
-    log_info "Logs applicatifs: sudo tail -f ${LOG_FILE}"
     echo ""
 }
 
@@ -295,15 +258,6 @@ case "${1:-deploy}" in
     deploy)
         main
         ;;
-    rollback)
-        rollback
-        ;;
-    logs)
-        show_logs
-        ;;
-    status)
-        sudo systemctl status ${SERVICE_NAME}
-        ;;
     restart)
         restart_service
         ;;
@@ -311,13 +265,10 @@ case "${1:-deploy}" in
         health_check
         ;;
     *)
-        echo "Usage: $0 {deploy|rollback|logs|status|restart|health}"
+        echo "Usage: $0 {deploy|restart|health}"
         echo ""
         echo "Commandes:"
         echo "  deploy   - Déploiement complet (par défaut)"
-        echo "  rollback - Restauration depuis la dernière sauvegarde"
-        echo "  logs     - Affichage des logs"
-        echo "  status   - Statut du service"
         echo "  restart  - Redémarrage du service uniquement"
         echo "  health   - Test de santé de l'application"
         exit 1

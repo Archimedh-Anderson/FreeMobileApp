@@ -1,356 +1,127 @@
-name: Deploy to Lightsail
+name: Deploy to EC2
 
 on:
   push:
-    branches: [ main, master ]
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
   deploy:
+    name: Déploiement sur EC2
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     
     steps:
-    - name: Checkout code
+    - name: 📥 Checkout du code
       uses: actions/checkout@v4
     
-    - name: Verify SSH secrets
-      run: |
-        if [ -z "${{ secrets.LIGHTSAIL_HOST }}" ]; then
-          echo "❌ LIGHTSAIL_HOST secret is not set"
-          exit 1
-        fi
-        if [ -z "${{ secrets.LIGHTSAIL_USER }}" ]; then
-          echo "❌ LIGHTSAIL_USER secret is not set"
-          exit 1
-        fi
-        if [ -z "${{ secrets.SSH_PRIVATE_KEY }}" ]; then
-          echo "❌ SSH_PRIVATE_KEY secret is not set"
-          exit 1
-        fi
-        echo "✅ All required secrets are configured"
-    
-    - name: Deploy via SSH
-      uses: appleboy/ssh-action@master
+    - name: 🐍 Configuration Python
+      uses: actions/setup-python@v5
       with:
-        host: ${{ secrets.LIGHTSAIL_HOST }}
-        username: ${{ secrets.LIGHTSAIL_USER }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        port: ${{ secrets.LIGHTSAIL_SSH_PORT || 22 }}
-        timeout: 10m
-        command_timeout: 10m
+        python-version: '3.11'
+    
+    - name: ✅ Vérification de la syntaxe
+      run: |
+        python -m py_compile streamlit_app/app.py
+        echo "✅ Syntaxe Python validée"
+    
+    - name: 🚀 Déploiement via SSH
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USERNAME }}
+        key: ${{ secrets.EC2_SSH_KEY }}
+        port: 22
+        command_timeout: 30m
         script_stop: true
         script: |
-          set -euo pipefail
+          set -e
+          echo "=================================================="
+          echo "🚀 DÉMARRAGE DU DÉPLOIEMENT - $(date)"
+          echo "=================================================="
           
-          # Fonction de logging avec timestamp
-          log() {
-            echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
-          }
+          # Navigation vers le répertoire de l'application
+          cd /home/ec2-user/FreeMobileApp
           
-          log "🚀 Début du déploiement sur Lightsail..."
-          log "Date: $(date)"
-          log "Commit: ${{ github.sha }}"
-          log "Branch: ${{ github.ref_name }}"
-          log "Workflow: ${{ github.workflow }}"
-          log "Run ID: ${{ github.run_id }}"
-          echo ""
+          # Sauvegarde de l'état actuel
+          echo "📦 Sauvegarde de l'état actuel..."
+          git stash
           
-          # Vérification des prérequis
-          log "🔍 Vérification des prérequis..."
-          command -v git >/dev/null 2>&1 || { log "❌ Git n'est pas installé"; exit 1; }
-          command -v python3 >/dev/null 2>&1 || { log "❌ Python3 n'est pas installé"; exit 1; }
-          log "✅ Prérequis vérifiés"
+          # Récupération des dernières modifications
+          echo "⬇️ Récupération des modifications..."
+          git fetch origin main
+          git reset --hard origin/main
           
-          # Variables
-          APP_DIR="$HOME/FreeMobileApp"
-          STREAMLIT_DIR="${APP_DIR}/streamlit_app"
-          BACKUP_DIR="${APP_DIR}/backups"
-          TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+          # Vérification de la version
+          echo "📌 Version déployée: $(git rev-parse --short HEAD)"
           
-          # Créer le répertoire de backup
-          mkdir -p "${BACKUP_DIR}"
+          # Installation/mise à jour des dépendances
+          echo "📦 Installation des dépendances..."
+          cd streamlit_app
           
-          # 1. Sauvegarde avant déploiement
-          echo "📦 [1/6] Création d'une sauvegarde..."
-          if [ -d "${STREAMLIT_DIR}" ]; then
-            tar -czf "${BACKUP_DIR}/backup_${TIMESTAMP}.tar.gz" \
-              -C "${APP_DIR}" \
-              --exclude='venv' \
-              --exclude='__pycache__' \
-              --exclude='*.pyc' \
-              --exclude='.git' \
-              streamlit_app 2>/dev/null || true
-            echo "✅ Sauvegarde créée: backup_${TIMESTAMP}.tar.gz"
-          fi
-          
-          # Garder seulement les 5 dernières sauvegardes
-          cd "${BACKUP_DIR}"
-          ls -t backup_*.tar.gz 2>/dev/null | tail -n +6 | xargs -r rm -f || true
-          
-          # 2. Aller dans le répertoire de l'application
-          echo ""
-          log "📂 [2/6] Accès au répertoire de l'application..."
-          
-          # Créer le répertoire s'il n'existe pas
-          if [ ! -d "${APP_DIR}" ]; then
-            log "⚠️  Répertoire ${APP_DIR} introuvable - création..."
-            mkdir -p "${APP_DIR}" || {
-              log "❌ Échec de la création du répertoire ${APP_DIR}"
-              exit 1
-            }
-          fi
-          
-          cd "${APP_DIR}" || {
-            log "❌ Impossible d'accéder au répertoire ${APP_DIR}"
-            exit 1
-          }
-          
-          # Si le dépôt Git n'existe pas, le cloner
-          if [ ! -d ".git" ]; then
-            log "⚠️  Dépôt Git introuvable - clonage depuis GitHub..."
-            git clone https://github.com/Archimedh-Anderson/FreeMobileApp.git . || {
-              log "❌ Échec du clonage du dépôt"
-              exit 1
-            }
-          fi
-          
-          # 3. Configuration Git et récupération du code
-          echo ""
-          log "🔄 [3/6] Récupération du code depuis GitHub..."
-          
-          # Configurer Git si nécessaire
-          git config user.name "GitHub Actions" || true
-          git config user.email "actions@github.com" || true
-          
-          # Configurer le remote origin s'il n'existe pas
-          if ! git remote get-url origin >/dev/null 2>&1; then
-            log "⚠️  Remote origin introuvable - configuration..."
-            git remote add origin https://github.com/Archimedh-Anderson/FreeMobileApp.git || {
-              log "⚠️  Remote origin existe déjà ou erreur de configuration"
-            }
-          else
-            # Mettre à jour l'URL du remote si nécessaire
-            git remote set-url origin https://github.com/Archimedh-Anderson/FreeMobileApp.git || true
-          fi
-          
-          # Sauvegarde des modifications locales
-          if ! git diff-index --quiet HEAD -- 2>/dev/null; then
-            log "⚠️  Modifications locales détectées - sauvegarde avec git stash"
-            git stash save "Auto-stash before deploy ${TIMESTAMP}" || true
-          fi
-          
-          # Fonction de retry pour git fetch
-          fetch_with_retry() {
-            local max_attempts=5
-            local attempt=1
-            local delay=5
-            
-            while [ $attempt -le $max_attempts ]; do
-              echo "🔄 Tentative $attempt/$max_attempts de récupération depuis GitHub..."
-              
-              if git fetch origin main 2>&1; then
-                echo "✅ Récupération réussie depuis origin/main"
-                return 0
-              fi
-              
-              if git fetch origin master 2>&1; then
-                echo "✅ Récupération réussie depuis origin/master"
-                return 0
-              fi
-              
-              local exit_code=$?
-              echo "⚠️  Tentative $attempt échouée (code: $exit_code)"
-              
-              if [ $attempt -lt $max_attempts ]; then
-                echo "⏳ Attente ${delay}s avant nouvelle tentative..."
-                sleep $delay
-                delay=$((delay * 2))  # Exponential backoff
-              fi
-              
-              attempt=$((attempt + 1))
-            done
-            
-            echo "❌ Échec de la récupération après $max_attempts tentatives"
-            return 1
-          }
-          
-          # Récupération des modifications avec retry
-          if ! fetch_with_retry; then
-            echo "❌ Échec critique de la récupération depuis GitHub"
-            echo "Vérifiez la connectivité réseau et l'état de GitHub"
-            exit 1
-          fi
-          
-          # Déterminer la branche à utiliser
-          BRANCH="main"
-          if git show-ref --verify --quiet refs/remotes/origin/main; then
-            BRANCH="main"
-          elif git show-ref --verify --quiet refs/remotes/origin/master; then
-            BRANCH="master"
-          else
-            echo "⚠️  Aucune branche main/master trouvée, utilisation de main par défaut"
-          fi
-          
-          # Affichage des changements
-          echo "📝 Changements à appliquer (branch: $BRANCH):"
-          git log HEAD..origin/${BRANCH} --oneline --decorate=short 2>/dev/null || echo "Aucun changement détecté"
-          
-          # Mise à jour vers la dernière version avec retry
-          echo "🔄 Mise à jour vers origin/${BRANCH}..."
-          local reset_attempts=3
-          local reset_attempt=1
-          
-          while [ $reset_attempt -le $reset_attempts ]; do
-            if git reset --hard "origin/${BRANCH}" 2>&1; then
-              echo "✅ Code mis à jour avec succès"
-              break
-            fi
-            
-            if [ $reset_attempt -lt $reset_attempts ]; then
-              echo "⚠️  Tentative $reset_attempt échouée, nouvelle tentative..."
-              sleep 3
-              # Réessayer le fetch avant le reset
-              fetch_with_retry || true
-            else
-              echo "❌ Échec de la mise à jour du code après $reset_attempts tentatives"
-              exit 1
-            fi
-            
-            reset_attempt=$((reset_attempt + 1))
-          done
-          
-          CURRENT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
-          log "✅ Code mis à jour - Commit: ${CURRENT_COMMIT}"
-          
-          # 4. Vérification de l'environnement virtuel
-          echo ""
-          echo "🐍 [4/6] Vérification de l'environnement Python..."
+          # Création du venv s'il n'existe pas
           if [ ! -d "venv" ]; then
-            echo "⚠️  Environnement virtuel non trouvé - création..."
-            python3 -m venv venv || {
-              echo "❌ Échec de la création de l'environnement virtuel"
-              exit 1
-            }
+            echo "Création de l'environnement virtuel..."
+            python3 -m venv venv
           fi
           
-          source venv/bin/activate || {
-            echo "❌ Échec de l'activation de l'environnement virtuel"
-            exit 1
-          }
+          # Activation du venv
+          source venv/bin/activate
           
           # Mise à jour de pip
           pip install --upgrade pip --quiet
           
-          # 5. Installation des dépendances
-          echo ""
-          echo "📦 [5/6] Installation des dépendances..."
-          if [ ! -f "${STREAMLIT_DIR}/requirements.txt" ]; then
-            echo "❌ Fichier requirements.txt introuvable!"
-            exit 1
+          # Installation des dépendances
+          pip install -r requirements.txt --upgrade --quiet
+          
+          # Vérification de la configuration
+          if [ ! -f .env ]; then
+            echo "⚠️ Fichier .env manquant - utilisation des valeurs par défaut"
           fi
           
-          pip install -r "${STREAMLIT_DIR}/requirements.txt" --upgrade --quiet || {
-            echo "❌ Échec de l'installation des dépendances"
-            exit 1
-          }
+          # Redémarrage du service Streamlit
+          echo "🔄 Redémarrage du service Streamlit..."
+          sudo systemctl restart streamlit.service
           
-          echo "✅ Dépendances installées avec succès"
+          # Attente du démarrage
+          sleep 5
           
-          # 6. Vérification de la configuration
-          echo ""
-          echo "⚙️  [6/6] Vérification de la configuration..."
-          if [ ! -f "${STREAMLIT_DIR}/app.py" ]; then
-            echo "❌ Fichier app.py introuvable!"
-            exit 1
-          fi
-          
-          # Test de syntaxe Python
-          python3 -m py_compile "${STREAMLIT_DIR}/app.py" || {
-            echo "❌ Erreur de syntaxe dans app.py"
-            exit 1
-          }
-          
-          echo "✅ Configuration validée"
-          
-          # 7. Redémarrage de l'application avec PM2
-          echo ""
-          echo "🔄 Redémarrage de l'application..."
-          
-          # Vérifier si PM2 est installé
-          if ! command -v pm2 &> /dev/null; then
-            echo "⚠️  PM2 non trouvé - installation..."
-            npm install -g pm2 || {
-              echo "❌ Échec de l'installation de PM2"
-              exit 1
-            }
-          fi
-          
-          # Redémarrer l'application
-          cd "${APP_DIR}"
-          pm2 restart freemobile-app || pm2 start ecosystem.config.js || {
-            echo "❌ Échec du redémarrage de l'application"
-            pm2 logs freemobile-app --lines 50 --nostream
-            exit 1
-          }
-          
-          # Attendre que l'application démarre
-          echo "⏳ Attente du démarrage de l'application..."
-          sleep 8
-          
-          # Vérifier le statut
-          pm2 status
-          
-          # 8. Health check
-          echo ""
-          echo "🏥 Vérification de santé de l'application..."
-          
-          # Vérifier que le processus est en cours d'exécution
-          if pm2 describe freemobile-app | grep -q "online"; then
-            echo "✅ Application en ligne"
+          # Vérification du statut du service
+          if sudo systemctl is-active --quiet streamlit.service; then
+            echo "✅ Service Streamlit démarré avec succès"
+            sudo systemctl status streamlit.service --no-pager --lines=0
           else
-            echo "❌ Application non en ligne"
-            pm2 logs freemobile-app --lines 50 --nostream
+            echo "❌ ERREUR: Le service Streamlit n'a pas démarré correctement"
+            sudo journalctl -u streamlit.service -n 50 --no-pager
             exit 1
           fi
           
-          # Test de connexion HTTP (si accessible)
-          if curl -f -s http://localhost:8502 > /dev/null 2>&1; then
-            echo "✅ Application accessible sur http://localhost:8502"
+          # Test de connectivité HTTP
+          echo "🌐 Test de connectivité..."
+          if curl -f http://localhost:8502 > /dev/null 2>&1; then
+            echo "✅ Application accessible sur le port 8502"
           else
-            echo "⚠️  Application non accessible via HTTP (peut être normal si derrière un proxy)"
+            echo "⚠️ Application non accessible via HTTP (vérifiez le firewall)"
           fi
           
-          # Afficher les dernières lignes de log
-          echo ""
-          echo "📋 Dernières lignes de log:"
-          pm2 logs freemobile-app --lines 20 --nostream || true
+          # Vérification des processus Streamlit
+          if pgrep -f "streamlit run" > /dev/null; then
+            echo "✅ Processus Streamlit en cours d'exécution"
+          else
+            echo "⚠️ Aucun processus Streamlit trouvé"
+          fi
           
-          echo ""
-          echo "=================================================================="
-          echo "✅ DÉPLOIEMENT TERMINÉ AVEC SUCCÈS"
-          echo "=================================================================="
-          echo "Commit: ${CURRENT_COMMIT}"
-          echo "Date: $(date)"
-          echo "Application: http://${{ secrets.LIGHTSAIL_HOST }}:8502"
-          echo ""
-          echo "Commandes utiles:"
-          echo "  - Logs en temps réel: pm2 logs freemobile-app"
-          echo "  - Statut: pm2 status"
-          echo "  - Redémarrer: pm2 restart freemobile-app"
-          echo "=================================================================="
+          echo "=================================================="
+          echo "✅ DÉPLOIEMENT TERMINÉ AVEC SUCCÈS - $(date)"
+          echo "=================================================="
     
-    - name: Deployment Summary
+    - name: ✅ Notification de succès
       if: success()
       run: |
-        echo "✅ Déploiement réussi sur Lightsail"
-        echo "Commit: ${{ github.sha }}"
-        echo "Branch: ${{ github.ref_name }}"
-        echo "Auteur: ${{ github.actor }}"
+        echo "::notice::🎉 Déploiement réussi sur EC2 (13.37.186.191:8502)"
     
-    - name: Deployment Failed
+    - name: ❌ Notification d'échec
       if: failure()
       run: |
-        echo "❌ Échec du déploiement sur Lightsail"
-        echo "Vérifiez les logs ci-dessus pour plus de détails"
-        exit 1
+        echo "::error::💥 Échec du déploiement - Vérifiez les logs ci-dessus"
