@@ -43,4 +43,4 @@ echo ""
 
 # Pour développement local, utiliser localhost
 # Pour production, utiliser 0.0.0.0
-streamlit run streamlit_app/app.py --server.port 8502 --server.address localhost
+streamlit run streamlit_app/app.py --server.port 8502 --server.address 0.0.0.0

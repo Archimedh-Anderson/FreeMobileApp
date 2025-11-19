@@ -138,3 +138,4 @@ def render_confusion_matrix(cm: List[List[int]], labels: List[str]):
     )
 
     st.plotly_chart(fig, use_container_width=True)
+
