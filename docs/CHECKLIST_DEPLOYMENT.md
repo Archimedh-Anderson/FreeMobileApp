@@ -36,7 +36,7 @@ Utilisez cette checklist pour vérifier que votre déploiement automatique est c
 ### Fichiers de configuration
 
 - [ ] `ecosystem.config.js` présent dans `~/FreeMobileApp/`
-- [ ] `start_app_production.sh` présent et exécutable (`chmod +x`)
+- [ ] `start_app.sh` présent et exécutable (`chmod +x`)
 - [ ] `deploy_lightsail.sh` présent et exécutable (`chmod +x`)
 - [ ] `.env` configuré dans `~/FreeMobileApp/streamlit_app/` (si nécessaire)
 
@@ -56,7 +56,7 @@ Utilisez cette checklist pour vérifier que votre déploiement automatique est c
 
 ### Scripts de déploiement
 
-- [ ] `start_app_production.sh` existe et est exécutable
+- [ ] `start_app.sh` existe et est exécutable
 - [ ] `deploy_lightsail.sh` existe et est exécutable
 - [ ] `ecosystem.config.js` est configuré correctement
 

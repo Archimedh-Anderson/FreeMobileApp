@@ -1,7 +1,7 @@
 module.exports = {
   apps: [{
     name: 'freemobile-app',
-    script: './start_app_production.sh',
+    script: './start_app.sh',
     interpreter: '/bin/bash',
     cwd: '/home/freemobila/FreeMobileApp',
     instances: 1,

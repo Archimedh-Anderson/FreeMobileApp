@@ -50,7 +50,7 @@ AWS Lightsail Server
     │   ├── streamlit_app/
     │   ├── venv/
     │   ├── ecosystem.config.js
-    │   ├── start_app_production.sh
+    │   ├── start_app.sh
     │   └── deploy_lightsail.sh
     └── PM2 (gestionnaire de processus)
 ```
@@ -67,12 +67,12 @@ Workflow GitHub Actions qui:
 - Redémarre l'application avec PM2
 - Effectue des health checks
 
-### 2. `start_app_production.sh`
-Script de démarrage pour la production:
+### 2. `start_app.sh`
+Script unique (dev & production) :
 - Active l'environnement virtuel Python
 - Vérifie les dépendances
-- Démarre Streamlit sur `0.0.0.0:8502` (accessible depuis l'extérieur)
-- Gère les logs
+- Démarre Streamlit sur `0.0.0.0:${PORT:-8502}` (accessible depuis l'extérieur)
+- Peut être utilisé par PM2 et en local
 
 ### 3. `deploy_lightsail.sh`
 Script de déploiement manuel sur le serveur:
@@ -141,7 +141,7 @@ nano .env
 cd ..
 
 # Rendre les scripts exécutables
-chmod +x start_app_production.sh
+chmod +x start_app.sh
 chmod +x deploy_lightsail.sh
 ```
 
@@ -306,7 +306,7 @@ pm2 describe freemobile-app
 
 ## 📝 Notes
 
-- Le script `start_app_production.sh` démarre Streamlit sur `0.0.0.0:8502` pour être accessible depuis l'extérieur
+- Le script `start_app.sh` démarre Streamlit sur `0.0.0.0:8502` pour être accessible depuis l'extérieur
 - Les sauvegardes sont conservées dans `~/FreeMobileApp/backups/` (5 dernières)
 - PM2 redémarre automatiquement l'application en cas de crash
 - Les logs sont stockés dans `~/FreeMobileApp/logs/`
